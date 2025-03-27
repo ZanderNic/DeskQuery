@@ -1,4 +1,4 @@
-,id,deskId,blockedFrom,roomId,userId,blockedUntil,userName,variableBooking,bookedAt
+,bookingID,deskId,blockedFrom,roomId,userId,blockedUntil,userName,variableBooking,bookedAt
 0,18,1, null,5.0, null, null,,0,
 1,32,1, null,7.0, null, null,,0,
 2,1,1, null,1.0, null, null,,0,
