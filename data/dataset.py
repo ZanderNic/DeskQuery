@@ -1,5 +1,8 @@
 #!/usr/bin/env python 
 import pandas as pd
+import numpy as np
+
+pd.set_option('future.no_silent_downcasting', True)
 
 def rename_columns(data: pd.DataFrame) -> pd.DataFrame:
     """
@@ -12,10 +15,16 @@ def rename_columns(data: pd.DataFrame) -> pd.DataFrame:
         "userIdAnonym": "userId",
         "at": "bookedAt",
         "blockedByIdAnonym": "userId",
-        "deskNumber": "deskId",
-        "id": "bookingID"
+        "id": "bookingId"
     }
     return data.rename(columns=column_mapping)
+
+def get_desk_room_mapping(fixedBooking_sheet: pd.DataFrame, room_sheet: pd.DataFrame) -> pd.DataFrame:
+    desk_room_mapping = fixedBooking_sheet[["bookingId", "deskNumber", "roomId"]].sort_values(by=["roomId", "deskNumber"]).rename(columns={"bookingId": "deskId"}).astype(int)
+    desk_room_mapping = pd.merge(desk_room_mapping, room_sheet, how="left", left_on="roomId", right_on="bookingId").drop(columns="bookingId").set_index("deskId")
+    desk_room_mapping.index.name = "deskId"
+
+    return desk_room_mapping
 
 def create_dataset(path: str = "OpTisch_anonymisiert.xlsx") -> pd.DataFrame:
     """This Function denormalizes the excel file to make it easier to handle.
@@ -30,21 +39,30 @@ def create_dataset(path: str = "OpTisch_anonymisiert.xlsx") -> pd.DataFrame:
     # Load all sheets from the Excel file into a dictionary of DataFrames
     sheets = pd.read_excel(path, sheet_name=None)
     
-    # Strip trailing whitespaces from all column names
-    for _, df in sheets.items():
-        df.columns = df.columns.str.strip()
+    for sheet_name, data in sheets.items():
+        # Strip trailing whitespaces from all column names
+        data.columns = data.columns.str.strip()
+        # Replace all occurrences of "null" or any string that consists only of whitespaces with NaN
+        # Use a regex sind there are many trailing whitespaces and so on
+        sheets[sheet_name] = data.replace(r'^\s*(null|\s*)\s*$', np.nan, regex=True).infer_objects(copy=False)
+        sheets[sheet_name] = rename_columns(sheets[sheet_name])
 
+    sheets["fixedBooking"].loc[sheets["fixedBooking"]["bookingId"] == 5, "deskNumber"] = 1
+    sheets["fixedBooking"]["deskNumber"] = sheets["fixedBooking"]["deskNumber"].astype(int)
+    sheets["variableBooking"]["userId"] += 1
+
+    desk_room_mapping = get_desk_room_mapping(sheets["fixedBooking"], sheets["room"])
     # fixed bookings with room
-    data_fixed = pd.merge(sheets["fixedBooking"], sheets["room"], how="left", left_on="roomID", right_on="id").drop(columns=["id_x", "id_y"])
-    data_fixed = pd.merge(sheets["fixedBooking"], sheets["user"], how="left", left_on="blockedByIdAnonym", right_on="ID").drop(columns=["ID"])
+    data_fixed = pd.merge(sheets["fixedBooking"], sheets["user"], how="left", left_on="userId", right_on="ID").drop(columns=["ID", "deskNumber"])
+    data_fixed = pd.merge(data_fixed, desk_room_mapping[['roomName']], left_on='bookingId', right_on="deskId", how='left')
     data_fixed["variableBooking"] = 0 # Indicate fixed bookings
-    data_fixed = rename_columns(data_fixed)
+    # According to Mr. Fraunhofer, these are leftover entries from old bookings. Therefore we drop them    
+    data_fixed = data_fixed.dropna(subset=['blockedFrom', 'userId', 'blockedUntil'], how='all')
 
     # variable bookings with room
-    #data_variable = pd.merge(sheets["variableBooking"], sheets["room"], how="left", left_on="roomID", right_on="id")
-    data_variable = pd.merge(sheets["variableBooking"], sheets["user"], how="left", left_on="userIdAnonym", right_on="ID").drop(columns=["ID"])
+    data_variable = pd.merge(sheets["variableBooking"], sheets["user"], how="left", left_on="userId", right_on="ID").drop(columns=["ID"])
+    data_variable = pd.merge(data_variable, desk_room_mapping, on='deskId', how='left').drop(columns="deskId")
     data_variable["variableBooking"] = 1 # Indicate variable bookings
-    data_variable = rename_columns(data_variable)
 
     data = pd.concat([data_fixed, data_variable], axis=0)
 
