@@ -13,7 +13,7 @@ def rename_columns(data: pd.DataFrame) -> pd.DataFrame:
         "roomID": "roomId",
         "name": "roomName",
         "userIdAnonym": "userId",
-        "at": "bookedAt",
+        "at": "blockedFrom",
         "blockedByIdAnonym": "userId",
         "id": "bookingId"
     }
@@ -53,20 +53,31 @@ def create_dataset(path: str = "OpTisch_anonymisiert.xlsx") -> pd.DataFrame:
 
     desk_room_mapping = get_desk_room_mapping(sheets["fixedBooking"], sheets["room"])
     # fixed bookings with room
-    data_fixed = pd.merge(sheets["fixedBooking"], sheets["user"], how="left", left_on="userId", right_on="ID").drop(columns=["ID", "deskNumber"])
+    data_fixed = pd.merge(sheets["fixedBooking"], sheets["user"], how="left", left_on="userId", right_on="ID").drop(columns=["ID"])
     data_fixed = pd.merge(data_fixed, desk_room_mapping[['roomName']], left_on='bookingId', right_on="deskId", how='left')
     data_fixed["variableBooking"] = 0 # Indicate fixed bookings
     # According to Mr. Fraunhofer, these are leftover entries from old bookings. Therefore we drop them    
     data_fixed = data_fixed.dropna(subset=['blockedFrom', 'userId', 'blockedUntil'], how='all')
+    data_fixed.loc[data_fixed['blockedUntil'].isna(), 'blockedUntil'] = 'unlimited'
 
     # variable bookings with room
     data_variable = pd.merge(sheets["variableBooking"], sheets["user"], how="left", left_on="userId", right_on="ID").drop(columns=["ID"])
     data_variable = pd.merge(data_variable, desk_room_mapping, on='deskId', how='left').drop(columns="deskId")
+    data_variable["blockedUntil"] = data_variable["blockedFrom"]
     data_variable["variableBooking"] = 1 # Indicate variable bookings
 
     data = pd.concat([data_fixed, data_variable], axis=0)
 
     return data
+
+def get_days():
+    pass
+
+def get_users():
+    pass
+
+def get_rooms():
+    pass
 
 if __name__ == "__main__":
     data = create_dataset()
