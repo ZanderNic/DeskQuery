@@ -17,23 +17,42 @@ def rename_columns(data: pd.DataFrame) -> pd.DataFrame:
         "userIdAnonym": "userId",
         "at": "blockedFrom",
         "blockedByIdAnonym": "userId",
-        "id": "bookingId"
     }
     return data.rename(columns=column_mapping)
 
 def get_desk_room_mapping(fixedBooking_sheet: pd.DataFrame, room_sheet: pd.DataFrame) -> pd.DataFrame:
-    desk_room_mapping = fixedBooking_sheet[["bookingId", "deskNumber", "roomId"]].sort_values(by=["roomId", "deskNumber"]).rename(columns={"bookingId": "deskId"}).astype(int)
-    desk_room_mapping = pd.merge(desk_room_mapping, room_sheet, how="left", left_on="roomId", right_on="bookingId").drop(columns="bookingId")
+    """Creates a mapping between desks and rooms"""
+    desk_room_mapping = fixedBooking_sheet[["id", "deskNumber", "roomId"]].rename(columns={"id": "deskId"}).astype(int)
+    desk_room_mapping = pd.merge(desk_room_mapping, room_sheet, how="left", left_on="roomId", right_on="id").drop(columns="id")
+    # Room in the database looks like Raum "Dechbetten" but we just wanna stick with Dechbetten (way easier to handle later)
     desk_room_mapping['roomName'] = desk_room_mapping['roomName'].str.extract(r'"([^"]+)"', expand=False)
 
     return desk_room_mapping
+
+def join_fixed_bookings(fixedBooking_sheet: pd.DataFrame, user_sheet: pd.DataFrame, desk_room_mapping: pd.DataFrame):
+    data_fixed = pd.merge(fixedBooking_sheet, user_sheet, how="left", left_on="userId", right_on="ID").drop(columns=["ID"])
+    data_fixed = pd.merge(data_fixed, desk_room_mapping[['roomName', 'deskId']], left_on='id', right_on="deskId", how='left')
+    data_fixed["variableBooking"] = 0 # Indicate fixed bookings
+    # According to Mr. Fraunhofer, these are leftover entries from old bookings. Therefore we just drop them.
+    data_fixed = data_fixed.dropna(subset=['blockedFrom', 'userId', 'blockedUntil'], how='all')
+    data_fixed.loc[data_fixed['blockedUntil'].isna(), 'blockedUntil'] = 'unlimited'
+
+    return data_fixed
+
+def join_variable_bookings(variableBooking_sheet: pd.DataFrame, user_sheet: pd.DataFrame, desk_room_mapping: pd.DataFrame):
+    data_variable = pd.merge(variableBooking_sheet, user_sheet, how="left", left_on="userId", right_on="ID").drop(columns=["ID"])
+    data_variable = pd.merge(data_variable, desk_room_mapping, on='deskId', how='left')
+    # Since variable bookings are just for one day we fill the blockeduntil column with the same value to make comparions later on easier
+    data_variable["blockedUntil"] = data_variable["blockedFrom"]
+    data_variable["variableBooking"] = 1 # Indicate variable bookings
+
+    return data_variable
 
 def create_dataset(path: str = "OpTisch_anonymisiert.xlsx") -> pd.DataFrame:
     """This Function denormalizes the excel file to make it easier to handle.
 
     Args:
         path (str, optional): Path of the excel file. Defaults to "OpTisch_anonymisiert.xlsx".
-        num_sheets (int, optional): Number of sheets in the excel file. Defaults to 4.
 
     Returns:
         pd.DataFrame: A denormalized dataset
@@ -49,26 +68,17 @@ def create_dataset(path: str = "OpTisch_anonymisiert.xlsx") -> pd.DataFrame:
         sheets[sheet_name] = data.replace(r'^\s*(null|\s*)\s*$', np.nan, regex=True).infer_objects(copy=False)
         sheets[sheet_name] = rename_columns(sheets[sheet_name])
 
-    sheets["fixedBooking"].loc[sheets["fixedBooking"]["bookingId"] == 5, "deskNumber"] = 1
+    # there is a missing value in the database therefore fill it and convert the columns to ints afterwards (from float due to the NaN value)
+    sheets["fixedBooking"].loc[sheets["fixedBooking"]["id"] == 5, "deskNumber"] = 1
     sheets["fixedBooking"]["deskNumber"] = sheets["fixedBooking"]["deskNumber"].astype(int)
+    # userIds are off by one in the database therefore incremente it
     sheets["variableBooking"]["userId"] += 1
 
     desk_room_mapping = get_desk_room_mapping(sheets["fixedBooking"], sheets["room"])
-    # fixed bookings with room
-    data_fixed = pd.merge(sheets["fixedBooking"], sheets["user"], how="left", left_on="userId", right_on="ID").drop(columns=["ID"])
-    data_fixed = pd.merge(data_fixed, desk_room_mapping[['roomName', 'deskId']], left_on='bookingId', right_on="deskId", how='left')
-    data_fixed["variableBooking"] = 0 # Indicate fixed bookings
-    # According to Mr. Fraunhofer, these are leftover entries from old bookings. Therefore we drop them    
-    data_fixed = data_fixed.dropna(subset=['blockedFrom', 'userId', 'blockedUntil'], how='all')
-    data_fixed.loc[data_fixed['blockedUntil'].isna(), 'blockedUntil'] = 'unlimited'
+    data_fixed = join_fixed_bookings(sheets["fixedBooking"], sheets["user"], desk_room_mapping)
+    data_variable = join_variable_bookings(sheets["variableBooking"], sheets["user"], desk_room_mapping)
 
-    # variable bookings with room
-    data_variable = pd.merge(sheets["variableBooking"], sheets["user"], how="left", left_on="userId", right_on="ID").drop(columns=["ID"])
-    data_variable = pd.merge(data_variable, desk_room_mapping, on='deskId', how='left')
-    data_variable["blockedUntil"] = data_variable["blockedFrom"]
-    data_variable["variableBooking"] = 1 # Indicate variable bookings
-
-    data = pd.concat([data_fixed, data_variable], axis=0)
+    data = pd.concat([data_fixed, data_variable], axis=0).rename(columns={"id": "bookingId"})
 
     return data
 
@@ -268,7 +278,6 @@ def get_timeframe(data: pd.DataFrame, start_date: datetime, end_date: Optional[d
 if __name__ == "__main__":
     data = create_dataset()
     data.to_csv("OpTisch.csv", index=False)  # Save dataset to CSV without index
-
     # Some manipulation to showcase the usage
     start_date = datetime(2024, 3, 14)
     end_date = datetime(2024, 3, 25)
