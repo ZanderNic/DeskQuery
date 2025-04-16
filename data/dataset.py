@@ -7,7 +7,7 @@ from typing import Optional
 pd.set_option('future.no_silent_downcasting', True)
 
 class Dataset:
-    def __init__(self, path: str = "OpTisch_anonymisiert.xlsx"):
+    def __init__(self, path: str):
         # Load all sheets from the Excel file into a dictionary of DataFrames
         self.sheets = pd.read_excel(path, sheet_name=None)
         self._rename_columns()
@@ -318,9 +318,8 @@ class Dataset:
 
 
 if __name__ == "__main__":
-    dataset = Dataset()
+    dataset = Dataset(path="OpTisch_anonymisiert.xlsx")
     dataset.to_csv("OpTisch.csv", index=False)  # Save dataset to CSV without index
-
     # Some manipulation to showcase the usage
     # Manipulation functions are staticmethods to make it more generic usable
     data = dataset.data
