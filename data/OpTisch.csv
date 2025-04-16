@@ -1,5 +1,4 @@
 bookingId,deskNumber,blockedFrom,roomId,userId,blockedUntil,userName,roomName,deskId,variableBooking
-5,1, 2023-09-25,2,,unlimited,,Stadtamhof,5,0
 40,1, 2024-09-24,9,179.0,unlimited,Clara Müller,Weichs,40,0
 13,1, 2024-03-14,4,177.0,unlimited,Mia Santos,Dechbetten,13,0
 10,2, 2024-12-19,3,174.0,unlimited,Sara Berger,Schwabelweis,10,0
