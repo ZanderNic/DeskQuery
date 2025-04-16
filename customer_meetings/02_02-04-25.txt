@@ -1,0 +1,75 @@
+KIP Kundengespräch 02.04.
+-------------------------
+
+
+--- Datensatz ------
+> null-Blockung: bedeutet eine dauerhafte Blockung bzw. feste Buchung auf unbestimmte Zeit
+> Ein Desk hat eigentlich auch ein Flag "Fester Platz" (true/false) für feste Plätze von Personen
+	-> hier sind Trends der Buchungsentwicklung vielleicht interessant
+> Die dargestellten User existieren nicht real, d.h. IDs und Namen sind arbiträr gewählt
+> Einige Tische sind blockiert (durch Material o.Ä.) und können nicht gebucht werden
+
+> Nachreichungen von ihm:
+	- Mapping von RoomIDs und DeskIDs (lässt Aggregierung aller verfügbaren DeskIDs zu)
+	- Blockungsgrund bei nicht verfügbaren/ blockierten Tischen
+
+
+--- Rollenverantwortlichkeiten ------
+> Aufgabenverantwortlichkeiten des Scrum Masters:
+	- Kenntnis darüber, was wann gemacht wurde?
+	- Was wurde ggf. aus welchen Gründen verworfen?
+	- Unterstützung der Zusammenarbeit im Team
+
+> Aufgabenverantwortlichkeiten des Project Owners:
+	- Definition: 
+	  * des Applikations-Scopes
+	  * der Funktionsweise
+	  * des Mehrwertes der Anwendung
+	  * spezifischen Nutzerkreises/ Nutzerprofil
+	  * der Codebase
+	  * des bisherigen Untersuchungsstands
+
+
+--- Allgemeines zum Projekt ------
+> Es soll ein Standalone Tool entwickelt werden (eigenständig lokal lauffähiges Programm)
+> Die Lokation der Codebase ist egal, d.h. Github oder z.B. OTH Gitlab möglich
+> Das LLM kann lokal auf einem Server (z.B. AWS) deployed werden, MUSS es aber NICHT
+	-> die Antwort auf die Aussage, dass LLM anfragen lokal gehostet länger dauern, war "Joa"
+	-> das LLM kann auch fremdgehostet und per API angesprochen werden
+> Es wird ein "kleines" UI gefordert, d.h. ein mindestens minimales User Interface
+> Das geplante AI-Agent System mit Steuerung konfigurierbarer Funktionen im Backend ist erlaubt
+> Ein Accountverwaltungssystem ist zum aktuellen Zeitpunkt nicht vorgesehen
+> Die Applikation sollte sich bei einer Beschränkung auf eine Sprache bevorzugt auf Englisch anstatt auf Deutsch fokussieren (wegen des theoretisch größeren Nutzerkreises)
+> Es wird für die Beantwortung von Anfragen eine Visualisierung bevorzugt; ggf. auch Tabellen-Informationen (die eine eigene Auswertung ermöglichen) aber diese könnten der Visualisierung die Glaubwürdigkeit nehmen
+	-> vermutlich ist hier eine (interaktive) Visualisierung mit einsehbaren Daten, z.B. konkreten Auslastungs-Daten, Prognose-Wahrscheinlichkeiten, Trend-Daten etc., eine entsprechende Lösung
+> Die Untersuchung der Anfrage-Verarbeitung durch ein LLM (d.h. hauptsächlich, anstatt nur zur Parameterextraktion und Funktionsauswahl) ist vom Fraunhofer durchaus auch gewünscht
+
+>> Es geht bei dem Projekt mehr um den PoC als das konkrete Problem (des mangelnden Büroplatzes), da das konkrete reale Problem noch nicht existiert und nicht alsbald auftreten wird
+
+
+--- Über die Anfragen ------
+> Mögliche Anfragen an das System können von
+	"Wie viele Plätze waren gestern besetzt und wie viele frei?"
+  bis hin zu
+	"Wie würde sich das Belegungsverhalten ändern, wenn anstelle einer Anwesenheits-Policy von einem Tag zwei Tage in der Woche gefordert werden?"
+> Wenn bei der Beantwortung einer Anfrage Annahmen getroffen werden, dann sind diese gut zu begründen und darzulegen
+> Alternativ ist anzugeben, welche weiteren Informationen zur Beantwortung der Anfrage nötig wären/ sind
+> Die Anzahl der möglichen Grundfragen ist "wahrscheinlich nicht wirklich höher als 30"
+
+
+--- Midterm und finale Abgabe ------
+> Zum Midterm ist vorzustellen:
+  [Allgemein: Bevorzugt soll eher eine kurze Präsentation als ein schriftlicher Bericht erstellt werden (Info wird aber nachgereicht)]
+	- Ist-Analyse
+	- Grobstruktur des Projekts
+	- Aufgabenplanung
+	- Jeder sollte eine Folie über seinen eigenen Anteil vorstellen
+		-> die Tätigkeitsbeschreibung sollte möglichst detailliert sein (ein Stichpunkt zu 2 Wochen Arbeit sei etwas wenig)
+		-> es wird aber keine konkrete Zeitbuchung gefordert
+
+> In der finalen Abgabe wird auch der Code abgegeben; oder zum Beispiel Zugang zum Github Repository gegeben
+> Bezüglich der Dokumentation des Github Repositorys und des Codes ist davon auszugehen, dass andere an dem Projekt weiterarbeiten werden (zumindest in der Theorie)
+
+
+
+
