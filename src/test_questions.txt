@@ -1,0 +1,65 @@
+Wenn jeder Mitarbeiter jetzt x Tage pro Woche/Monat kommen soll – reichen Arbeitsplätze noch bzw. wie lange noch, wenn Wachstum um x Mitarbeiter oder mit Standardwachstum?
+    forecast_desk_demand( current_employee_count=..., weekly_growth_rate=..., available_desks=..., target_utilization=0.85, data_for_forcast_start_date=..., data_for_forcast_end_date=... )
+
+Wie viele zusätzliche / weniger Tische bräuchten wir, wenn an jedem Tag max / min X% Auslastung haben wollen?
+    estimate_table_needs( target_utilization=..., attendance_days=..., employee_count=..., existing_desks=..., data_for_forcast_start_date=..., data_for_forcast_end_date=... )
+
+Können bestimmte Arbeitsplätze abgebaut werden, da sie kaum in Benutzung sind?
+    get_over_under_utilized_desks( threshold=0.2, under=True, start_date=..., end_date=... )
+
+Wie ist die allgemeine / pro Raum / nur ein Tisch Tischauslastung insgesamt / am Wochentag X / nur im Zeitraum Y?
+    get_utilization( overall=True, by_room=..., room=..., weekday=[...], start_date=..., end_date=... )
+
+Welche Tische / Räume werden überdurchschnittlich / am meisten genutzt?
+    get_over_under_utilized_desks( threshold=0.8, under=False, by_room=True, start_date=..., end_date=... )
+
+Wie viele Tage im Monat ist Auslastung über / unter X%?
+    get_days_above_threshold( threshold=..., weekdays=[...], start_date=..., end_date=... )
+
+An welchem Tag kommen am wenigsten / am meisten Leute?
+    get_daily_utilization_stats( by_room=False, start_date=..., end_date=... )
+
+Welcher Tag eignet sich am besten als Pflichttag, sodass alle Leute im Büro sind?
+    get_daily_utilization_stats( by_room=False, start_date=..., end_date=... )
+
+Was ist die Varianz der Auslastung über alle Tage der Woche?
+    get_utilization_variance_by_weekday( by_room=False, start_date=..., end_date=... )
+
+Welche Trends haben sich bei den Buchungen in den letzten Wochen / Monaten abgezeichnet?
+    generate_plot( by_room=True, resolution="weekly", desk="all", start_date=..., end_date=... )
+
+Wie viele Tage durchschnittlich buchen die Mitarbeiter einen Arbeitsplatz?
+    get_avg_booking_per_employee( granularity="week", start_date=..., end_date=... )
+
+Buchen Leute immer wieder dieselben Plätze oder unterschiedliche?
+    get_booking_repeat_pattern( min_repeat_count=2, start_date=..., end_date=... )
+
+Gibt es Clusterungen von Buchungen in denselben Bereichen?
+    get_booking_clusters( distance_threshold=1.5, co_booking_count_min=3, start_date=..., end_date=... )
+
+Gibt es ungenutzte Bereiche bzw. Tische?
+    detect_unused_areas( threshold=0.05, min_consecutive_days=7, start_date=..., end_date=... )
+
+Zeige mir eine Heatmap der Platzbuchungen über alle Tische im Zeitraum X.
+    generate_heatmap( by_room=True, resolution="daily", start_date=..., end_date=... )
+
+Buchen Mitarbeiter vermehrt immer zusammen mit denselben Personen in einem Raum?
+    get_co_booking_frequencies( min_shared_days=3, same_room_only=True, start_date=..., end_date=... )
+
+Welche Policy könnte zu einer gleichmäßigen Auslastung führen?
+    suggest_balanced_utilization_policy(target_utilization=0.75, max_mandatory_days=2 )
+
+Wie wäre die Auslastung, wenn wir Platz / Raum X schließen würden?
+    simulate_room_closure(room_id="X", reassign_strategy="random", time_closed=..., data_for_forcast_start_date=..., data_for_forcast_end_date=... )
+
+Welche Wochen / Tage weichen von der durchschnittlichen Auslastung ab?
+    detect_utilization_anomalies(threshold=0.2, by_room=True, start_date=..., end_date=... )
+
+Wie viele Mitarbeiter buchen nicht nach der Vorgegebenen Policy X?
+    detect_policy_violations(policy_type="min_days_per_week", min_days_per_week=3, start_date=..., end_date=... )
+
+Wie viele Mitarbeiter können noch eingestellt werden, bis der Raum X regelmäßig ausgebucht sein wird?
+    estimate_max_employees_per_room(room_id="X", target_utilization=0.9, average_attendance_days=3 )
+
+Ab wie vielen Mitarbeitern sind wöchentlich etwa X% der Tische ausgebucht?
+    estimate_table_needs(target_utilization=..., attendance_days=..., employee_count=..., existing_desks=... )

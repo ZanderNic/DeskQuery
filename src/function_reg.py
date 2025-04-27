@@ -1,0 +1,39 @@
+from functions.plot import *
+from functions.policy import *
+from functions.utilization import * 
+from functions.employee import *
+from functions.forecasting import *
+
+
+
+function_registry = {
+    # Utilization
+    "get_utilization": get_utilization,
+    "get_over_under_utilized_desks": get_over_under_utilized_desks,
+    "get_daily_utilization_stats": get_daily_utilization_stats,
+    "get_days_above_bellow_threshold": get_days_above_bellow_threshold,
+    "detect_utilization_anomalies": detect_utilization_anomalies,
+
+    # Policy
+    "simulate_policy": simulate_policy,
+    "detect_policy_violations": detect_policy_violations,
+    "suggest_balanced_utilization_policy": suggest_balanced_utilization_policy,
+    "compare_utilization_before_after_policy": compare_utilization_before_after_policy,
+
+    # Employee behavior
+    "get_avg_booking_per_employee": get_avg_booking_per_employee,
+    "get_booking_repeat_pattern": get_booking_repeat_pattern,
+    "get_booking_clusters": get_booking_clusters,
+    "get_co_booking_frequencies": get_co_booking_frequencies,
+
+    # Plotting
+    "generate_heatmap": generate_heatmap,
+    "generate_plot_interactive": generate_plot_interactive,
+    "generate_plot": generate_plot,
+
+    # Capacity & Forecasting
+    "estimate_table_needs": estimate_table_needs,
+    "forecast_desk_demand": forecast_desk_demand,
+    "simulate_room_closure": simulate_room_closure,
+    "estimate_max_employees_per_room": estimate_max_employees_per_room,
+}
