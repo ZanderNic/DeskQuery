@@ -40,7 +40,7 @@ def chat():
                 }
             })
 
-        # Bild + Text
+        # image + text
         elif "image and text" in user_input:
             img_id = str(uuid.uuid4())
             generated_images[img_id] = create_image()
@@ -50,7 +50,7 @@ def chat():
                 "image": f"/image/{img_id}"
             })
 
-        # Plot (als JSON) + Text
+        # plot (as JSON) + text
         elif "graph and text" in user_input:
             return jsonify({
                 "type": "mixed",
@@ -61,7 +61,7 @@ def chat():
                 }
             })
 
-        # Nur Bild
+        # image
         elif "image" in user_input:
             img_id = str(uuid.uuid4())
             generated_images[img_id] = create_image()
@@ -70,7 +70,7 @@ def chat():
                 "content": f"/image/{img_id}"
             })
 
-        # Nur Plot (Plotly JSON)
+        # Plot (Plotly JSON)
         elif "graph" in user_input:
             return jsonify({
                 "type": "plot",
@@ -78,7 +78,7 @@ def chat():
                 "layout": {"title": "Example Graph", "width": 600, "height": 400}
             })
 
-        # Fallback: nur Text
+        # Fallback: only text
         else:
             return jsonify({
                 "type": "text",

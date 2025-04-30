@@ -251,7 +251,6 @@
         if (data.image) html += `<img src="${data.image}" style="max-width:100%">`;
         if (data.html) html += data.html;
 
-        // Plot-Div vorbereiten, falls vorhanden
         let plotId = null;
         if (data.plot) {
           plotId = 'plot-' + Date.now();

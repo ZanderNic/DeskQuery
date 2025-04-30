@@ -20,9 +20,6 @@ df['day'] = df['date'].dt.day_name()
 
 
 
-
-# Berechnet die durchschnittliche Anzahl an Buchungen pro Mitarbeiter.
-# get_avg_booking_per_employee(granularity="week", weekdays=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],start_date=None, end_date=None)
 def get_avg_booking_per_employee(
     granularity: str = 'week', 
     weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
@@ -69,9 +66,6 @@ def get_avg_booking_per_employee(
             "text": "",
             "html": html
             }
-
-# Identifiziert Benutzer, die dieselben Schreibtische wiederholt buchen.
-# get_booking_repeat_pattern(min_repeat_count=2, weekdays=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], start_date=None, end_date=None)
 def get_booking_repeat_pattern(
     min_repeat_count: int = 2, 
     weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
@@ -109,8 +103,6 @@ def get_booking_repeat_pattern(
             "html": html
             }
 
-# Plottet Buchungscluster von Gruppen, die häufig nahe gelegene Schreibtische buchen.
-# get_booking_repeat_pattern_plot(distance_threshold=3, co_booking_count_min, weekdays=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], start_date=None, end_date=None)
 def get_booking_repeat_pattern_plot(
     min_repeat_count: int = 2, 
     weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
@@ -177,8 +169,6 @@ def get_booking_repeat_pattern_plot(
 
 
 
-# Findet Buchungscluster, d. h. Gruppen von Benutzern, die häufig nahe gelegene Schreibtische buchen.
-# get_booking_clusters(distance_threshold=3, co_booking_count_min, weekdays=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], start_date=None, end_date=None)
 def get_booking_clusters(
     distance_threshold: float = 3, 
     co_booking_count_min: int = 3, 
@@ -213,7 +203,7 @@ def get_booking_clusters(
         if len(coords) >= co_booking_count_min:
             clustering = DBSCAN(eps=distance_threshold, min_samples=co_booking_count_min).fit(coords)
             group = group.copy()
-            group['cluster'] = clustering.labels_  # Cluster-Label -1 = kein Cluster
+            group['cluster'] = clustering.labels_  # Cluster-Label -1 = no Cluster
             cluster_results.append(group)
 
     if not cluster_results:

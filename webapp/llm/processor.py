@@ -45,7 +45,6 @@ def call_llm_and_execute(question):
 
     try:
         result = eval(code)
-        print(result)
         promt_2 = f"""
              Ich habe eine Frage "{question}". Diese wurde bereits verarbeitet mit folgender Antowrt "{result["html"]}". 
              Bitte gib einen kurzen Text zu der Antwort aus. Falls bei der Antwort ein Fehler vorhanden ist,
