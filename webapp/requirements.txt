@@ -1,2 +1,3 @@
 groq
 google-genai
+tabulate

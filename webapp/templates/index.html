@@ -15,6 +15,7 @@
       flex-direction: column;
       height: 100vh;
       align-items: center;
+      overflow: hidden;
     }
 
     #header {
@@ -217,42 +218,63 @@
       appendLoading();
 
       try {
-        const response = await fetch('/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text })
-        });
+      const response = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
 
-        const data = await response.json();
-        removeLoading();
+      const data = await response.json();
+      console.log("RESPONSE:", data);
 
-        if (data.type === 'text') {
-          appendMessage(data.content, 'bot');
-        } else if (data.type === 'image') {
-          const html = `<img src="${data.content}" style="max-width:100%">`;
-          appendMessage(html, 'bot', true);
-        } else if (data.type === 'plot') {
-          const plotDiv = document.createElement('div');
-          plotDiv.className = 'message bot';
-          const plotId = 'plot-' + Date.now();
-          plotDiv.id = plotId;
-          chatContainer.appendChild(plotDiv);
-          Plotly.newPlot(plotId, data.data, data.layout);
-        } else if (data.type === 'mixed') {
-          let html = '';
-          if (data.text) html += `<p>${data.text}</p>`;
-          if (data.image) html += `<img src="${data.image}" style="max-width:100%">`;
-          if (data.plot) {
-            const plotId = 'plot-' + Date.now();
-            html += `<div id="${plotId}" style="width:100%"></div>`;
-            appendMessage(html, 'bot', true);
-            Plotly.newPlot(plotId, data.plot.data, data.plot.layout);
-            return;
-          }
-          appendMessage(html, 'bot', true);
+      removeLoading();
+
+      if (data.type === 'text') {
+        appendMessage(data.content, 'bot');
+
+      } else if (data.type === 'image') {
+        const html = `<img src="${data.content}" style="max-width:100%">`;
+        appendMessage(html, 'bot', true);
+
+      } else if (data.type === 'plot') {
+        const plotDiv = document.createElement('div');
+        plotDiv.className = 'message bot';
+        const plotId = 'plot-' + Date.now();
+        plotDiv.id = plotId;
+        chatContainer.appendChild(plotDiv);
+        Plotly.newPlot(plotId, data.data, data.layout);
+
+      } else if (data.type === 'mixed') {
+        let html = '';
+
+        if (data.text) html += `<p>${data.text}</p>`;
+        if (data.image) html += `<img src="${data.image}" style="max-width:100%">`;
+        if (data.html) html += data.html;
+
+        // Plot-Div vorbereiten, falls vorhanden
+        let plotId = null;
+        if (data.plot) {
+          plotId = 'plot-' + Date.now();
+          html += `<div id="${plotId}" style="width:100%"></div>`;
+        }
+
+        appendMessage(html, 'bot', true);
+
+        if (plotId) {
+          Plotly.newPlot(plotId, data.plot.data, data.plot.layout);
+        }
+
+        } else if (data.type === 'html') {
+          appendMessage(data.html, 'bot', true);
+
         } else {
           appendMessage('[Error: unknown response type]', 'bot');
         }
+
+    
+
+
+
       } catch (err) {
         console.error('Error handling response:', err);
         removeLoading();

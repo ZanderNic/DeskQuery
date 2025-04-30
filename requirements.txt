@@ -1,0 +1,8 @@
+flask
+google-genereativai
+numpy
+pandas
+matplotlib
+dotenv
+groq
+google-genai

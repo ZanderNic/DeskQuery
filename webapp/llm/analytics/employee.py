@@ -4,21 +4,27 @@ from datetime import datetime
 import pandas as pd
 from sklearn.cluster import DBSCAN
 # 3 party imports
+import json
+from plotly.utils import PlotlyJSONEncoder
+
+
+import plotly.graph_objs as go
+import plotly.express as px
 
 # data imports
 df = pd.read_csv("bookings.csv")
 df.rename(columns={"blockedFrom": "date"}, inplace=True)
 df['date'] = pd.to_datetime(df['date'])
 df['day'] = df['date'].dt.day_name()
-print(df)
 # projekt imports
 
 
 
-# Findet Buchungscluster, d. h. Gruppen von Benutzern, die häufig nahe gelegene Schreibtische buchen.
+
+# Berechnet die durchschnittliche Anzahl an Buchungen pro Mitarbeiter.
 # get_avg_booking_per_employee(granularity="week", weekdays=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],start_date=None, end_date=None)
 def get_avg_booking_per_employee(
-    granularity: str, 
+    granularity: str = 'week', 
     weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None
@@ -57,13 +63,17 @@ def get_avg_booking_per_employee(
     avg_bookings = bookings_per_user.groupby(['userId', 'userName'])['bookings'].mean().reset_index()
     avg_bookings.rename(columns={'bookings': f'avg_bookings_per_{granularity}'}, inplace=True)
 
-    return avg_bookings[['userName', 'avg_bookings_per_week']]
-
+    html = avg_bookings[['userName', 'avg_bookings_per_week']].head(10)
+    html = html.to_html(index=False, classes="table table-striped")
+    return {"type": "html_table",
+            "text": "",
+            "html": html
+            }
 
 # Identifiziert Benutzer, die dieselben Schreibtische wiederholt buchen.
 # get_booking_repeat_pattern(min_repeat_count=2, weekdays=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], start_date=None, end_date=None)
 def get_booking_repeat_pattern(
-    min_repeat_count: int, 
+    min_repeat_count: int = 2, 
     weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None
@@ -90,13 +100,88 @@ def get_booking_repeat_pattern(
     group = df_filtered.groupby(['userId','userName', 'deskId']).size().reset_index(name='count')
     result = group[group['count'] >= min_repeat_count ].sort_values(by='count', ascending=False)
     
-    return result[['userName', 'deskId', 'count']]
+    result = result.head(10)
+
+    html = result[['userName', 'deskId', 'count']].to_html(index=False, classes="table table-striped")
+    
+    return {"type": "html_table",
+            "text": "",
+            "html": html
+            }
+
+# Plottet Buchungscluster von Gruppen, die häufig nahe gelegene Schreibtische buchen.
+# get_booking_repeat_pattern_plot(distance_threshold=3, co_booking_count_min, weekdays=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], start_date=None, end_date=None)
+def get_booking_repeat_pattern_plot(
+    min_repeat_count: int = 2, 
+    weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
+    start_date: Optional[datetime] = None, 
+    end_date: Optional[datetime] = None
+) -> dict:
+    """
+    Identifies users who book the same desks repeatedly and returns a plot.
+
+    Args:
+        min_repeat_count: Minimum number of repeated bookings.
+        weekdays: Days of interest.
+        start_date: Start date.
+        end_date: End date.
+
+    Returns:
+        dict: Containing the plotly plot as HTML.
+    """
+    # Filter data by weekdays
+    df_filtered = df[df['day'].isin(weekdays)]
+
+    # Apply date range filter
+    if start_date:
+        df_filtered = df_filtered[df_filtered['date'] >= start_date]
+
+    if end_date:
+        df_filtered = df_filtered[df_filtered['date'] <= end_date]
+
+    # Group by userId, userName, and deskId, and count the occurrences
+    group = df_filtered.groupby(['userId', 'userName', 'deskId']).size().reset_index(name='count')
+    result = group[group['count'] >= min_repeat_count].sort_values(by='count', ascending=False)
+    
+    # Limit the result to top 10
+    result = result.head(10)
+
+    # Plot data using Plotly
+    trace = go.Bar(
+        x=result['userName'],
+        y=result['count'],
+        text=result['userName'],  # Show names on hover
+        hoverinfo='text+y',  # Show user names and counts
+        marker=dict(color='rgb(26, 118, 255)')  # Custom color for bars
+    )
+
+    layout = go.Layout(
+        title='Top 10 Users with the Most Repeated Desk Bookings',
+        xaxis=dict(title='User Name'),
+        yaxis=dict(title='Repeat Count'),
+        template='plotly_dark'
+    )
+
+    fig = go.Figure(data=[trace], layout=layout)
+
+    plot_data = json.loads(json.dumps(fig.data, cls=PlotlyJSONEncoder))
+    plot_layout = json.loads(json.dumps(fig.layout, cls=PlotlyJSONEncoder))
+
+    return {
+        "type": "plot",
+        "html": "",
+        "data": plot_data,
+        "layout": plot_layout,
+    }
+
+
+
 
 # Findet Buchungscluster, d. h. Gruppen von Benutzern, die häufig nahe gelegene Schreibtische buchen.
 # get_booking_clusters(distance_threshold=3, co_booking_count_min, weekdays=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], start_date=None, end_date=None)
 def get_booking_clusters(
-    distance_threshold: float, 
-    co_booking_count_min: int, 
+    distance_threshold: float = 3, 
+    co_booking_count_min: int = 3, 
     weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None
@@ -140,7 +225,11 @@ def get_booking_clusters(
 
     grouped = result_df.groupby(['date', 'roomId', 'cluster'])['userName'].apply(list).reset_index()
 
-    return grouped["userName"]
+    html = grouped.to_html(index=False, classes="table table-striped")
+    return {"type": "html_table",
+            "text": "",
+            "html": html
+            }
 
 
 
@@ -165,18 +254,3 @@ def get_co_booking_frequencies(
     """
     pass
 
-
-
-
-def main() -> None:
-    test_1 = get_avg_booking_per_employee("week")
-    test_2 = get_booking_repeat_pattern(2)
-    test_3 = get_booking_clusters(3,3)
-
-    print(f"test_1 - get_avg_booking_per_employee: \n {test_1}")
-    print(f"test_2 - get_booking_repeat_pattern:   \n {test_2}")
-    print(f"test_3 - get_booking_clusters:         \n {test_3}")
-
-
-if __name__  == "__main__":
-    main()

@@ -1,5 +1,5 @@
 # std-lib import
-from typing import Optional, List, datetim
+from typing import Optional, List
 from datetime import datetime
 
 # 3 party imports
