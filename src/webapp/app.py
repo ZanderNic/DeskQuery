@@ -1,10 +1,16 @@
-from flask import Flask, request, jsonify, render_template, send_file
+# std lib imports
 from io import BytesIO
-import matplotlib.pyplot as plt
 import uuid
+
+# 3 Party-import 
+from flask import Flask, request, jsonify, render_template, send_file
+import matplotlib.pyplot as plt
+
+
+# import from projekt files
+from ..main import main
 from helpers.helper import *
-# import files
-from llm.processor import call_llm_and_execute
+
 
 # webapp\llm_chat\choose_function.py
 app = Flask(__name__)
@@ -21,8 +27,9 @@ def chat():
         data = request.get_json()
         user_input = data.get('message', '').lower()
 
-        response = call_llm_and_execute(user_input)
+        response = main(user_input)
         print(response)
+        
         if isinstance(response, dict) and response.get("type") == "html_table":
             return jsonify({
                 "type": "mixed" if "text" in response else "html",

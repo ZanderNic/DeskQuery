@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 import google.generativeai as genai
 
 
-from .analytics.employee import get_avg_booking_per_employee, get_booking_clusters, get_booking_repeat_pattern, get_booking_repeat_pattern_plot
-
+from ..functions.core.employee import *
 
 genai.configure(api_key="AIzaSyBiMSDASMQ3IYmbd-Dckm2Cscq2mXFHVX8")
 

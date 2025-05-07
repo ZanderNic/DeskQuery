@@ -14,7 +14,7 @@ def generate_heatmap(
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None
 ) -> None:
-    """
+    """ö
     Generates a heatmap showing desk bookings over time.
 
     Args:

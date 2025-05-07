@@ -1,21 +1,23 @@
 # std-lib import
 from typing import Optional, List
 from datetime import datetime
+import json
+
+
+# 3 party imports
+from plotly.utils import PlotlyJSONEncoder
 import pandas as pd
 from sklearn.cluster import DBSCAN
-# 3 party imports
-import json
-from plotly.utils import PlotlyJSONEncoder
-
-
 import plotly.graph_objs as go
 import plotly.express as px
 
 # data imports
+# wtf is this shit why dont use the data class ?!?!?!?!? 
 df = pd.read_csv("bookings.csv")
 df.rename(columns={"blockedFrom": "date"}, inplace=True)
 df['date'] = pd.to_datetime(df['date'])
 df['day'] = df['date'].dt.day_name()
+
 # projekt imports
 
 

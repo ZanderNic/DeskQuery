@@ -1,8 +1,8 @@
-from functions.plot import *
-from functions.policy import *
-from functions.utilization import * 
-from functions.employee import *
-from functions.forecasting import *
+from functions.core.plot import *
+from functions.core.policy import *
+from functions.core.utilization import * 
+from functions.core.employee import *
+from functions.core.forecasting import *
 
 
 

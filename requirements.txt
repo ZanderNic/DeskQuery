@@ -6,3 +6,4 @@ matplotlib
 dotenv
 groq
 google-genai
+tabulate
