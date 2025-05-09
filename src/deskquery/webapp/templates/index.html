@@ -4,23 +4,33 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="../static/styles.css" />
-    <title>DeskQuery</title>
+    <title>Desk Query</title>
   </head>
   <body>
     <script src="../static/script.js"></script>
 
-    <div id="sidebar">
-      <h2>Chats</h2>
-      <div id="chat-list"></div>
-      <button id="new-chat-btn">+ New Chat</button>
-    </div>
-    <div id="main">
-      <div id="header">DeskQuery</div>
-      <div id="chat-container"></div>
-      <div id="char-count">0 / 500</div>
-      <div id="input-container">
-        <textarea id="user-input" placeholder="Type your message..." maxlength="500"></textarea>
-        <button id="send-btn">Send</button>
+    <div id="app">
+      <div id="sidebar">
+        <h2>Chats</h2>
+        <div id="chat-list"></div>
+        <button id="new-chat-btn">+ New Chat</button>
+      </div>
+      <div id="main">
+        <div id="header">
+          <button id="toggle-sidebar">☰</button>
+          <span>Desk Query</span>
+          <span></span>
+        </div>
+        <div id="chat-container"></div>
+        <div id="char-count-wrapper">
+          <div id="char-count">0 / 500</div>
+        </div>
+        <div id="input-container-wrapper">
+          <div id="input-container">
+            <textarea id="user-input" placeholder="Type your message..." maxlength="500"></textarea>
+            <button id="send-btn">Send</button>
+          </div>
+        </div>
       </div>
     </div>
   </body>

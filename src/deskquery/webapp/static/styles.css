@@ -1,12 +1,17 @@
-body {
+html, body {
   background-color: #121212;
   color: #ffffff;
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
-  display: flex;
   height: 100vh;
   overflow: hidden;
+}
+
+#app {
+  display: flex;
+  height: 100%;
+  width: 100%;
 }
 
 #sidebar {
@@ -15,20 +20,34 @@ body {
   border-right: 1px solid #333;
   display: flex;
   flex-direction: column;
+  transition: width 0.3s ease;
+}
+
+#sidebar.hidden {
+  width: 0;
+  overflow: hidden;
+}
+
+#toggle-sidebar {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 10px;
 }
 
 #sidebar h2 {
   display: flex;
-  align-items: center;
   justify-content: center;
-  
-  height: 30px;
-
-  text-align: center;
+  align-items: center;
+  height: 60px;
+  box-sizing: border-box;
   padding: 15px;
   margin: 0;
   font-size: 18px;
   border-bottom: 1px solid #333;
+  background-color: #1e1e1e;
 }
 
 #chat-list {
@@ -59,21 +78,25 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: start;
   align-items: center;
+  transition: all 0.3s ease;
   width: 100%;
 }
 
 #header {
-
-  height: 30px;
-
+  height: 60px;
   background-color: #1e1e1e;
-  padding: 15px 0;
+  padding: 15px 20px;
   font-size: 24px;
   font-weight: bold;
   text-align: center;
   border-bottom: 1px solid #333;
   width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 #chat-container {
@@ -108,12 +131,23 @@ body {
   align-self: flex-start;
 }
 
-#input-container {
+#input-container-wrapper {
   display: flex;
-  align-items: flex-end;
-  padding: 10px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
   border-top: 1px solid #333;
   background-color: #1a1a1a;
+  box-sizing: border-box;
+}
+
+#input-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
   width: 100%;
   max-width: 1000px;
   box-sizing: border-box;
@@ -146,11 +180,23 @@ body {
   height: 48px;
 }
 
+#char-count-wrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
 #char-count {
-  font-size: 12px;
-  color: #aaa;
-  text-align: right;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: end;
   width: 100%;
   max-width: 1000px;
-  padding: 0 20px 5px;
+  box-sizing: border-box;
+  font-size: 12px;
+  color: #aaa;
+  padding: 0 10px 5px;
 }
