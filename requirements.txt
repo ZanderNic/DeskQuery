@@ -7,3 +7,5 @@ python-dotenv
 groq
 google-genai
 tabulate
+plotly
+scikit-learn

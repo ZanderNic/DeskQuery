@@ -10,7 +10,7 @@ import google.generativeai as genai
 
 # Projekt imports 
 from deskquery.functions.function_registry import function_registry
-from deskquery.data.dataset import dataset
+from deskquery.data.dataset import Dataset
 
 
 def call_llm_and_execute(question: str, function_summaries: str, example_querys: str):

@@ -13,10 +13,10 @@ import plotly.express as px
 
 # data imports
 # wtf is this shit why dont use the data class ?!?!?!?!? 
-df = pd.read_csv("bookings.csv")
-df.rename(columns={"blockedFrom": "date"}, inplace=True)
-df['date'] = pd.to_datetime(df['date'])
-df['day'] = df['date'].dt.day_name()
+# df = pd.read_csv("bookings.csv")
+# df.rename(columns={"blockedFrom": "date"}, inplace=True)
+# df['date'] = pd.to_datetime(df['date'])
+# df['day'] = df['date'].dt.day_name()
 
 # projekt imports
 

@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 # import from projekt files
 from deskquery.main import main as desk_query
 from deskquery.webapp.helpers.helper import *
+from deskquery.webapp.helpers.chat_history import save_chat, load_chat, list_chats
 
 
 # webapp\llm_chat\choose_function.py
@@ -110,7 +111,7 @@ def serve_image(img_id):
 
 
 def create_image():
-    fig, ax = plt.subplots(figsize=(6, 4))  # Match Plotly dimensions
+    fig, ax = plt.subplots(figsize=(6, 4)) 
     ax.plot([0, 1, 2], [0, 1, 4])
     ax.set_title("Generated Image")
     img_io = BytesIO()
