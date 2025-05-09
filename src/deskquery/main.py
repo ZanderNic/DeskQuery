@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import google.generativeai as genai
 
 # Projekt imports 
-from functions.function_registry import function_registry
+from deskquery.functions.function_registry import function_registry
+from deskquery.data.dataset import dataset
 
 
 def call_llm_and_execute(question: str, function_summaries: str, example_querys: str):

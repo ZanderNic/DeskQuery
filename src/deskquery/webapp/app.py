@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 
 # import from projekt files
-from ..main import main
-from helpers.helper import *
+from deskquery.main import main as desk_query
+from deskquery.webapp.helpers.helper import *
 
 
 # webapp\llm_chat\choose_function.py
@@ -27,7 +27,7 @@ def chat():
         data = request.get_json()
         user_input = data.get('message', '').lower()
 
-        response = main(user_input)
+        response = desk_query(user_input)
         print(response)
         
         if isinstance(response, dict) and response.get("type") == "html_table":

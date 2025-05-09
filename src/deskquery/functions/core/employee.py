@@ -21,12 +21,12 @@ df['day'] = df['date'].dt.day_name()
 # projekt imports
 
 
-
 def get_avg_booking_per_employee(
     granularity: str = 'week', 
     weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
     start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None,
+    
 ) -> None:
     """
     Calculates the average number of bookings per employee.
