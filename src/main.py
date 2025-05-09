@@ -6,7 +6,7 @@ import argparse
 # 3-party imports
 import pandas as pd
 import matplotlib.pyplot as plt
-import google.generativeai as genai
+from google import genai
 
 # Projekt imports 
 from functions.function_registry import function_registry

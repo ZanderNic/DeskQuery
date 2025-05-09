@@ -1,5 +1,5 @@
 flask
-google-genereativai
+google-generativeai
 numpy
 pandas
 matplotlib
@@ -7,3 +7,5 @@ dotenv
 groq
 google-genai
 tabulate
+plotly
+scikit-learn

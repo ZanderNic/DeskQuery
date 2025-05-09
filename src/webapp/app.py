@@ -7,6 +7,14 @@ from flask import Flask, request, jsonify, render_template, send_file
 import matplotlib.pyplot as plt
 
 
+# import sys
+# import os
+
+# # Add the parent directory to sys.path
+# parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+# sys.path.append(parent_dir)
+
+
 # import from projekt files
 from ..main import main
 from helpers.helper import *
