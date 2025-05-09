@@ -3,7 +3,7 @@ google-generativeai
 numpy
 pandas
 matplotlib
-dotenv
+python-dotenv
 groq
 google-genai
 tabulate

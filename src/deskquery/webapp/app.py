@@ -16,8 +16,9 @@ import matplotlib.pyplot as plt
 
 
 # import from projekt files
-from ..main import main
-from helpers.helper import *
+from deskquery.main import main as desk_query
+from deskquery.webapp.helpers.helper import *
+from deskquery.webapp.helpers.chat_history import save_chat, load_chat, list_chats
 
 
 # webapp\llm_chat\choose_function.py
@@ -35,7 +36,7 @@ def chat():
         data = request.get_json()
         user_input = data.get('message', '').lower()
 
-        response = main(user_input)
+        response = desk_query(user_input)
         print(response)
         
         if isinstance(response, dict) and response.get("type") == "html_table":
@@ -118,7 +119,7 @@ def serve_image(img_id):
 
 
 def create_image():
-    fig, ax = plt.subplots(figsize=(6, 4))  # Match Plotly dimensions
+    fig, ax = plt.subplots(figsize=(6, 4)) 
     ax.plot([0, 1, 2], [0, 1, 4])
     ax.set_title("Generated Image")
     img_io = BytesIO()

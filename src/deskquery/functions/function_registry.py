@@ -1,8 +1,8 @@
-from functions.core.plot import *
-from functions.core.policy import *
-from functions.core.utilization import * 
-from functions.core.employee import *
-from functions.core.forecasting import *
+from deskquery.functions.core.plot import *
+from deskquery.functions.core.policy import *
+from deskquery.functions.core.utilization import * 
+from deskquery.functions.core.employee import *
+from deskquery.functions.core.forecasting import *
 
 
 

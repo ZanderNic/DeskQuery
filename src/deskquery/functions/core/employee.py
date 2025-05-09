@@ -13,20 +13,20 @@ import plotly.express as px
 
 # data imports
 # wtf is this shit why dont use the data class ?!?!?!?!? 
-df = pd.read_csv("bookings.csv")
-df.rename(columns={"blockedFrom": "date"}, inplace=True)
-df['date'] = pd.to_datetime(df['date'])
-df['day'] = df['date'].dt.day_name()
+# df = pd.read_csv("bookings.csv")
+# df.rename(columns={"blockedFrom": "date"}, inplace=True)
+# df['date'] = pd.to_datetime(df['date'])
+# df['day'] = df['date'].dt.day_name()
 
 # projekt imports
-
 
 
 def get_avg_booking_per_employee(
     granularity: str = 'week', 
     weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
     start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None,
+    
 ) -> None:
     """
     Calculates the average number of bookings per employee.
