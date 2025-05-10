@@ -76,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   modelSelectorBtn.addEventListener('click', () => {
-    console.log("modelSelectorBtn clicked");
     modelSelectorOptions.classList.toggle('hidden');
   });
 

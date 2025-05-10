@@ -45,6 +45,7 @@ html, body {
   justify-content: center;
   align-items: center;
   height: 60px;
+  width: 100%;
   box-sizing: border-box;
   padding: 15px;
   margin: 0;
