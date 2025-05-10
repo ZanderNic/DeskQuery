@@ -12,10 +12,20 @@ import google.generativeai as genai
 # Projekt imports 
 from deskquery.functions.function_registry import function_registry
 from deskquery.data.dataset import Dataset
+from deskquery.llm.llm_api import LLM_Client, get_model_client, get_model_providers
+
+global current_model
+current_model = None
+global current_client
+current_client = None
 
 
-def call_llm_and_execute(question: str, function_summaries: str, example_querys: str):
-    
+def call_llm_and_execute(
+    question: str, 
+    function_summaries: str, 
+    example_querys: str,
+    client: LLM_Client = current_client,
+):
     prompt_template = """
         You are a smart assistant for a desk booking analytics system.
         You have access to a predefined set of Python functions (see below).  
@@ -54,11 +64,14 @@ def call_llm_and_execute(question: str, function_summaries: str, example_querys:
     prompt = prompt_template.format(            # fill in the variables in the string
         function_summaries = function_summaries,
         question = question,
-        example_querys = example_querys
+        example_querys_with_answers = example_querys
     )
     
-    model = genai.GenerativeModel('gemini-2.0-flash')
-    response = model.generate_content(prompt)
+    response = client.chat_completion(
+        input_str=prompt,
+        role='user',
+        response_json=False  # FIXME
+    )
     code = response.text.strip('` \n')
 
     return code
@@ -99,16 +112,40 @@ def handle_llm_response(response: dict):
 
 
 def response_into_text(response_as_json):
-    
-    pass
+    # pass
+    return ">>TEST_TEXT<<"
 
 
-def main(question: str):
+def main(
+    question: str, 
+    model: dict = {'provider': 'google', 'model': 'gemini-2.0-flash-001'},
+):
     function_summaries = 1
 
     example_querys = "" # TODO generate some example queries with the correct format for the answer
 
-    llm_response_str = call_llm_and_execute(question, function_summaries, example_querys)
+    global current_model
+    global current_client
+
+    # apply the selected model
+    if current_model is None or current_model != model:
+        current_model = model
+        client = get_model_client(model['provider'])
+        current_client = client(
+            model=model['model'],
+            chat_history=False,  # FIXME: according to the current prompt implementation
+            sys_msg=None,
+            output_schema=None
+        )
+
+    print("Using model:", current_client.model)  # FIXME: DEBUG
+
+    llm_response_str = call_llm_and_execute(
+        question,
+        function_summaries, 
+        example_querys,
+        current_client
+    )
 
     try:
         llm_response = json.loads(llm_response_str)
@@ -130,6 +167,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # TODO: add model decision logic
     result = main(args.question)
     
     print(result)

@@ -6,9 +6,83 @@ document.addEventListener('DOMContentLoaded', () => {
   const charCount = document.getElementById('char-count');
   const chatList = document.getElementById('chat-list');
   const sidebar = document.getElementById('sidebar');
+  const newChatBtnWrapper = document.getElementById('new-chat-btn-wrapper');
   const toggleSidebarBtn = document.getElementById('toggle-sidebar');
+  const modelSelectorBtn = document.getElementById('model-selector-btn');
+  const modelSelectorOptions = document.getElementById('model-selector-options');
+
+  // the currently selected model
+  let selectedModel = null;
+
+  async function loadModels() {
+    // fetch the model list
+    let response = await fetch('/get-models');
+    response = await response.json();
+    const models = response.models;
+
+    // prepare the model selector ul
+    modelSelectorOptions.innerHTML = '';
+    let child_id = 0;
+
+    // create the model selector option for each model
+    models.forEach(model => {
+      const option = document.createElement('li');
+      option.className = 'model-option';
+      option.setAttribute('data', `${model.provider}:${model.model}`);
+      option.textContent = model.label;
+
+      // add a click event listener for selection functionality
+      option.addEventListener('click', () => {
+        // update the selectedModel variable for setCurrentModel()
+        selectedModel = option.getAttribute('data');
+
+        // unselect the current model option
+        const modelSelectorSelectedOption = document.getElementsByClassName(
+          'model-option selected')[0];
+        if (modelSelectorSelectedOption) {
+          modelSelectorSelectedOption.classList.remove('selected');
+        }
+
+        // select the clicked model option
+        option.classList.add("selected");
+        // close the model selector
+        modelSelectorOptions.classList.toggle('hidden');
+        // apply the selection to the system
+        setCurrentModel();
+      });
+      // select first model in the list by default
+      if (child_id === 0) {
+        option.classList.toggle("selected");
+        selectedModel = option.getAttribute('data');
+        child_id++;
+      }
+      modelSelectorOptions.appendChild(option);
+    });
+    // apply the default model
+    setCurrentModel();
+  }
+  
+  async function setCurrentModel() {
+    console.log("selectedModel:", selectedModel);
+    const [provider, model] = selectedModel.split(':');
+    await fetch('/set-model', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        'provider': provider,
+        'model': model,
+      })
+    });
+  }
+  
+  modelSelectorBtn.addEventListener('click', () => {
+    console.log("modelSelectorBtn clicked");
+    modelSelectorOptions.classList.toggle('hidden');
+  });
+
 
   toggleSidebarBtn.addEventListener('click', () => {
+    newChatBtnWrapper.classList.toggle('hidden');
     sidebar.classList.toggle('hidden');
   });
 
@@ -84,5 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatContainer.innerHTML = '';
   };
 
+  // initialize setup
   loadChatList();
+  loadModels();
 });

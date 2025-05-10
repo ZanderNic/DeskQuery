@@ -24,6 +24,20 @@ class LLM_Client(ABC):
         """
         Creates a model client and initializes the chat with a system message
         and output schema if desired.
+
+        Parameters
+        ----------
+            model: str
+                The model to be used with the client.
+            chat_history: bool
+                If True, the chat history will be saved.
+                If False, every input message and response will be a new chat.
+            sys_msg: str
+                The system message to be used with the model.
+                This message will be used as the first message in the chat.
+            output_schema: str
+                The output schema to be used with the model.
+                This message will be used as the second message in the chat.
         """
         pass
     
@@ -40,6 +54,17 @@ class LLM_Client(ABC):
         The role associated with the input message can usually be defined
         to either `system`, `user` or `assistant`.
         
+        Parameters
+        ----------
+            input_str: str
+                The input message to be sent to the model.
+            role: str
+                The role of the input message. Can be either `system`,
+                `user` or `assistant`.
+            response_json: bool
+                If True, the response will be returned as a json object.
+                If False, the response will be returned as a string.
+                
         Returns
         -------
             response: str
@@ -54,6 +79,13 @@ class LLM_Client(ABC):
         """
         Saves the current conversation history to `json` format if a chat
         history exists.
+
+        Parameters
+        ----------
+            filename: str
+                The name of the json file to save the chat history to.
+                If None, defaults to `chat_history.json` in the current
+                directory.
         """
         if self._chf:
             fn = filename if filename.endswith('.json') else filename + '.json'
@@ -191,3 +223,88 @@ class GoogleClient(LLM_Client):
 
         return chat_comp.text
 
+
+######################################
+# Available model providers and models
+######################################
+
+_model_providers = {
+    "google": {
+        'client': GoogleClient,
+        'models': [
+            {'value': 'gemini-2.0-flash-001', 'label': 'Gemini 2.0 Flash'},
+            {'value': 'gemini-1.5-flash-002', 'label': 'Gemini 1.5 Flash'},
+            {'value': 'gemini-2.5-flash-preview-04-17', 'label': 'Gemini 2.5 Flash Preview'},
+        ]
+    },
+    "groq": {
+        'client': GroqClient,
+        'models': [
+            {'value': 'llama3-70b-8192', 'label': 'Llama 3 70B'},
+            {'value': 'deepseek-r1-distill-llama-70b', 'label': 'DeepSeek R1 Distill'},
+            {'value': 'llama-3.3-70b-versatile', 'label': 'Llama 3.3 70B'},
+            {'value': 'meta-llama/llama-4-maverick-17b-128e-instruct', 'label': 'Llama 4 Maverick'},
+        ]
+    }
+}
+
+######################################
+
+def get_model_providers() -> dict:
+    """
+    Returns a list of available model providers and models to map the models
+    to the client.
+
+    Returns
+    -------
+        dict
+            A dictionary with the model provider as key that links to a
+            dictionary with the client and models as values.
+    """
+    return _model_providers
+
+def models_to_json(filename: str = None):
+    """
+    Saves the available models from the `_model_providers` dict to a json file.
+    
+    Parameters
+    ----------
+        filename: str
+            The name of the json file to save the models to. If None, defaults
+            to `models.json` in the current directory.
+    """
+    if filename is None:
+        filename = 'models.json'
+    models_list = []
+    for provider, details in _model_providers.items():
+        for model in details['models']:
+            models_list.append({
+                'provider': provider,
+                'model': model['value'],
+                'label': model['label']
+            })
+
+    filename = filename if filename else './models.json'
+    with open(filename, 'w') as json_file:
+        json.dump(models_list, json_file, indent=2)
+
+def get_model_client(model_provider: str) -> LLM_Client:
+    """
+    Searches the model client for a given model name.
+
+    Parameters
+    ----------
+        provider: str
+            The model provider to search for.
+    
+    Returns
+        LLM_Client
+            The model client associated with the given model provider.
+    """
+    for provider, details in _model_providers.items():
+        if provider == model_provider:
+            return details['client']
+    
+    raise ValueError(
+        f"Provider '{model_provider}' not found in available providers."
+    )
