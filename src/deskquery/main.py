@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 import json
 import argparse
+import re
 
 # 3-party imports
 import pandas as pd
@@ -44,13 +45,16 @@ def call_llm_and_execute(
 
         ---
 
-        ### STRICT Response format:
+        ### STRICT JSON response format [Do not specify it explicitly]:
         {{
         "function": "function_name_or_null",
         "parameters": {{ "param1": "...", "param2": "..." }},
-        "missing_fields": ["..."],  # optional
-        "reason": "..."             # only if function is null or clarification is needed
-        "explanation": "..."        # any optional notes for the user
+        # optional:
+        "missing_fields": ["..."],
+        # Only necessary if function is null or clarification is needed. If there are missing fields, explain what they are.
+        "reason": "..."
+        # Any optional notes for the user. If you executed code successfully, explain what you did.
+        "explanation": "..."
         }}
 
         Note: Avoid any conversational language!
@@ -81,11 +85,12 @@ def call_llm_and_execute(
         role='user',
         response_json=False  # FIXME
     )
-    code = response.strip('` \n')
+    # clean potentially unwanted content from the response string
+    cleaned_response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
+    code = cleaned_response.strip('` \n')
     print("LLM response:", code)  # FIXME: DEBUG
 
     return code
-
 
 
 def handle_llm_response(response: dict):
@@ -98,9 +103,20 @@ def handle_llm_response(response: dict):
 
     if response.get("missing_fields"):
         missing = ", ".join(response["missing_fields"])
+        message = ""
+        if response.get("reason"):
+            message = response["reason"]
+        else:
+            message = f"Please provide the following fields: {missing}."
+        if response.get("explanation"):
+            if not message.endswith("."):
+                message += ". "
+            else:
+                message += " "
+            message += response["explanation"]
         return {
             "status": "ask_user",
-            "message": response.get("explanation", f"Please provide: {missing}"),
+            "message": message,
             "missing_fields": response["missing_fields"]
         }
 
@@ -137,34 +153,53 @@ def main(
     global current_model
     global current_client
 
+    # save current chat history if applicable
+    current_chat_history = current_client.chat_history if current_client else []
+
     # apply the selected model
     if current_model is None or current_model != model:
         current_model = model
         client = get_model_client(model['provider'])
         current_client = client(
             model=model['model'],
-            chat_history=False,  # FIXME: according to the current prompt implementation
+            chat_history=True,  # FIXME: according to the current prompt implementation
             sys_msg=None,
             output_schema=None
         )
+        # paste previous chat history if applicable
+        current_client.chat_history = current_chat_history
 
     print("Using model:", current_client.model)  # FIXME: DEBUG
 
-    llm_response_str = call_llm_and_execute(
-        question,
-        function_summaries, 
-        example_querys,
-        current_client
-    )
 
-    try:
-        llm_response = json.loads(llm_response_str)
-    except json.JSONDecodeError as e:
-        print("Error while parsing the LLM response:", e)
-        print("Raw response was:", llm_response_str)
+    execution_params = {
+        "question": question,
+        "function_summaries": function_summaries,
+        "example_querys": example_querys,
+        "client": current_client
+    }
+
+    # try to generate a valid json response
+    error = True
+    generate_counter = 0
+    while error and generate_counter < 5:
+        try:
+            llm_response_str = call_llm_and_execute(
+                **execution_params
+            )
+            llm_response = json.loads(llm_response_str)
+            error = False
+        except json.JSONDecodeError as e:
+            print("Error while parsing the LLM response:", e)
+            print("Raw response was:", llm_response_str, sep="\n")
+            error = True
+            generate_counter += 1
+
+    # abort after 5 insufficient generations
+    if error and generate_counter >= 5:
         return {
             "status": "error",
-            "message": "Error while parsing the LLM response."
+            "message": "I couldn't understand your request. Please try describing it in a different way."
         }
 
     result_as_json = handle_llm_response(llm_response)
