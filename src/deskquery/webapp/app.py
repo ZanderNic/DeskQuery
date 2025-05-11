@@ -31,7 +31,8 @@ def index():
 def chat():
     try:
         data = request.get_json()
-        user_input = data.get('message', '').lower()
+        user_input = data.get('message', '').lower()  # FIXME: For what is the lowercase? Might the case be relevant for the LLM?
+        chat_id = data.get('chat_id', None) 
 
         global current_model
         print("backend: chat: current_model:", current_model)
@@ -41,10 +42,20 @@ def chat():
         # FIXME: provisional solution for the response
         if isinstance(response, str):
             return jsonify({
-                "type": "text",
-                "content": response
+                "chat_id": chat_id,
+                "messages": [
+                    {"role": "assistant", "content": response}
+                ]
+            })
+        elif isinstance(response, dict):
+            return jsonify({
+                "chat_id": chat_id,
+                "messages": [
+                    {"role": "assistant", "content": response.get("message")}
+                ]
             })
         
+
         if isinstance(response, dict) and response.get("type") == "html_table":
             return jsonify({
                 "type": "mixed" if "text" in response else "html",

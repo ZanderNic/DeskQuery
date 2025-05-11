@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleSidebarBtn = document.getElementById('toggle-sidebar');
   const modelSelectorBtn = document.getElementById('model-selector-btn');
   const modelSelectorOptions = document.getElementById('model-selector-options');
+  const selectedModelDisplay = document.getElementById('selected-model');
 
   // the currently selected model
   let selectedModel = null;
@@ -73,6 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
         'model': model,
       })
     });
+    // update the display
+    const modelLabel = modelSelectorOptions.querySelector(`.model-option.selected`).textContent;
+    selectedModelDisplay.textContent = modelLabel;
   }
   
   modelSelectorBtn.addEventListener('click', () => {
@@ -112,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const data = await response.json();
+    console.log("response.data:", data);
     currentChatId = data.chat_id;
 
     data.messages.slice(-1).forEach(m => {

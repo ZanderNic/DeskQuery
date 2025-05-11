@@ -6,6 +6,7 @@ import argparse
 # 3-party imports
 import pandas as pd
 import matplotlib.pyplot as plt
+# TODO: delete the following imports if possible
 # from google import genai
 import google.generativeai as genai
 
@@ -43,22 +44,30 @@ def call_llm_and_execute(
 
         ---
 
-        ### Response format:
+        ### STRICT Response format:
         {{
         "function": "function_name_or_null",
         "parameters": {{ "param1": "...", "param2": "..." }},
         "missing_fields": ["..."],  # optional
         "reason": "..."             # only if function is null or clarification is needed
+        "explanation": "..."        # any optional notes for the user
         }}
+
+        Note: Avoid any conversational language!
 
         ---
         
         ### User Query:
         {question}
+
         ---
 
         ### Old Example user querys with corosponding answer:
         {example_querys_with_answers}
+
+        ---
+
+        ### Your Response:
     """
     
     prompt = prompt_template.format(            # fill in the variables in the string
@@ -72,7 +81,8 @@ def call_llm_and_execute(
         role='user',
         response_json=False  # FIXME
     )
-    code = response.text.strip('` \n')
+    code = response.strip('` \n')
+    print("LLM response:", code)  # FIXME: DEBUG
 
     return code
 
@@ -112,8 +122,8 @@ def handle_llm_response(response: dict):
 
 
 def response_into_text(response_as_json):
-    # pass
-    return ">>TEST_TEXT<<"
+    # FIXME: Adjust if needed
+    return response_as_json.get("message")
 
 
 def main(
@@ -152,7 +162,10 @@ def main(
     except json.JSONDecodeError as e:
         print("Error while parsing the LLM response:", e)
         print("Raw response was:", llm_response_str)
-        return
+        return {
+            "status": "error",
+            "message": "Error while parsing the LLM response."
+        }
 
     result_as_json = handle_llm_response(llm_response)
 
@@ -167,7 +180,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # TODO: add model decision logic
+    # TODO: add model decision logic[?]
     result = main(args.question)
     
     print(result)

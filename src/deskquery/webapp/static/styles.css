@@ -289,21 +289,56 @@ html, body {
   height: 48px;
 }
 
-#char-count-wrapper {
+#chat-info-wrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1000px;
+  box-sizing: border-box;
+}
+
+#selected-model-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  font-size: 12px;
+  color: #aaa;
+  padding: 0 10px 5px;
+}
+
+#selected-model-wrapper {
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  width: 100%;
+  gap: 3px;
+}
+
+#selected-model-describer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+#selected-model {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 #char-count {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: end;
-  width: 100%;
-  max-width: 1000px;
+  align-items: center;
   box-sizing: border-box;
   font-size: 12px;
   color: #aaa;
