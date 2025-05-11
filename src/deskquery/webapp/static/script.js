@@ -140,15 +140,90 @@ document.addEventListener('DOMContentLoaded', () => {
     const res = await fetch('/chats');
     const chats = await res.json();
     chatList.innerHTML = '';
+  
     chats.forEach(c => {
       const entry = document.createElement('div');
       entry.className = 'chat-entry';
-      entry.textContent = c.title || c.chat_id;
-      entry.onclick = () => loadChat(c.chat_id);
+  
+      const title = document.createElement('span');
+      title.className = 'chat-title';
+      title.textContent = c.title || c.chat_id;
+      title.setAttribute('data-id', c.chat_id);
+      title.contentEditable = false;
+  
+      let isEditing = false;
+  
+      const editBtn = document.createElement('button');
+      editBtn.textContent = '🖉';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (isEditing) return;
+        isEditing = true;
+  
+        const original = title.textContent;
+        title.contentEditable = true;
+        title.focus();
+  
+        const finishEdit = async (save) => {
+          isEditing = false;
+          title.contentEditable = false;
+          title.removeEventListener('blur', blurHandler);
+          title.removeEventListener('keydown', keyHandler);
+  
+          const newTitle = title.textContent.trim();
+          if (save && newTitle && newTitle !== original) {
+            await fetch(`/chats/${c.chat_id}/rename`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title: newTitle })
+            });
+          } else {
+            title.textContent = original;
+          }
+          loadChatList();
+        };
+  
+        const keyHandler = async (ev) => {
+          if (ev.key === 'Enter') {
+            ev.preventDefault();
+            await finishEdit(true);
+          } else if (ev.key === 'Escape') {
+            ev.preventDefault();
+            await finishEdit(false);
+          }
+        };
+  
+        const blurHandler = () => finishEdit(true);
+  
+        title.addEventListener('keydown', keyHandler);
+        title.addEventListener('blur', blurHandler);
+      };
+  
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '🗑';
+      delBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (confirm('Delete this chat?')) {
+          await fetch(`/chats/delete/${c.chat_id}`, { method: 'DELETE' });
+          if (currentChatId === c.chat_id) {
+            chatContainer.innerHTML = '';
+            currentChatId = null;
+          }
+          loadChatList();
+        }
+      };
+  
+      entry.onclick = () => {
+        if (!isEditing) loadChat(c.chat_id);
+      };
+  
+      entry.appendChild(title);
+      entry.appendChild(editBtn);
+      entry.appendChild(delBtn);
       chatList.appendChild(entry);
     });
   }
-
+  
   async function loadChat(chatId) {
     const res = await fetch(`/chats/${chatId}`);
     const chat = await res.json();
@@ -164,5 +239,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // initialize setup
   loadChatList();
-  loadModels();
+  //loadModels();
 });

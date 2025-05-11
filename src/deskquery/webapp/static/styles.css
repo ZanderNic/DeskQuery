@@ -56,14 +56,14 @@ html, body {
 
 #chat-list {
   display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: start;
-  flex-grow: 1;
+  flex-direction: column;       
+  align-items: stretch;         
+  justify-content: flex-start;
   width: 100%;
   flex: 1;
   overflow-y: auto;
 }
+
 
 #new-chat-btn-wrapper {
   display: flex;
@@ -103,14 +103,55 @@ html, body {
   cursor: pointer;
 }
 
+
 .chat-entry {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   padding: 10px 15px;
-  cursor: pointer;
   border-bottom: 1px solid #333;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.chat-entry:hover {
+.chat-title {
+  flex: 1;
+  overflow-x: auto;
+  white-space: nowrap;
+  text-overflow: initial;
+  user-select: none;
+  padding-right: 5px;
+}
+
+.chat-title::-webkit-scrollbar {
+  height: 6px;
+}
+.chat-title::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 4px;
+}
+.chat-title::-webkit-scrollbar-track {
+  background-color: #1e1e1e;
+}
+
+.chat-title:focus {
+  outline: 1px dashed #888;
   background-color: #2a2a2a;
+  user-select: text;
+}
+
+.chat-entry button {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 16px;
+  margin-left: 6px;
+}
+
+.chat-entry button:hover {
+  color: #666666;
 }
 
 #main {
@@ -218,6 +259,25 @@ html, body {
   max-width: 1000px;
   box-sizing: border-box;
 }
+
+#chat-container {
+  scrollbar-width: thin;
+  scrollbar-color: #666 #121212;
+}
+
+#chat-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+#chat-container::-webkit-scrollbar-thumb {
+  background-color: #666;
+  border-radius: 4px;
+}
+
+#chat-container::-webkit-scrollbar-track {
+  background-color: #121212;
+}
+
 
 .message {
   margin: 10px 0;

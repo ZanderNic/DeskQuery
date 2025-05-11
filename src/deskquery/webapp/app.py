@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # import from projekt files
 from deskquery.main import main as desk_query
 from deskquery.webapp.helpers.helper import *
-from deskquery.webapp.helpers.chat_history import save_chat, load_chat, list_chats
+from deskquery.webapp.helpers.chat_history import save_chat, load_chat, list_chats, delete_chat, rename_chat
 
 from deskquery.llm.llm_api import models_to_json
 
@@ -175,6 +175,34 @@ def set_model():
     else:
         print("backend: Model not provided")
         return jsonify({"status": "error", "message": "Model not provided"}), 400
+
+
+# returns all chats that are in chat storage
+@app.route('/chats', methods=['GET'])
+def get_chats():
+    return jsonify(list_chats())
+
+
+@app.route('/chats/<chat_id>', methods=['GET'])
+def get_single_chat(chat_id):
+    chat = load_chat(chat_id)
+    if chat:
+        return jsonify(chat)
+    return jsonify({'error': 'Not found'}), 404
+
+@app.route('/chats/<chat_id>/rename', methods=['POST'])
+def rename_chat_route(chat_id):
+    data = request.get_json()
+    new_title = data.get("title", "").strip()
+    if not new_title:
+        return jsonify({"error": "Title cannot be empty"}), 400
+    success = rename_chat(chat_id, new_title)
+    return jsonify({"status": "renamed" if success else "not found"}), 200 if success else 404
+
+@app.route('/chats/delete/<chat_id>', methods=['DELETE'])
+def delete_chat_route(chat_id):
+    success = delete_chat(chat_id)
+    return jsonify({"status": "deleted" if success else "not found"}), 200 if success else 404
 
 
 if __name__ == '__main__':
