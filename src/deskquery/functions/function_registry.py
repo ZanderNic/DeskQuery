@@ -3,7 +3,7 @@ from deskquery.functions.core.policy import *
 from deskquery.functions.core.utilization import * 
 from deskquery.functions.core.employee import *
 from deskquery.functions.core.forecasting import *
-
+import inspect
 
 
 function_registry = {
@@ -37,3 +37,18 @@ function_registry = {
     "simulate_room_closure": simulate_room_closure,
     "estimate_max_employees_per_room": estimate_max_employees_per_room,
 }
+ 
+def create_function_summaries(function_registry):
+    function_summaries = ""
+
+    for name, func in function_registry.items():
+        definition = inspect.getsource(func).strip().splitlines()
+        # we only want the declaration not the whole function code. so just use the first line
+        declaration = definition[0]
+        function_summaries += declaration + "\n"
+        docstring = inspect.getdoc(func)
+        function_summaries += docstring + "\n"
+
+    return function_summaries
+
+function_summaries = create_function_summaries(function_registry)
