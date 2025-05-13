@@ -38,21 +38,38 @@ function_registry = {
     "estimate_max_employees_per_room": estimate_max_employees_per_room,
 }
  
-def create_function_summaries(function_registry):
+def create_function_summaries():
     function_summaries = ""
+    to_remove = []
 
     for name, func in function_registry.items():
         try:
-            definition = inspect.getsource(func).strip().splitlines()
-            # we only want the declaration not the whole function code. so just use the first line
-            declaration = definition[0]
-            function_summaries += declaration + "\n"
+            source_lines = inspect.getsource(func).strip().splitlines()
+            # we only want the declaration not the whole function code. so we search for the first line that ends with ":"
+            declaration_lines = []
+            for line in source_lines:
+                declaration_lines.append(line)
+                if line.strip().endswith(":"):
+                    break
+
+            declaration = "\n".join(declaration_lines)
             docstring = inspect.getdoc(func)
-            function_summaries += docstring + "\n"
+
+            if declaration and docstring:
+                function_summaries += declaration + "\n"
+                function_summaries += docstring + "\n"
+            else:
+                # if the function doesn´t exist or the docstring misses its deleted from the function_registry
+                to_remove.append(name)
+
         except (TypeError, OSError):
-            # if the function doesn´t exist or the docstring misses its left out
             continue
+
+    for name in to_remove:
+        del function_registry[name]
 
     return function_summaries
 
-function_summaries = create_function_summaries(function_registry)
+function_summaries = create_function_summaries()
+
+print(function_summaries)
