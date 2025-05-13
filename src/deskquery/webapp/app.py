@@ -2,6 +2,7 @@
 from io import BytesIO
 import uuid
 import json
+from pathlib import Path
 
 # 3 Party-import 
 from flask import Flask, request, jsonify, render_template, send_file
@@ -149,8 +150,10 @@ def create_image():
 def get_models():
     try:
         # read the available models from the models.json
-        models_to_json("../llm/models.json")
-        with open('../llm/models.json', 'r') as file:
+        models_path = Path(__file__).resolve().parent.parent / 'llm' / 'models.json'
+        models_to_json(str(models_path))
+        
+        with open(models_path, 'r') as file:
             models = json.load(file)
         return jsonify({"status": "success", "models": models})
     except FileNotFoundError:
