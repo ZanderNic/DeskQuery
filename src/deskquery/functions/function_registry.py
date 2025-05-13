@@ -42,12 +42,16 @@ def create_function_summaries(function_registry):
     function_summaries = ""
 
     for name, func in function_registry.items():
-        definition = inspect.getsource(func).strip().splitlines()
-        # we only want the declaration not the whole function code. so just use the first line
-        declaration = definition[0]
-        function_summaries += declaration + "\n"
-        docstring = inspect.getdoc(func)
-        function_summaries += docstring + "\n"
+        try:
+            definition = inspect.getsource(func).strip().splitlines()
+            # we only want the declaration not the whole function code. so just use the first line
+            declaration = definition[0]
+            function_summaries += declaration + "\n"
+            docstring = inspect.getdoc(func)
+            function_summaries += docstring + "\n"
+        except (TypeError, OSError):
+            # if the function doesn´t exist or the docstring misses its left out
+            continue
 
     return function_summaries
 
