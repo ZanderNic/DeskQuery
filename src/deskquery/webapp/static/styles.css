@@ -19,7 +19,7 @@ html, body {
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  width: 250px;
+  width: 400px;
   background-color: #1e1e1e;
   border-right: 1px solid #333;
   transition: width 0.3s ease;
@@ -278,6 +278,30 @@ html, body {
   background-color: #121212;
 }
 
+.chat-group {
+  width: 100%;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #999;
+  background-color: #1a1a1a;
+  border-top: 1px solid #333;
+  box-sizing: border-box;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chat-group:first-child {
+  border-top: none;
+}
+
+.chat-entry + .chat-group {
+  margin-top: 8px;
+}
+
+.chat-entry:last-child {
+  border-bottom: none;
+}
 
 .message {
   margin: 10px 0;

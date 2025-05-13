@@ -1,0 +1,9 @@
+{
+  "chat_id": "chat2",
+  "title": "Meetingauswertung",
+  "timestamp": "2025-05-10T14:45:00Z",
+  "messages": [
+    { "role": "user", "content": "Zeig mir die Belegung der Besprechungsräume letzte Woche." },
+    { "role": "assistant", "content": "Die durchschnittliche Belegung lag bei 62 % über alle Räume hinweg." }
+  ]
+}
