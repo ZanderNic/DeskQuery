@@ -136,93 +136,137 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  
+  function groupChatsByDate(chats) {
+    const groups = {
+      "Heute": [],
+      "Gestern": [],
+      "Letzte 7 Tage": [],
+      "Älter": []
+    };
+    const now = new Date();
+    chats.forEach(c => {
+      const date = new Date(c.timestamp);
+      const diffTime = now - date;
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+      if (date.toDateString() === now.toDateString()) {
+        groups["Heute"].push(c);
+      } else if (diffDays < 2) {
+        groups["Gestern"].push(c);
+      } else if (diffDays < 7) {
+        groups["Letzte 7 Tage"].push(c);
+      } else {
+        groups["Älter"].push(c);
+      }
+    });
+    return groups;
+  }
+
+
   async function loadChatList() {
     const res = await fetch('/chats');
     const chats = await res.json();
     chatList.innerHTML = '';
-  
-    chats.forEach(c => {
-      const entry = document.createElement('div');
-      entry.className = 'chat-entry';
-  
-      const title = document.createElement('span');
-      title.className = 'chat-title';
-      title.textContent = c.title || c.chat_id;
-      title.setAttribute('data-id', c.chat_id);
-      title.contentEditable = false;
-  
-      let isEditing = false;
-  
-      const editBtn = document.createElement('button');
-      editBtn.textContent = '🖉';
-      editBtn.onclick = (e) => {
-        e.stopPropagation();
-        if (isEditing) return;
-        isEditing = true;
-  
-        const original = title.textContent;
-        title.contentEditable = true;
-        title.focus();
-  
-        const finishEdit = async (save) => {
-          isEditing = false;
-          title.contentEditable = false;
-          title.removeEventListener('blur', blurHandler);
-          title.removeEventListener('keydown', keyHandler);
-  
-          const newTitle = title.textContent.trim();
-          if (save && newTitle && newTitle !== original) {
-            await fetch(`/chats/${c.chat_id}/rename`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ title: newTitle })
-            });
-          } else {
-            title.textContent = original;
-          }
-          loadChatList();
+
+    const grouped = groupChatsByDate(chats);
+
+    for (const section in grouped) {
+      if (grouped[section].length === 0) continue;
+
+      const header = document.createElement('div');
+      header.textContent = section;
+      header.style.padding = '10px 15px';
+      header.style.color = '#888';
+      header.style.fontSize = '14px';
+      header.style.fontWeight = '600';
+      header.style.borderBottom = '1px solid #333';
+      chatList.appendChild(header);
+
+      grouped[section].forEach(c => {
+        const entry = document.createElement('div');
+        entry.className = 'chat-entry';
+
+        const title = document.createElement('span');
+        title.className = 'chat-title';
+        title.textContent = c.title || c.chat_id;
+        title.setAttribute('data-id', c.chat_id);
+        title.contentEditable = false;
+
+        let isEditing = false;
+
+        const editBtn = document.createElement('button');
+        editBtn.textContent = '🖉';
+        editBtn.onclick = (e) => {
+          e.stopPropagation();
+          if (isEditing) return;
+          isEditing = true;
+
+          const original = title.textContent;
+          title.contentEditable = true;
+          title.focus();
+
+          const finishEdit = async (save) => {
+            isEditing = false;
+            title.contentEditable = false;
+            title.removeEventListener('blur', blurHandler);
+            title.removeEventListener('keydown', keyHandler);
+
+            const newTitle = title.textContent.trim();
+            if (save && newTitle && newTitle !== original) {
+              await fetch(`/chats/${c.chat_id}/rename`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: newTitle })
+              });
+            } else {
+              title.textContent = original;
+            }
+            loadChatList();
+          };
+
+          const keyHandler = async (ev) => {
+            if (ev.key === 'Enter') {
+              ev.preventDefault();
+              await finishEdit(true);
+            } else if (ev.key === 'Escape') {
+              ev.preventDefault();
+              await finishEdit(false);
+            }
+          };
+
+          const blurHandler = () => finishEdit(true);
+
+          title.addEventListener('keydown', keyHandler);
+          title.addEventListener('blur', blurHandler);
         };
-  
-        const keyHandler = async (ev) => {
-          if (ev.key === 'Enter') {
-            ev.preventDefault();
-            await finishEdit(true);
-          } else if (ev.key === 'Escape') {
-            ev.preventDefault();
-            await finishEdit(false);
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '🗑';
+        delBtn.onclick = async (e) => {
+          e.stopPropagation();
+          if (confirm('Delete this chat?')) {
+            await fetch(`/chats/delete/${c.chat_id}`, { method: 'DELETE' });
+            if (currentChatId === c.chat_id) {
+              chatContainer.innerHTML = '';
+              currentChatId = null;
+            }
+            loadChatList();
           }
         };
-  
-        const blurHandler = () => finishEdit(true);
-  
-        title.addEventListener('keydown', keyHandler);
-        title.addEventListener('blur', blurHandler);
-      };
-  
-      const delBtn = document.createElement('button');
-      delBtn.textContent = '🗑';
-      delBtn.onclick = async (e) => {
-        e.stopPropagation();
-        if (confirm('Delete this chat?')) {
-          await fetch(`/chats/delete/${c.chat_id}`, { method: 'DELETE' });
-          if (currentChatId === c.chat_id) {
-            chatContainer.innerHTML = '';
-            currentChatId = null;
-          }
-          loadChatList();
-        }
-      };
-  
-      entry.onclick = () => {
-        if (!isEditing) loadChat(c.chat_id);
-      };
-  
-      entry.appendChild(title);
-      entry.appendChild(editBtn);
-      entry.appendChild(delBtn);
-      chatList.appendChild(entry);
-    });
+
+        entry.onclick = () => {
+          if (!isEditing) loadChat(c.chat_id);
+        };
+
+        entry.appendChild(title);
+        entry.appendChild(editBtn);
+        entry.appendChild(delBtn);
+        chatList.appendChild(entry);
+      });
+    }
   }
+
   
   async function loadChat(chatId) {
     const res = await fetch(`/chats/${chatId}`);
@@ -232,12 +276,19 @@ document.addEventListener('DOMContentLoaded', () => {
     chat.messages.forEach(m => appendMessage(m.content, m.role === 'user' ? 'user' : 'bot'));
   }
 
-  document.getElementById('new-chat-btn').onclick = () => {
-    currentChatId = null;
+  document.getElementById('new-chat-btn').onclick = async () => {
+    const res = await fetch('/chats/new', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await res.json();
+    currentChatId = data.chat_id;
     chatContainer.innerHTML = '';
+    loadChatList();
   };
 
   // initialize setup
   loadChatList();
-  //loadModels();
+  loadModels();
 });
