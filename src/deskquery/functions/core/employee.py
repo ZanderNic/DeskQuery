@@ -1,65 +1,60 @@
-# std-lib import
+#!/usr/bin/env python 
 from typing import Optional, List
 from datetime import datetime
 import json
 from flask import current_app
 
-
-# 3 party imports
 from plotly.utils import PlotlyJSONEncoder
 import pandas as pd
 from sklearn.cluster import DBSCAN
 import plotly.graph_objs as go
 import plotly.express as px
 
-# data imports
 from deskquery.data.dataset import Dataset
-# projekt imports
 
 dataset = Dataset()
 
 def get_avg_booking_per_employee(
-    granularity: str = 'week', 
-    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
-    start_date: Optional[datetime] = None, 
+    granularity: str = 'week',
+    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
+    start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    
-) -> None:
+) -> dict:
     """
-    Calculates the average number of bookings per employee.
-
-    Args:
-        granularity: Period unit for average, e.g., 'week' or 'month'.
-        weekdays: Days to include in the calculation.
-        start_date: Start date of the analysis.
-        end_date: End date of the analysis.
-
-    Returns:
-
+    Calculates average bookings per employee by week or month.
     """
-    data = dataset.data
-    df = dataset.get_timeframe(data, start_date=start_date, end_date=end_date, show_available=False)
-    df_filtered = dataset.get_days(df, weekdays=weekdays)
-    df_filtered['blockedFrom'] = pd.to_datetime(df_filtered['blockedFrom'])
+
+    data = dataset.create_dataset()
+    data = dataset.get_timeframe(data, start_date=start_date, end_date=end_date, show_available=False)
+    data = dataset.get_days(data, weekdays=weekdays)
+
+    blocked_from = pd.to_datetime(data['blockedFrom'])
 
     if granularity == 'week':
-        df_filtered['period'] = df_filtered['blockedFrom'].dt.isocalendar().week
+        data['period'] = blocked_from.dt.isocalendar().week
     elif granularity == 'month':
-        df_filtered['period'] = df_filtered['blockedFrom'].dt.month
+        data['period'] = blocked_from.dt.month
     else:
         raise ValueError("granularity must be 'week' or 'month'")
 
-    bookings_per_user = df_filtered.groupby(['userId', 'userName', 'period']).size().reset_index(name='bookings')
+    column_name = f'avg_bookings_per_{granularity}'
 
-    avg_bookings = bookings_per_user.groupby(['userId', 'userName'])['bookings'].mean().reset_index()
-    avg_bookings.rename(columns={'bookings': f'avg_bookings_per_{granularity}'}, inplace=True)
+    bookings = (
+        data.groupby(['userId', 'userName', 'period'])
+        .size()
+        .groupby(['userId', 'userName'])
+        .mean()
+        .reset_index(name=column_name)
+    )
+    print(bookings)
 
-    html = avg_bookings[['userName', 'avg_bookings_per_week']].head(10)
-    html = html.to_html(index=False, classes="table table-striped")
-    return {"type": "html_table",
-            "text": "",
-            "html": html
-            }
+    html = bookings[['userName', column_name]].head(10).to_html(index=False, classes="table table-striped")
+
+    return {
+        "type": "html_table",
+        "text": "",
+        "html": html
+    }
 
 def get_booking_repeat_pattern(
     min_repeat_count: int = 2, 
@@ -224,3 +219,6 @@ def get_co_booking_frequencies(
     Returns:
     """
     pass
+
+if __name__ == "__main__":
+    get_avg_booking_per_employee(granularity="week")

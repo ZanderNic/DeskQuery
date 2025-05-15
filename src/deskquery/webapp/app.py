@@ -20,7 +20,6 @@ from deskquery.llm.llm_api import models_to_json
 
 # webapp\llm_chat\choose_function.py
 app = Flask(__name__)
-dataset = Dataset("src\deskquery\data\OpTisch_anonymisiert.xlsx")
 
 generated_images = {}
 global current_model

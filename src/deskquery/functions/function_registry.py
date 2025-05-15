@@ -1,7 +1,7 @@
 from deskquery.functions.core.plot import *
 from deskquery.functions.core.policy import *
 from deskquery.functions.core.utilization import * 
-from deskquery.functions.core.employee import *
+from src.deskquery.functions.core.employee import *
 from deskquery.functions.core.forecasting import *
 import inspect
 
