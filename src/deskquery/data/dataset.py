@@ -7,7 +7,19 @@ from typing import Optional
 pd.set_option('future.no_silent_downcasting', True)
 
 class Dataset:
-    def __init__(self, path: str):
+    _instance = None  
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(Dataset, cls).__new__(cls)
+        return cls._instance
+
+    def __init__(self, path: str= "src\\deskquery\\data\\OpTisch_anonymisiert.xlsx"):
+        if hasattr(self, "_initialized") and self._initialized:
+            return
+        self._initialized = True
+
+
         # Load all sheets from the Excel file into a dictionary of DataFrames
         self.sheets = pd.read_excel(path, sheet_name=None)
         self._rename_columns()
@@ -93,7 +105,7 @@ class Dataset:
         data = pd.concat([data_fixed, data_variable], axis=0).rename(columns={"id": "bookingId"})
 
         return data
-
+    
     @staticmethod
     def get_timeframe(data: pd.DataFrame, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, show_available: bool = False, only_active: bool = False):
         """Filters desk data based on time constraints and availability status.
@@ -318,7 +330,7 @@ class Dataset:
 
 
 if __name__ == "__main__":
-    dataset = Dataset(path="OpTisch_anonymisiert.xlsx")
+    dataset = Dataset(path="src\deskquery\data\OpTisch_anonymisiert.xlsx")
     dataset.to_csv("OpTisch.csv", index=False)  # Save dataset to CSV without index
     # Some manipulation to showcase the usage
     # Manipulation functions are staticmethods to make it more generic usable

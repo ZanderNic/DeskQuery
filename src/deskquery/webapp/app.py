@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 
 # import from projekt files
 from deskquery.main import main as desk_query
+from deskquery.data.dataset import Dataset
 from deskquery.webapp.helpers.helper import *
 from deskquery.webapp.helpers.chat_history import save_chat, load_chat, list_chats, delete_chat, rename_chat
 
@@ -19,6 +20,7 @@ from deskquery.llm.llm_api import models_to_json
 
 # webapp\llm_chat\choose_function.py
 app = Flask(__name__)
+dataset = Dataset("src\deskquery\data\OpTisch_anonymisiert.xlsx")
 
 generated_images = {}
 global current_model
