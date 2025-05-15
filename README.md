@@ -4,17 +4,17 @@
 <h4 align="center"><i>Your smart assistant for desk booking analytics.</i></h4>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Easy%20Booking%20Analytics-%F0%9F%92%BC-green" alt="Easy Booking Analytics" />
-  <img src="https://img.shields.io/badge/In%20Simple%20Natural%20Language-%F0%9F%94%A5-orange" alt="Natural Language" />
-  <img src="https://img.shields.io/badge/No%20Coding%20Required-%F0%9F%94%A1-yellow" alt="No Coding Required" />
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License" />
-  </a>
+    <img src="https://img.shields.io/badge/Easy%20Booking%20Analytics-%F0%9F%92%BC-green" alt="Easy Booking Analytics" />
+    <img src="https://img.shields.io/badge/In%20Simple%20Natural%20Language-%F0%9F%94%A5-orange" alt="Natural Language" />
+    <img src="https://img.shields.io/badge/No%20Coding%20Required-%F0%9F%94%A1-yellow" alt="No Coding Required" />
+    <img src="https://img.shields.io/badge/Real--Time%20Analytics-%F0%9F%93%8A-lightgrey" alt="Real-Time Analytics" />
+    <img src="https://img.shields.io/badge/Flask%20Web%20Interface-%F0%9F%9A%80-black" alt="Flask Web Interface" />
 </p>
 
 ---
-
-`deskquery` is an AI-powered chatbot and data analysis tool that helps companies understand and optimize their desk utilization. It combines a conversational interface (via LLMs) with a robust backend of analytic functions for workplace intelligence.
+<p align="center">
+    `deskquery` is an AI-powered chatbot and data analysis tool that helps companies understand and optimize their desk utilization. It combines a conversational interface (via LLMs) with a robust backend of analytic functions for workplace intelligence.
+</p>
 
 ---
 
@@ -38,14 +38,18 @@ A Flask-based frontend allows users to ask questions like:
 ---
 
 ## 🚀 Quickstart
+To use the package, you need to install it along with its dependencies:
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
 # Install the package 
 pip install .
+```
 
+# TODO how to add the API KEY
+
+After the API key has been added, you can start the web frontend and begin chatting
+
+```bash
 # Start the Flask web app
 python3 src/deskquery/webapp/app.py
 ```
@@ -54,7 +58,7 @@ python3 src/deskquery/webapp/app.py
 
 ## 📃 Core Features
 
-* ✅ LLM-based query interpretation (Gemini, GPT, etc.)
+* ✅ LLM-based query interpretation (Gemini, LLama, ...)
 * ✅ Modular analytics functions (forecasting, clustering, policy simulation)
 * ✅ Interactive visualizations (Matplotlib / Plotly)
 * ✅ Structured JSON response pipeline
@@ -78,7 +82,3 @@ python3 src/deskquery/webapp/app.py
 * Close the loop between workplace data and strategic decisions
 
 ---
-
-## 📄 License
-
-MIT
