@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 # import from projekt files
 from deskquery.main import main as desk_query
-from deskquery.data.dataset import Dataset
+from deskquery.data.dataset import create_dataset
 from deskquery.webapp.helpers.helper import *
 from deskquery.webapp.helpers.chat_history import save_chat, load_chat, list_chats, delete_chat, rename_chat
 
@@ -24,8 +24,8 @@ app = Flask(__name__)
 generated_images = {}
 global current_model
 current_model = None
-
-
+global dataset
+dataset = create_dataset()
 
 @app.route('/')
 def index():
@@ -48,7 +48,7 @@ def chat():
         if user_input:
             messages.append({"role": "user", "content": user_input})
 
-        response = desk_query(user_input, model=current_model)
+        response = desk_query(user_input, data=dataset, model=current_model)
         print(response)
 
         if isinstance(response, str):

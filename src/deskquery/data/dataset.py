@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Optional
+from pathlib import Path
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -40,7 +41,7 @@ def get_desk_room_mapping(sheets: pd.DataFrame) -> pd.DataFrame:
 
     return desk_room_mapping
 
-def get_sheets(path: str="src/deskquery/data/OpTisch_anonymisiert.xlsx"):
+def get_sheets(path: Path = (Path(__file__).resolve().parent.parent / 'data' / 'OpTisch_anonymisiert.xlsx')):
     # Load all sheets from the Excel file into a dictionary of DataFrames
     sheets = pd.read_excel(path, sheet_name=None)
     sheets = _rename_columns(sheets)
@@ -72,11 +73,11 @@ def join_variable_bookings(sheets, desk_room_mapping):
 
     return data_variable
 
-def create_dataset(path: str="src/deskquery/data/OpTisch_anonymisiert.xlsx"):
+def create_dataset(path: Path= (Path(__file__).resolve().parent.parent / 'data' / 'OpTisch_anonymisiert.xlsx')) -> Dataset:
     """This Function denormalizes the excel file to make it easier to handle.
 
     Returns:
-        pd.DataFrame: A denormalized dataset
+        Dataset: A denormalized dataset
     """
     sheets = get_sheets(path)
     desk_room_mapping = get_desk_room_mapping(sheets)
@@ -230,7 +231,7 @@ class Dataset:
         return Dataset(self.data[self.data["deskId"].isin(desk_ids)])
 
 if __name__ == "__main__":
-    data = create_dataset(path="src/deskquery/data/OpTisch_anonymisiert.xlsx")
+    data = create_dataset()
     #dataset.to_csv("OpTisch.csv", index=False)  # Save dataset to CSV without index
     # Some manipulation to showcase the usage
     # Manipulation functions are staticmethods to make it more generic usable

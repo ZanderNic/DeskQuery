@@ -12,9 +12,8 @@ import plotly.express as px
 
 from deskquery.data.dataset import Dataset
 
-dataset = Dataset()
-
 def get_avg_booking_per_employee(
+    dataset: Dataset,
     granularity: str = 'week',
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     start_date: Optional[datetime] = None,
@@ -24,29 +23,27 @@ def get_avg_booking_per_employee(
     Calculates average bookings per employee by week or month.
     """
 
-    data = dataset.create_dataset()
-    data = dataset.get_timeframe(data, start_date=start_date, end_date=end_date, show_available=False)
-    data = dataset.get_days(data, weekdays=weekdays)
+    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    dataset = dataset.get_days(weekdays=weekdays)
 
-    blocked_from = pd.to_datetime(data['blockedFrom'])
+    blocked_from = pd.to_datetime(dataset['blockedFrom'])
 
     if granularity == 'week':
-        data['period'] = blocked_from.dt.isocalendar().week
+        dataset['period'] = blocked_from.dt.isocalendar().week
     elif granularity == 'month':
-        data['period'] = blocked_from.dt.month
+        dataset['period'] = blocked_from.dt.month
     else:
         raise ValueError("granularity must be 'week' or 'month'")
 
     column_name = f'avg_bookings_per_{granularity}'
 
     bookings = (
-        data.groupby(['userId', 'userName', 'period'])
+        dataset.to_df().groupby(['userId', 'userName', 'period'])
         .size()
         .groupby(['userId', 'userName'])
         .mean()
         .reset_index(name=column_name)
     )
-    print(bookings)
 
     html = bookings[['userName', column_name]].head(10).to_html(index=False, classes="table table-striped")
 
@@ -57,6 +54,7 @@ def get_avg_booking_per_employee(
     }
 
 def get_booking_repeat_pattern(
+    dataset: Dataset,
     min_repeat_count: int = 2, 
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
@@ -73,11 +71,10 @@ def get_booking_repeat_pattern(
 
     Returns:
     """
-    data = dataset.data
-    df = dataset.get_timeframe(data, start_date=start_date, end_date=end_date, show_available=False)
-    df_filtered = dataset.get_days(df, weekdays=weekdays)
+    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    dataset = dataset.get_days(weekdays=weekdays)
 
-    group = df_filtered.groupby(['userId','userName', 'deskId']).size().reset_index(name='count')
+    group = dataset.to_df().groupby(['userId','userName', 'deskId']).size().reset_index(name='count')
     result = group[group['count'] >= min_repeat_count ].sort_values(by='count', ascending=False)
     
     result = result.head(10)
@@ -90,6 +87,7 @@ def get_booking_repeat_pattern(
             }
 
 def get_booking_repeat_pattern_plot(
+    dataset: Dataset,
     min_repeat_count: int = 2, 
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
@@ -107,12 +105,11 @@ def get_booking_repeat_pattern_plot(
     Returns:
         dict: Containing the plotly plot as HTML.
     """
-    data = dataset.data
-    df = dataset.get_timeframe(data, start_date=start_date, end_date=end_date, show_available=False)
-    df_filtered = dataset.get_days(df, weekdays=weekdays)
+    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    dataset = dataset.get_days(weekdays=weekdays)
 
     # Group by userId, userName, and deskId, and count the occurrences
-    group = df_filtered.groupby(['userId', 'userName', 'deskId']).size().reset_index(name='count')
+    group = dataset.to_df().groupby(['userId', 'userName', 'deskId']).size().reset_index(name='count')
     result = group[group['count'] >= min_repeat_count].sort_values(by='count', ascending=False)
     
     # Limit the result to top 10
@@ -149,6 +146,7 @@ def get_booking_repeat_pattern_plot(
 
 
 def get_booking_clusters(
+    dataset: Dataset,
     distance_threshold: float = 3, 
     co_booking_count_min: int = 3, 
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
@@ -168,13 +166,12 @@ def get_booking_clusters(
     Returns:
 
     """
-    data = dataset.data
-    df = dataset.get_timeframe(data, start_date=start_date, end_date=end_date, show_available=False)
-    df_filtered = dataset.get_days(df, weekdays=weekdays)
+    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    dataset = dataset.get_days(weekdays=weekdays)
 
     cluster_results = []
 
-    for (blockedFrom, roomID), group in df_filtered.groupby(['blockedFrom', 'roomId']):
+    for (blockedFrom, roomID), group in dataset.to_df().groupby(['blockedFrom', 'roomId']):
         coords = group["deskNumber"].values.reshape(-1, 1)
         if len(coords) >= co_booking_count_min:
             clustering = DBSCAN(eps=distance_threshold, min_samples=co_booking_count_min).fit(coords)
@@ -200,6 +197,7 @@ def get_booking_clusters(
 
 
 def get_co_booking_frequencies(
+    dataset: Dataset,
     min_shared_days: int, 
     same_room_only: bool, 
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
@@ -221,4 +219,4 @@ def get_co_booking_frequencies(
     pass
 
 if __name__ == "__main__":
-    get_avg_booking_per_employee(granularity="week")
+    pass
