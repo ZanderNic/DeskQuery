@@ -9,3 +9,4 @@ google-genai
 tabulate
 plotly
 scikit-learn
+openpyxl

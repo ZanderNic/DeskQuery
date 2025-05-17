@@ -22,6 +22,7 @@ from deskquery.llm.llm_api import models_to_json
 app = Flask(__name__)
 
 generated_images = {}
+
 global current_model
 current_model = None
 global dataset
@@ -50,7 +51,7 @@ def chat():
 
         response = desk_query(user_input, data=dataset, model=current_model)
         print(response)
-
+        
         if isinstance(response, str):
             messages.append({"role": "assistant", "content": response})
             save_chat(chat_id, messages)
