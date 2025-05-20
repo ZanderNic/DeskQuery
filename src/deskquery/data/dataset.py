@@ -135,7 +135,7 @@ class Dataset:
         if show_available:
             mask = (~mask)
 
-        return Dataset(self.data[~mask])
+        return Dataset(self.data[mask])
 
     def get_days(self, weekdays: list[str], only_active: bool = False) -> Dataset:
         """Filters desk data based on specific weekdays when desks are blocked.
@@ -177,7 +177,7 @@ class Dataset:
         if only_active:
             mask &= (blocked_from >= datetime.today()) & (datetime.today() <= blocked_until)
 
-        return Dataset(self.data[~mask])
+        return Dataset(self.data[mask])
 
     def to_df(self) -> pd.DataFrame:
         return self.data
@@ -239,6 +239,7 @@ if __name__ == "__main__":
     end_date = datetime(2024, 3, 25)
     data_timeframe = data.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     data_days = data_timeframe.get_days(weekdays=["monday", "wednesday"])
+    print(data_days)
+
     data_rooms = data_days.get_rooms(room_names=["Dechbetten", "Westenviertel"], room_ids=[2, 9, 5])
     data_desks = data_rooms.get_desks(desk_ids=[5, 9, 12])
-    print(data_desks)
