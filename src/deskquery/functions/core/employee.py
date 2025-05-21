@@ -14,6 +14,7 @@ from deskquery.data.dataset import Dataset
 
 def get_avg_booking_per_employee(
     dataset: Dataset,
+    num_employees: int = 10,
     granularity: str = 'week',
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     start_date: Optional[datetime] = None,
@@ -22,11 +23,9 @@ def get_avg_booking_per_employee(
     """
     Calculates average bookings per employee by week or month.
     """
-
-    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
-    dataset = dataset.get_days(weekdays=weekdays)
-
     blocked_from = pd.to_datetime(dataset['blockedFrom'])
+
+    available_granularity = 
 
     if granularity == 'week':
         dataset['period'] = blocked_from.dt.isocalendar().week
@@ -34,23 +33,18 @@ def get_avg_booking_per_employee(
         dataset['period'] = blocked_from.dt.month
     else:
         raise ValueError("granularity must be 'week' or 'month'")
+    
+    print(dataset)
+
+    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    dataset = dataset.get_days(weekdays=weekdays)
 
     column_name = f'avg_bookings_per_{granularity}'
+    dataset = dataset.group_bookings(['userId', 'userName'], aggregation="count", granularity=granularity, granularity_aggregation="mean")
+    dataset = dataset[['userName', column_name]].head(num_employees)
 
-    bookings = (
-        dataset.to_df().groupby(['userId', 'userName', 'period'])
-        .size()
-        .groupby(['userId', 'userName'])
-        .mean()
-        .reset_index(name=column_name)
-    )
-
-    html = bookings[['userName', column_name]].head(10).to_html(index=False, classes="table table-striped")
-
-    return {
-        "type": "html_table",
-        "text": "",
-        "html": html
+    return {"data": dataset.to_dict(),
+        "plot_able": True
     }
 
 def get_booking_repeat_pattern(
@@ -189,9 +183,7 @@ def get_booking_clusters(
     grouped = result_df.groupby(['blockedFrom', 'roomId', 'cluster'])['userName'].apply(list).reset_index()
 
     html = grouped.to_html(index=False, classes="table table-striped")
-    return {"type": "html_table",
-            "text": "",
-            "html": html
+    return {""
             }
 
 
@@ -219,4 +211,5 @@ def get_co_booking_frequencies(
     pass
 
 if __name__ == "__main__":
-    pass
+    from deskquery.data.dataset import create_dataset
+    get_avg_booking_per_employee(create_dataset())

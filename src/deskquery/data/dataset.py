@@ -4,8 +4,9 @@ from __future__ import annotations
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 from pathlib import Path
+#from deskquery.functions.core.utilization import expand_fixed_bookings
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -96,6 +97,12 @@ class Dataset:
     def __str__(self):
         return str(self.data)
     
+    def __getitem__(self, key):
+        return self.data[key]
+    
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
     def get_timeframe(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, show_available: bool = False, only_active: bool = False) -> Dataset:
         """Filters desk data based on time constraints and availability status.
         
@@ -179,8 +186,17 @@ class Dataset:
 
         return Dataset(self.data[mask])
 
-    def to_df(self) -> pd.DataFrame:
-        return self.data
+    def to_df(self, copy=False) -> pd.DataFrame:
+        if copy:
+            return self.data.copy()
+        else:
+            return self.data
+        
+    def to_dict(self, copy=False) -> pd.DataFrame:
+        if copy:
+            return self.data.to_dict().copy()
+        else:
+            return self.data.to_dict()
 
     def get_users(self, user_names: list[str] = [], user_ids: list[int] = [])  -> Dataset:
         """Filters desk data based on user names or IDs.
@@ -229,17 +245,57 @@ class Dataset:
             # Returns only desks with IDs 3 and 12
         """
         return Dataset(self.data[self.data["deskId"].isin(desk_ids)])
+    
+    def group_bookings(self, 
+                       by, 
+                       aggregation = None, 
+                       aggregation_treshhold = 0, 
+                       granularity: Optional[Literal["day", "week", "month"]] = None,
+                       granularity_aggregation = None):
+
+        grouped_data = self.data.groupby(by)
+        print(grouped_data.count())
+        if aggregation:
+            grouped_data = grouped_data.agg((aggregation, aggregation))
+            grouped_data = grouped_data[grouped_data['count'] >= aggregation_treshhold]
+
+        return Dataset(grouped_data)
+
+    def sort_bookings(self, by, ascending=False):
+        sorted_data = self.data.sort_values(by=by, ascending=ascending)
+
+        return Dataset(sorted_data)
+
+    # def add_granularity(self, gra):
+    #     self.data[]
+
+    def add_day(self):
+        expand_fixed_bookings()
+
+        fixed["workdays"] = fixed.apply(lambda row: pd.date_range(row[start_col], row[end_col], freq='B').date, axis=1)
+        fixed = fixed.explode("workdays")
+        fixed[start_col] = fixed["workdays"]
+        fixed[end_col] = fixed["workdays"]
+        fixed = fixed.drop(columns=["workdays"]).reset_index(drop=True)
+
+        self.data["day"] = 
+
+    # def add_cw(self):
+    #     self.data["cw"] = pd.to_datetime(self.data['blockedFrom']).dt.isocalendar().week
+
+    # def add_month(self):
+    #     self.data["month"] = pd.to_datetime(self.data['blockedFrom']).dt.isocalendar().week
 
 if __name__ == "__main__":
     data = create_dataset()
     #dataset.to_csv("OpTisch.csv", index=False)  # Save dataset to CSV without index
     # Some manipulation to showcase the usage
     # Manipulation functions are staticmethods to make it more generic usable
-    start_date = datetime(2024, 3, 14)
-    end_date = datetime(2024, 3, 25)
-    data_timeframe = data.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    start_date = datetime(2023, 1, 1)
+    end_date = datetime(2025, 5, 21)
+    data_timeframe = data.get_timeframe(start_date=start_date, end_date=end_date, show_available=False).to_df()
+    print(data_timeframe[data_timeframe["variableBooking"] == 0])
+    
     data_days = data_timeframe.get_days(weekdays=["monday", "wednesday"])
-    print(data_days)
-
     data_rooms = data_days.get_rooms(room_names=["Dechbetten", "Westenviertel"], room_ids=[2, 9, 5])
     data_desks = data_rooms.get_desks(desk_ids=[5, 9, 12])
