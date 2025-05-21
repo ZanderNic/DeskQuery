@@ -2,14 +2,12 @@
 from datetime import datetime, timedelta
 import json
 import argparse
+from pathlib import Path
 import re
 
 # 3-party imports
 import pandas as pd
 import matplotlib.pyplot as plt
-# TODO: delete the following imports if possible
-# from google import genai
-import google.generativeai as genai
 
 # Projekt imports 
 from deskquery.functions.function_registry import function_registry
@@ -29,56 +27,60 @@ def call_llm_and_execute(
     client: LLM_Client = current_client,
 ):
     prompt_template = """
-        You are a smart assistant for a desk booking analytics system.
-        You have access to a predefined set of Python functions (see below).  
+You are a smart assistant for a desk booking analytics system.
+You have access to a predefined set of Python functions (see below).  
 
-        Your job is to:
-        1. Understand the user query.
-        2. Select the most appropriate function from the list (never invent your own).
-        3. Fill in the parameters based on what the user has provided or can be reasonably assumed.
-        4. If information is missing, mark it clearly with a placeholder and add a `missing_fields` list.
-        5. If no suitable function exists, return `"function": null` and `"reason"` explaining why.
+Your job is to:
+1. Understand the user query.
+2. Select the most appropriate function from the list (NEVER invent your own).
+3. Fill in the parameters based on what the user has provided or can be reasonably assumed.
+3.1 The current timestamp is '{timestamp}' if it might be needed for date specification.
+4. If information is missing, mark it clearly with a placeholder and add a `missing_fields` list.
+5. If no suitable function exists, return `"function": null` and `"reason"` explaining why.
 
-        ### Available Functions (Summarized):
+### ONLY Available Functions (Summarized):
 
-        {function_summaries}
+{function_summaries}
 
-        ---
+---
 
-        ### STRICT JSON response format [Do not specify it explicitly]:
-        {{
-        "function": "function_name_or_null",
-        "parameters": {{ "param1": "...", "param2": "..." }},
-        # optional:
-        "missing_fields": ["..."],
-        # Only necessary if function is null or clarification is needed. If there are missing fields, explain what they are.
-        "reason": "..."
-        # Any optional notes for the user. If you executed code successfully, explain what you did.
-        "explanation": "..."
-        }}
+### STRICT JSON response format [Do not specify it explicitly]:
+{{
+"function": "function_name_or_null",
+"parameters": {{ "param1": "...", "param2": "..." }},
+# optional:
+"missing_fields": ["..."],
+# Only necessary if function is null or clarification is needed. If there are missing fields, explain what they are.
+"reason": "..."
+# Any optional notes for the user. If you executed code successfully, explain what you did.
+"explanation": "..."
+}}
 
-        Note: Avoid any conversational language!
+Note: Avoid any conversational language!
 
-        ---
-        
-        ### User Query:
-        {question}
+---
 
-        ---
+### User Query:
+{question}
 
-        ### Old Example user querys with corosponding answer:
-        {example_querys_with_answers}
+---
 
-        ---
+### Old Example user querys with corosponding answer:
+{example_querys_with_answers}
 
-        ### Your Response:
-    """
+---
+
+### Your Response:
+"""
     
     prompt = prompt_template.format(            # fill in the variables in the string
+        timestamp=datetime.now().isoformat(),
         function_summaries = function_summaries,
         question = question,
         example_querys_with_answers = example_querys
     )
+
+    print("LLM prompt:", prompt)  # FIXME: DEBUG
     
     response = client.chat_completion(
         input_str=prompt,
@@ -147,7 +149,9 @@ def main(
     data: Dataset,
     model: dict = {'provider': 'google', 'model': 'gemini-2.0-flash-001'},
 ):
-    function_summaries = 1
+    function_summaries_path = Path(__file__).resolve().parent / 'functions' / 'function_summaries_export.txt'
+    with open(function_summaries_path, 'r') as f:
+        function_summaries = f.read()
 
     example_querys = "" # TODO generate some example queries with the correct format for the answer
 

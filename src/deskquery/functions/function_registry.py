@@ -1,3 +1,4 @@
+from pathlib import Path
 from deskquery.functions.core.plot import *
 from deskquery.functions.core.policy import *
 from deskquery.functions.core.utilization import * 
@@ -58,6 +59,7 @@ def create_function_summaries():
             if declaration and docstring:
                 function_summaries += declaration + "\n"
                 function_summaries += docstring + "\n"
+                function_summaries += "\n-\n\n"
             else:
                 # if the function doesn´t exist or the docstring misses its deleted from the function_registry
                 to_remove.append(name)
@@ -73,3 +75,7 @@ def create_function_summaries():
 function_summaries = create_function_summaries()
 
 # print(function_summaries)
+
+description_path = Path(__file__).resolve().parent / 'function_summaries_export.txt' 
+with open(description_path, 'w') as f:
+    f.write(function_summaries)

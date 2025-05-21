@@ -122,6 +122,7 @@ html, body {
   text-overflow: initial;
   user-select: none;
   padding-right: 5px;
+  cursor: pointer;
 }
 
 .chat-title::-webkit-scrollbar {
@@ -139,6 +140,21 @@ html, body {
   outline: 1px dashed #888;
   background-color: #2a2a2a;
   user-select: text;
+}
+
+.chat-list-group-label {
+  display: flex;
+  flex-direction: row;
+  justify-content: start;
+  align-items: center;
+  width: 100%;
+  padding: 10px 15px;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 600;
+  color: #888;
+  border-bottom: 1px solid #333;
+  cursor: default;
 }
 
 .chat-entry button {

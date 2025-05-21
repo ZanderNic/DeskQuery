@@ -12,6 +12,7 @@ import plotly.express as px
 
 from deskquery.data.dataset import Dataset
 
+
 def get_avg_booking_per_employee(
     dataset: Dataset,
     num_employees: int = 10,
@@ -68,17 +69,18 @@ def get_booking_repeat_pattern(
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
 
-    group = dataset.to_df().groupby(['userId','userName', 'deskId']).size().reset_index(name='count')
+    group = dataset.groupby(['userId','userName', 'deskId']).size().reset_index(name='count')
     result = group[group['count'] >= min_repeat_count ].sort_values(by='count', ascending=False)
     
     result = result.head(10)
 
     html = result[['userName', 'deskId', 'count']].to_html(index=False, classes="table table-striped")
     
-    return {"type": "html_table",
-            "text": "",
-            "html": html
-            }
+    return {
+        "type": "html_table",
+        "text": "",
+        "html": html
+    }
 
 def get_booking_repeat_pattern_plot(
     dataset: Dataset,
@@ -103,7 +105,7 @@ def get_booking_repeat_pattern_plot(
     dataset = dataset.get_days(weekdays=weekdays)
 
     # Group by userId, userName, and deskId, and count the occurrences
-    group = dataset.to_df().groupby(['userId', 'userName', 'deskId']).size().reset_index(name='count')
+    group = dataset.groupby(['userId', 'userName', 'deskId']).size().reset_index(name='count')
     result = group[group['count'] >= min_repeat_count].sort_values(by='count', ascending=False)
     
     # Limit the result to top 10
@@ -135,9 +137,6 @@ def get_booking_repeat_pattern_plot(
         "data": plot_data,
         "layout": plot_layout,
     }
-
-
-
 
 def get_booking_clusters(
     dataset: Dataset,
