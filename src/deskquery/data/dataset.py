@@ -230,6 +230,40 @@ class Dataset:
         """
         return Dataset(self.data[self.data["deskId"].isin(desk_ids)])
 
+    def get_n_desks(self):
+        """
+        Returns the total number of unique desks in the dataset.
+
+        Returns:
+            int: Number of unique desk identifiers across all rooms.
+        """
+        return len(self.data["deskId"].unique())
+
+    def get_n_desks_per_room(self) -> dict[str, int]:
+        """
+        Returns the number of unique desks per room.
+
+        Args:
+            data: DataFrame with at least 'room_name' and 'desk_id' columns.
+
+        Returns:
+            Dictionary mapping room_name to number of unique desks.
+        """
+        return self.data.groupby("roomName")["deskId"].nunique()
+
+    def get_n_employees(self) -> int:
+        """
+        Returns the number of unique employees (users) in the dataset.
+
+        Args:
+            data: DataFrame containing booking information with a 'userId' column.
+
+        Returns:
+            int: Number of unique user IDs (i.e., distinct employees).
+        """
+        return self.data["userId"].nunique()
+
+
 if __name__ == "__main__":
     data = create_dataset()
     #dataset.to_csv("OpTisch.csv", index=False)  # Save dataset to CSV without index
