@@ -24,28 +24,17 @@ def get_avg_booking_per_employee(
     """
     Calculates average bookings per employee by week or month.
     """
-    blocked_from = pd.to_datetime(dataset['blockedFrom'])
-
-    available_granularity = 
-
-    if granularity == 'week':
-        dataset['period'] = blocked_from.dt.isocalendar().week
-    elif granularity == 'month':
-        dataset['period'] = blocked_from.dt.month
-    else:
-        raise ValueError("granularity must be 'week' or 'month'")
-    
-    print(dataset)
-
+    col_name = f"avg_user_bookings_{granularity}"
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
+    dataset = dataset.add_time_interval_counts(granularity)
+    dataset = dataset.group_bookings(by="userId", aggregation=("interval_count", 'sum'), agg_col_name=col_name)
+    if num_employees:
+        dataset = dataset.sort_values(by=col_name, ascending=False).head(num_employees)
 
-    column_name = f'avg_bookings_per_{granularity}'
-    dataset = dataset.group_bookings(['userId', 'userName'], aggregation="count", granularity=granularity, granularity_aggregation="mean")
-    dataset = dataset[['userName', column_name]].head(num_employees)
-
-    return {"data": dataset.to_dict(),
-        "plot_able": True
+    return {
+        "data": dataset.to_dict(),
+        "plotable": True
     }
 
 def get_booking_repeat_pattern(
@@ -182,8 +171,7 @@ def get_booking_clusters(
     grouped = result_df.groupby(['blockedFrom', 'roomId', 'cluster'])['userName'].apply(list).reset_index()
 
     html = grouped.to_html(index=False, classes="table table-striped")
-    return {""
-            }
+    return {""}
 
 
 
