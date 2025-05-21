@@ -9,10 +9,8 @@ import inspect
 
 function_registry = {
     # Utilization
-    "get_utilization": get_utilization,
-    "get_over_under_utilized_desks": get_over_under_utilized_desks,
-    "get_daily_utilization_stats": get_daily_utilization_stats,
-    "get_days_above_bellow_threshold": get_days_above_bellow_threshold,
+    "analyze_utilization": analyze_utilization,
+    "utilization_stats": utilization_stats,
     "detect_utilization_anomalies": detect_utilization_anomalies,
 
     # Policy
