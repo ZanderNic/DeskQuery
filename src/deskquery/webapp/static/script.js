@@ -174,14 +174,10 @@ document.addEventListener('DOMContentLoaded', () => {
     for (const section in grouped) {
       if (grouped[section].length === 0) continue;
 
-      const header = document.createElement('div');
-      header.textContent = section;
-      header.style.padding = '10px 15px';
-      header.style.color = '#888';
-      header.style.fontSize = '14px';
-      header.style.fontWeight = '600';
-      header.style.borderBottom = '1px solid #333';
-      chatList.appendChild(header);
+      const groupHeader = document.createElement('div');
+      groupHeader.className = 'chat-list-group-label';
+      groupHeader.textContent = section;
+      chatList.appendChild(groupHeader);
 
       grouped[section].forEach(c => {
         const entry = document.createElement('div');
@@ -201,6 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
           e.stopPropagation();
           if (isEditing) return;
           isEditing = true;
+
+          editBtn.textContent = '✔';
 
           const original = title.textContent;
           title.contentEditable = true;
@@ -222,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
               title.textContent = original;
             }
+            editBtn.textContent = '🖉';
             loadChatList();
           };
 
@@ -251,6 +250,8 @@ document.addEventListener('DOMContentLoaded', () => {
               chatContainer.innerHTML = '';
               currentChatId = null;
             }
+            // clear messages from the chat container
+            chatContainer.innerHTML = '';
             loadChatList();
           }
         };

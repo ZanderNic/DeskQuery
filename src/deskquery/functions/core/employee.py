@@ -65,9 +65,10 @@ def get_avg_booking_per_employee(
     html = avg_bookings[['userName', 'avg_bookings_per_week']].head(10)
     html = html.to_html(index=False, classes="table table-striped")
     return {"type": "html_table",
-            "text": "",
-            "html": html
-            }
+        "text": "",
+        "html": html
+    }
+
 def get_booking_repeat_pattern(
     min_repeat_count: int = 2, 
     weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
@@ -100,10 +101,11 @@ def get_booking_repeat_pattern(
 
     html = result[['userName', 'deskId', 'count']].to_html(index=False, classes="table table-striped")
     
-    return {"type": "html_table",
-            "text": "",
-            "html": html
-            }
+    return {
+        "type": "html_table",
+        "text": "",
+        "html": html
+    }
 
 def get_booking_repeat_pattern_plot(
     min_repeat_count: int = 2, 
@@ -168,9 +170,6 @@ def get_booking_repeat_pattern_plot(
         "layout": plot_layout,
     }
 
-
-
-
 def get_booking_clusters(
     distance_threshold: float = 3, 
     co_booking_count_min: int = 3, 
@@ -218,10 +217,11 @@ def get_booking_clusters(
     grouped = result_df.groupby(['date', 'roomId', 'cluster'])['userName'].apply(list).reset_index()
 
     html = grouped.to_html(index=False, classes="table table-striped")
-    return {"type": "html_table",
-            "text": "",
-            "html": html
-            }
+    return {
+        "type": "html_table",
+        "text": "",
+        "html": html
+    }
 
 
 
