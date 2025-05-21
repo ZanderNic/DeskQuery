@@ -267,9 +267,6 @@ def expand_fixed_bookings(data, start_col="blockedFrom", end_col="blockedUntil",
     variable = data[data["variableBooking"] == 1]
     fixed = data[data["variableBooking"] == 0].copy()
 
-    print("fixed", fixed)
-    print("variable", variable)
-
     if fixed.empty:
         return variable
 
@@ -317,7 +314,7 @@ def prepare_utilization_dataframe(
        raise ValueError("please Provide start and end data")
     
     if start_date > end_date:
-        raise ValueError("Start date should be bevor ende date")
+        raise ValueError("Start date should be before end date")
      
     if room_name:
         data = data.get_rooms(room_name)

@@ -4,9 +4,9 @@ from __future__ import annotations
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Optional, Iterable
 from pathlib import Path
-#from deskquery.functions.core.utilization import expand_fixed_bookings
+from functools import wraps
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -40,7 +40,7 @@ def get_desk_room_mapping(sheets: pd.DataFrame) -> pd.DataFrame:
     # Room in the database looks like Raum "Dechbetten" but we just wanna stick with Dechbetten (way easier to handle later)
     desk_room_mapping['roomName'] = desk_room_mapping['roomName'].str.extract(r'"([^"]+)"', expand=False)
 
-    return desk_room_mapping
+    return desk_room_mapping    
 
 def get_sheets(path: Path = (Path(__file__).resolve().parent.parent / 'data' / 'OpTisch_anonymisiert.xlsx')):
     # Load all sheets from the Excel file into a dictionary of DataFrames
@@ -82,26 +82,31 @@ def create_dataset(path: Path= (Path(__file__).resolve().parent.parent / 'data' 
     """
     sheets = get_sheets(path)
     desk_room_mapping = get_desk_room_mapping(sheets)
+    Dataset.set_desk_room_mapping(desk_room_mapping)
     data_fixed = join_fixed_bookings(sheets, desk_room_mapping)
     data_variable = join_variable_bookings(sheets, desk_room_mapping)
-
     data = pd.concat([data_fixed, data_variable], axis=0).rename(columns={"id": "bookingId"})
+    
+    userid_username_mapping = data.set_index("userId")[["userName"]].to_dict()
+    Dataset.set_userid_username_mapping(userid_username_mapping)
 
     return Dataset(data)
 
 
-class Dataset:
-    def __init__(self, data):
-        self.data = data
-    
-    def __str__(self):
-        return str(self.data)
-    
-    def __getitem__(self, key):
-        return self.data[key]
-    
-    def __setitem__(self, key, value):
-        self.data[key] = value
+class Dataset(pd.DataFrame):
+    _desk_room_mapping = None
+    _userid_username_mapping = None
+
+    def __init__(self, data, *args, **kwargs):
+        super().__init__(data, *args, **kwargs)
+
+    @classmethod
+    def set_desk_room_mapping(cls, desk_room_mapping: pd.DataFrame):
+        cls._desk_room_mapping = desk_room_mapping
+
+    @classmethod
+    def set_userid_username_mapping(cls, userid_username_mapping: dict):
+        cls._userid_username_mapping = userid_username_mapping
 
     def get_timeframe(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, show_available: bool = False, only_active: bool = False) -> Dataset:
         """Filters desk data based on time constraints and availability status.
@@ -123,12 +128,12 @@ class Dataset:
         Returns:
             Filtered DataFrame containing only the rows that match the criteria."""
         
-        mask = pd.Series(True, index=self.data.index)
+        mask = pd.Series(True, index=self.index)
         
         if start_date or end_date or only_active:
-            blocked_from = pd.to_datetime(self.data['blockedFrom'])
+            blocked_from = pd.to_datetime(self['blockedFrom'])
             # tread unlimited endtime as a very high number to make the comparison easier later
-            blocked_until = pd.to_datetime(self.data['blockedUntil'].copy().replace('unlimited', datetime(2099, 12, 31)))
+            blocked_until = pd.to_datetime(self['blockedUntil'].copy().replace('unlimited', datetime(2099, 12, 31)))
 
             if start_date:
                 mask &= (blocked_from >= start_date)
@@ -142,7 +147,7 @@ class Dataset:
         if show_available:
             mask = (~mask)
 
-        return Dataset(self.data[mask])
+        return Dataset(self[mask])
 
     def get_days(self, weekdays: list[str], only_active: bool = False) -> Dataset:
         """Filters desk data based on specific weekdays when desks are blocked.
@@ -176,27 +181,19 @@ class Dataset:
 
         weekday_numbers = [weekdays_map[day] for day in weekdays]
 
-        blocked_from = pd.to_datetime(self.data['blockedFrom'])
-        blocked_until = pd.to_datetime(self.data['blockedUntil'].copy().replace('unlimited', pd.Timestamp('2099-12-31')))
+        blocked_from = pd.to_datetime(self['blockedFrom'])
+        blocked_until = pd.to_datetime(self['blockedUntil'].copy().replace('unlimited', pd.Timestamp('2099-12-31')))
 
         mask = blocked_from.dt.weekday.isin(weekday_numbers)
 
         if only_active:
             mask &= (blocked_from >= datetime.today()) & (datetime.today() <= blocked_until)
 
-        return Dataset(self.data[mask])
+        return Dataset(self[mask])
 
-    def to_df(self, copy=False) -> pd.DataFrame:
-        if copy:
-            return self.data.copy()
-        else:
-            return self.data
-        
-    def to_dict(self, copy=False) -> pd.DataFrame:
-        if copy:
-            return self.data.to_dict().copy()
-        else:
-            return self.data.to_dict()
+    @property
+    def _constructor(self):
+        return Dataset
 
     def get_users(self, user_names: list[str] = [], user_ids: list[int] = [])  -> Dataset:
         """Filters desk data based on user names or IDs.
@@ -212,7 +209,7 @@ class Dataset:
             >>> get_users(df, user_names=['Hiro Tanaka', 'Emma Brown'], user_ids=[5, 3])
             # Returns desks booked by either Hiro Tanaka, Emma Brown, or users with ID 5 or 3
         """
-        return Dataset(self.data[self.data['userId'].isin(user_ids) & self.data['userName'].isin(user_names)])
+        return Dataset(self[self['userId'].isin(user_ids) & self['userName'].isin(user_names)])
 
     def get_rooms(self, room_names: list[str] = [], room_ids: list[int] = []) -> Dataset:
         """Filters desk data based on room names or IDs.
@@ -228,7 +225,7 @@ class Dataset:
             >>> get_rooms(df, room_names=['Stadtamhof'], room_ids=[50])
             # Returns desks in either 'Stadtamhof' or room with ID 50
         """
-        return Dataset(self.data[self.data['roomName'].isin(room_names) | self.data['roomId'].isin(room_ids)])
+        return Dataset(self[self['roomName'].isin(room_names) | self['roomId'].isin(room_ids)])
 
     def get_desks(self, desk_ids: list[int] = []) -> Dataset:
         """Filters desk data based on desk IDs.
@@ -244,47 +241,52 @@ class Dataset:
             >>> get_desks(df, desk_ids=[3, 12])
             # Returns only desks with IDs 3 and 12
         """
-        return Dataset(self.data[self.data["deskId"].isin(desk_ids)])
+        return Dataset(self[self["deskId"].isin(desk_ids)])
     
     def group_bookings(self, 
-                       by, 
-                       aggregation = None, 
-                       aggregation_treshhold = 0, 
-                       granularity: Optional[Literal["day", "week", "month"]] = None,
-                       granularity_aggregation = None):
+                       by: str | Iterable[str], 
+                       aggregation: Optional[tuple[str, str]] = None, 
+                       aggregation_treshhold: int = 0,
+                       agg_col_name: Optional[str] = None):
 
-        grouped_data = self.data.groupby(by)
-        print(grouped_data.count())
+        grouped_data = self.groupby(by)
         if aggregation:
-            grouped_data = grouped_data.agg((aggregation, aggregation))
-            grouped_data = grouped_data[grouped_data['count'] >= aggregation_treshhold]
+            agg_col_name = agg_col_name if agg_col_name else aggregation[0]
+            grouped_data = grouped_data.agg(**{agg_col_name: aggregation})
+            grouped_data = grouped_data[grouped_data[agg_col_name] >= aggregation_treshhold]
 
         return Dataset(grouped_data)
 
-    def sort_bookings(self, by, ascending=False):
-        sorted_data = self.data.sort_values(by=by, ascending=ascending)
 
-        return Dataset(sorted_data)
+    def add_time_intervals(self, freq, start_col: str = "blockedFrom", end_col: str = "blockedUntil", col_name: str = "period"):
+        freq_alias_mapping = {
+            'day': 'D',
+            'business day': 'B',
+            'week': 'W',
+            'month': 'ME',
+            'quarter': 'Q',
+            'year': 'A',
+            'hour': 'H'
+        }
 
-    # def add_granularity(self, gra):
-    #     self.data[]
+        freq_alias = freq_alias_mapping.get(freq, None)
+        if not freq_alias:
+            raise ValueError(f"Only following freq allowed: {freq_alias_mapping.keys()}")
+        
+        # TODO: Might change since today is not good forecasting
+        # no inplace changes intended therefore change only in temp
+        temp_data = self.replace("unlimited", datetime.today())
 
-    def add_day(self):
-        expand_fixed_bookings()
+        self[col_name] = temp_data.apply(lambda row: pd.date_range(row[start_col], row[end_col], freq=freq_alias).date, axis=1)
 
-        fixed["workdays"] = fixed.apply(lambda row: pd.date_range(row[start_col], row[end_col], freq='B').date, axis=1)
-        fixed = fixed.explode("workdays")
-        fixed[start_col] = fixed["workdays"]
-        fixed[end_col] = fixed["workdays"]
-        fixed = fixed.drop(columns=["workdays"]).reset_index(drop=True)
+        return Dataset(self)
+    
+    def add_time_interval_counts(self, freq, start_col="blockedFrom", end_col="blockedUntil"):
+        col_name = "interval_count"
+        self[col_name] = (self.add_time_intervals(freq=freq, start_col=start_col, end_col=end_col, col_name=col_name)
+                               .apply(lambda row: len(row[col_name]), axis=1))
 
-        self.data["day"] = 
-
-    # def add_cw(self):
-    #     self.data["cw"] = pd.to_datetime(self.data['blockedFrom']).dt.isocalendar().week
-
-    # def add_month(self):
-    #     self.data["month"] = pd.to_datetime(self.data['blockedFrom']).dt.isocalendar().week
+        return Dataset(self)
 
     def get_n_desks(self):
         """
@@ -293,7 +295,7 @@ class Dataset:
         Returns:
             int: Number of unique desk identifiers across all rooms.
         """
-        return len(self.data["deskId"].unique())
+        return len(self["deskId"].unique())
 
     def get_n_desks_per_room(self) -> dict[str, int]:
         """
@@ -305,7 +307,7 @@ class Dataset:
         Returns:
             Dictionary mapping room_name to number of unique desks.
         """
-        return self.data.groupby("roomName")["deskId"].nunique()
+        return self.groupby("roomName")["deskId"].nunique()
 
     def get_n_employees(self) -> int:
         """
@@ -317,7 +319,7 @@ class Dataset:
         Returns:
             int: Number of unique user IDs (i.e., distinct employees).
         """
-        return self.data["userId"].nunique()
+        return self["userId"].nunique()
 
 
 if __name__ == "__main__":
@@ -327,9 +329,8 @@ if __name__ == "__main__":
     # Manipulation functions are staticmethods to make it more generic usable
     start_date = datetime(2023, 1, 1)
     end_date = datetime(2025, 5, 21)
-    data_timeframe = data.get_timeframe(start_date=start_date, end_date=end_date, show_available=False).to_df()
-    print(data_timeframe[data_timeframe["variableBooking"] == 0])
-    
+    data_timeframe = data.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)    
     data_days = data_timeframe.get_days(weekdays=["monday", "wednesday"])
     data_rooms = data_days.get_rooms(room_names=["Dechbetten", "Westenviertel"], room_ids=[2, 9, 5])
     data_desks = data_rooms.get_desks(desk_ids=[5, 9, 12])
+    print(data_desks)
