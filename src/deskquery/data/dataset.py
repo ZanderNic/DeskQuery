@@ -4,9 +4,10 @@ from __future__ import annotations
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Dict, Any
 from pathlib import Path
 from functools import wraps
+from collections import Counter
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -108,6 +109,9 @@ class Dataset(pd.DataFrame):
     def set_userid_username_mapping(cls, userid_username_mapping: dict):
         cls._userid_username_mapping = userid_username_mapping
 
+    def drop_fixed(self):
+        return self[self["variableBooking"] == 1]
+
     def get_timeframe(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, show_available: bool = False, only_active: bool = False) -> Dataset:
         """Filters desk data based on time constraints and availability status.
         
@@ -147,7 +151,7 @@ class Dataset(pd.DataFrame):
         if show_available:
             mask = (~mask)
 
-        return Dataset(self[mask])
+        return self[mask]
 
     def get_days(self, weekdays: list[str], only_active: bool = False) -> Dataset:
         """Filters desk data based on specific weekdays when desks are blocked.
@@ -189,7 +193,7 @@ class Dataset(pd.DataFrame):
         if only_active:
             mask &= (blocked_from >= datetime.today()) & (datetime.today() <= blocked_until)
 
-        return Dataset(self[mask])
+        return self[mask]
 
     @property
     def _constructor(self):
@@ -209,7 +213,7 @@ class Dataset(pd.DataFrame):
             >>> get_users(df, user_names=['Hiro Tanaka', 'Emma Brown'], user_ids=[5, 3])
             # Returns desks booked by either Hiro Tanaka, Emma Brown, or users with ID 5 or 3
         """
-        return Dataset(self[self['userId'].isin(user_ids) & self['userName'].isin(user_names)])
+        return self[self['userId'].isin(user_ids) & self['userName'].isin(user_names)]
 
     def get_rooms(self, room_names: list[str] = [], room_ids: list[int] = []) -> Dataset:
         """Filters desk data based on room names or IDs.
@@ -225,7 +229,7 @@ class Dataset(pd.DataFrame):
             >>> get_rooms(df, room_names=['Stadtamhof'], room_ids=[50])
             # Returns desks in either 'Stadtamhof' or room with ID 50
         """
-        return Dataset(self[self['roomName'].isin(room_names) | self['roomId'].isin(room_ids)])
+        return self[self['roomName'].isin(room_names) | self['roomId'].isin(room_ids)]
 
     def get_desks(self, desk_ids: list[int] = []) -> Dataset:
         """Filters desk data based on desk IDs.
@@ -241,52 +245,47 @@ class Dataset(pd.DataFrame):
             >>> get_desks(df, desk_ids=[3, 12])
             # Returns only desks with IDs 3 and 12
         """
-        return Dataset(self[self["deskId"].isin(desk_ids)])
+        return self[self["deskId"].isin(desk_ids)]
     
     def group_bookings(self, 
                        by: str | Iterable[str], 
-                       aggregation: Optional[tuple[str, str]] = None, 
+                       aggregation: Optional[dict[str, tuple[str, Any]]] = None, 
                        aggregation_treshhold: int = 0,
                        agg_col_name: Optional[str] = None):
 
         grouped_data = self.groupby(by)
         if aggregation:
-            agg_col_name = agg_col_name if agg_col_name else aggregation[0]
-            grouped_data = grouped_data.agg(**{agg_col_name: aggregation})
+            grouped_data = grouped_data.agg(**aggregation)
             grouped_data = grouped_data[grouped_data[agg_col_name] >= aggregation_treshhold]
 
-        return Dataset(grouped_data)
+        return grouped_data
 
 
-    def add_time_intervals(self, freq, start_col: str = "blockedFrom", end_col: str = "blockedUntil", col_name: str = "period"):
-        freq_alias_mapping = {
-            'day': 'D',
-            'business day': 'B',
-            'week': 'W',
-            'month': 'ME',
-            'quarter': 'Q',
-            'year': 'A',
-            'hour': 'H'
-        }
+    def add_time_interval(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None):
+        def get_period(row):
+            dates = pd.date_range(row[start_col], row[end_col], freq='B').to_series().dt
+            if granularity == "week":
+                return dates.isocalendar().week.tolist()
+            elif granularity == "month":
+                return dates.month.tolist()
+            elif granularity == "day":
+                return dates.isocalendar().week.tolist()
+            else:
+                raise ValueError(f"Unsupported granularity: {granularity}")
 
-        freq_alias = freq_alias_mapping.get(freq, None)
-        if not freq_alias:
-            raise ValueError(f"Only following freq allowed: {freq_alias_mapping.keys()}")
-        
-        # TODO: Might change since today is not good forecasting
-        # no inplace changes intended therefore change only in temp
-        temp_data = self.replace("unlimited", datetime.today())
+        column_name = column_name if column_name else f"expanded_{granularity}"
 
-        self[col_name] = temp_data.apply(lambda row: pd.date_range(row[start_col], row[end_col], freq=freq_alias).date, axis=1)
+        self[column_name] = self.replace("unlimited", datetime.today()).apply(get_period, axis=1)
 
-        return Dataset(self)
-    
-    def add_time_interval_counts(self, freq, start_col="blockedFrom", end_col="blockedUntil"):
-        col_name = "interval_count"
-        self[col_name] = (self.add_time_intervals(freq=freq, start_col=start_col, end_col=end_col, col_name=col_name)
-                               .apply(lambda row: len(row[col_name]), axis=1))
+        return self
 
-        return Dataset(self)
+    def add_time_interval_counts(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None):
+        column_name = column_name if column_name else f"expanded_counts_{granularity}"
+
+        self = self.add_time_interval(granularity, start_col, end_col, column_name=column_name)
+        self[column_name] = self[column_name].map(Counter)
+
+        return self
 
     def get_n_desks(self):
         """

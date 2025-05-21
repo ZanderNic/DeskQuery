@@ -16,27 +16,39 @@ class EmployeeReturnFormat(TypedDict):
     data: dict[str, Any]
     plotable: bool
 
-def get_avg_booking_per_employee(
+def get_avg_employee_bookings(
     dataset: Dataset,
     num_employees: int = 10,
+    return_total_mean: bool = False,
     granularity: str = 'week',
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
+    include_fixed: bool = False,
 ) -> EmployeeReturnFormat:
     """
     Calculates average bookings per employee by week or month.
     """
-    col_name = f"avg_user_bookings_{granularity}"
+    if not include_fixed:
+        dataset = dataset.drop_fixed()
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
     dataset = dataset.add_time_interval_counts(granularity)
-    dataset = dataset.group_bookings(by="userId", aggregation=("interval_count", 'sum'), agg_col_name=col_name)
+    
+    def mean(series):
+        mean = sum(series.sum().values()) / len(series.sum())
+        return round(mean, 2)
+
+    column_name = f"expanded_counts_{granularity}"
+    avg_bookings = dataset.group_bookings(by="userId", aggregation={column_name: (column_name, mean)}, agg_col_name=column_name)
     if num_employees:
-        dataset = dataset.sort_values(by=col_name, ascending=False).head(num_employees)
+        avg_bookings = avg_bookings.sort_values(by=column_name, ascending=False).head(num_employees)
+
+    if return_total_mean:
+        avg_bookings = avg_bookings.mean()
 
     return {
-        "data": dataset.to_dict(),
+        "data": avg_bookings.to_dict(),
         "plotable": True
     }
 
@@ -202,4 +214,5 @@ def get_co_booking_frequencies(
 
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
-    get_avg_booking_per_employee(create_dataset())
+    result = get_avg_employee_bookings(create_dataset())
+    print(result)
