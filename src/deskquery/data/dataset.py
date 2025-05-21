@@ -281,10 +281,8 @@ class Dataset(pd.DataFrame):
 
     def add_time_interval_counts(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None):
         column_name = column_name if column_name else f"expanded_counts_{granularity}"
-
         self = self.add_time_interval(granularity, start_col, end_col, column_name=column_name)
         self[column_name] = self[column_name].map(Counter)
-
         return self
 
     def get_n_desks(self):

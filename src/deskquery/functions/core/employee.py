@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.cluster import DBSCAN
 import plotly.graph_objs as go
 import plotly.express as px
+from collections import Counter
 
 from deskquery.data.dataset import Dataset
 
@@ -33,13 +34,20 @@ def get_avg_employee_bookings(
         dataset = dataset.drop_fixed()
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
-    dataset = dataset.add_time_interval_counts(granularity)
+
+    column_name = f"mean_bookings_{granularity}"
+    dataset = dataset.add_time_interval_counts(granularity, column_name=column_name)
     
     def mean(series):
-        mean = sum(series.sum().values()) / len(series.sum())
+        def fill_granularity_gaps(counter: Counter) -> Counter:
+            """If there are gaps between the granularity frequency we will them with zeros (from first to last booking)"""
+            return Counter({k: counter.get(k, 0) for k in range(min(counter), max(counter) + 1)})
+        
+        user_sum = fill_granularity_gaps(series.sum())
+        mean = sum(user_sum.values()) / len(series.sum())
+
         return round(mean, 2)
 
-    column_name = f"expanded_counts_{granularity}"
     avg_bookings = dataset.group_bookings(by="userId", aggregation={column_name: (column_name, mean)}, agg_col_name=column_name)
     if num_employees:
         avg_bookings = avg_bookings.sort_values(by=column_name, ascending=False).head(num_employees)
