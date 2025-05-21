@@ -1,5 +1,5 @@
 #!/usr/bin/env python 
-from typing import Optional, List
+from typing import Optional, List, TypedDict, Any
 from datetime import datetime
 import json
 from flask import current_app
@@ -12,6 +12,9 @@ import plotly.express as px
 
 from deskquery.data.dataset import Dataset
 
+class EmployeeReturnFormat(TypedDict):
+    data: dict[str, Any]
+    plotable: bool
 
 def get_avg_booking_per_employee(
     dataset: Dataset,
@@ -20,7 +23,7 @@ def get_avg_booking_per_employee(
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-) -> dict:
+) -> EmployeeReturnFormat:
     """
     Calculates average bookings per employee by week or month.
     """
