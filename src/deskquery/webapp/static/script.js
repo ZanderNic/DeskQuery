@@ -101,31 +101,62 @@ document.addEventListener('DOMContentLoaded', () => {
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
 
+  
   async function sendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
 
-    appendMessage(text, 'user');
+    sendBtn.disabled = true;                          // disable the send button (keep label)
+    sendBtn.style.backgroundColor = "#555";           // set color of send button to gray
+
+    appendMessage(text, 'user');                 
     userInput.value = '';
     charCount.textContent = '0 / 500';
 
-    const response = await fetch('/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, chat_id: currentChatId })
-    });
+    // Add spinner + "Thinking..." message
+    const thinkingMsg = document.createElement('div');
+    thinkingMsg.className = 'message thinking';
 
-    const data = await response.json();
-    console.log("response.data:", data);
-    currentChatId = data.chat_id;
+    const spinner = document.createElement('span');
+    spinner.className = 'spinner';
 
-    data.messages.slice(-1).forEach(m => {
-      if (m.role === 'assistant') {
-        appendMessage(m.content, 'bot');
-      }
-    });
+    const textNode = document.createElement('span');
+    textNode.textContent = 'Thinking ...';
 
-    loadChatList();
+    thinkingMsg.appendChild(spinner);
+    thinkingMsg.appendChild(textNode);
+    chatContainer.appendChild(thinkingMsg);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    try {
+      const response = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, chat_id: currentChatId })
+      });
+
+      const data = await response.json();
+      console.log("response.data:", data);
+      currentChatId = data.chat_id;
+
+      thinkingMsg.remove();
+
+      data.messages.slice(-1).forEach(m => {
+        if (m.role === 'assistant') {
+          appendMessage(m.content, 'bot');
+        }
+      });
+
+      loadChatList();
+    } catch (error) {
+      thinkingMsg.remove();
+      appendMessage("Error while sending message.", 'bot');
+      console.error(error);
+    } finally {
+      sendBtn.disabled = false;                   // Re-enable the send button
+      sendBtn.style.backgroundColor = "";         // reset sedn button color
+      userInput.focus();                          // set cursor in text input field 
+    }
   }
 
   sendBtn.addEventListener('click', sendMessage);

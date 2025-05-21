@@ -340,6 +340,29 @@ html, body {
   align-self: flex-start;
 }
 
+
+.thinking {
+  align-self: flex-start;
+  color: #aaa;
+}
+
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #ccc;
+  border-top: 3px solid #1e88e5;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 #input-container-wrapper {
   display: flex;
   flex-direction: row;

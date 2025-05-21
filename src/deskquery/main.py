@@ -145,7 +145,8 @@ def response_into_text(response_as_json):
 
 
 def main(
-    question: str, 
+    question: str,
+    data: Dataset,
     model: dict = {'provider': 'google', 'model': 'gemini-2.0-flash-001'},
 ):
     function_summaries_path = Path(__file__).resolve().parent / 'functions' / 'function_summaries_export.txt'
