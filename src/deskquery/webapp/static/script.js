@@ -113,6 +113,17 @@ document.addEventListener('DOMContentLoaded', () => {
     userInput.value = '';
     charCount.textContent = '0 / 500';
 
+    if (!currentChatId) {
+      const res = await fetch('/chats/new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await res.json();
+      currentChatId = data.chat_id;
+      loadChatList(); // refresh sidebar to include the new chat
+    }
+
     // Add spinner + "Thinking..." message
     const thinkingMsg = document.createElement('div');
     thinkingMsg.className = 'message thinking';
