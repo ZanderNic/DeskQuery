@@ -222,5 +222,8 @@ def get_co_booking_frequencies(
 
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
-    result = get_avg_employee_bookings(create_dataset())
+    dataset = create_dataset()
+    start = datetime(2025, 2, 2)
+    end = datetime(2025, 5, 4)
+    result = dataset.get_timeframe(start_date=start, end_date=end)
     print(result)

@@ -133,12 +133,26 @@ class Dataset(pd.DataFrame):
             Filtered DataFrame containing only the rows that match the criteria."""
         
         mask = pd.Series(True, index=self.index)
+
+        def exchange_dates_with_intersection(blocked_from, blocked_until):
+            # this blocks handles the fixed bookings and takes the intersection between start and end
+            # blockFrom and blockedUntil is longer
+            is_fixed = self["variableBooking"] == 0
+            blocked_from[is_fixed] = blocked_from[is_fixed].combine(start_date, func=max)
+            blocked_until[is_fixed] = blocked_until[is_fixed].combine(end_date, func=min)
+            self['blockedFrom'] = blocked_from
+            self['blockedUntil'] = blocked_until.copy().replace(datetime(2099, 12, 31), 'unlimited')
         
         if start_date or end_date or only_active:
             blocked_from = pd.to_datetime(self['blockedFrom'])
             # tread unlimited endtime as a very high number to make the comparison easier later
             blocked_until = pd.to_datetime(self['blockedUntil'].copy().replace('unlimited', datetime(2099, 12, 31)))
 
+            exchange_dates_with_intersection(blocked_from, blocked_until)
+
+            # drop all where blocked become bigger than until
+            mask &= (blocked_from <= blocked_until)
+            
             if start_date:
                 mask &= (blocked_from >= start_date)
 
