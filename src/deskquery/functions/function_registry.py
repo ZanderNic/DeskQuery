@@ -6,7 +6,6 @@ from deskquery.functions.core.employee import *
 from deskquery.functions.core.forecasting import *
 import inspect
 
-
 function_registry = {
     # Utilization
     "analyze_utilization": analyze_utilization,

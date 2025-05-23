@@ -1,8 +1,7 @@
 #!/usr/bin/env python 
-from typing import Optional, List, TypedDict, Any
+from typing import Optional, List, Literal
 from datetime import datetime
 import json
-from flask import current_app
 
 from plotly.utils import PlotlyJSONEncoder
 import pandas as pd
@@ -12,46 +11,48 @@ import plotly.express as px
 from collections import Counter
 
 from deskquery.data.dataset import Dataset
-
-class EmployeeReturnFormat(TypedDict):
-    data: dict[str, Any]
-    plotable: bool
+from deskquery.functions.types import FunctionRegistryExpectedFormat
 
 def get_avg_employee_bookings(
     dataset: Dataset,
     num_employees: int = 10,
     return_total_mean: bool = False,
-    granularity: str = 'week',
+    granularity: Literal["day", "week", "month", "year"] = 'year',
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    include_fixed: bool = False,
-) -> EmployeeReturnFormat:
+    include_double_bookings: bool = False,
+    include_fixed: bool = True,
+) -> FunctionRegistryExpectedFormat:
     """
-    Calculates average bookings per employee by week or month.
+    Calculates average bookings per employee per day, week, month or year.
     """
     if not include_fixed:
         dataset = dataset.drop_fixed()
+    if not include_double_bookings:
+        dataset = dataset.drop_double_bookings()
+
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
 
-    column_name = f"mean_bookings_{granularity}"
-    dataset = dataset.add_time_interval_counts(granularity, column_name=column_name)
-    
+    column_name = f"avg_bookings_{granularity}"
+    dataset = dataset.expand_time_intervals_counts(granularity, column_name=column_name)
+
     def mean(series):
+        """Calc the mean for the bookings correctly (with filling possible gaps)"""
         def fill_granularity_gaps(counter: Counter) -> Counter:
             """If there are gaps between the granularity frequency we will them with zeros (from first to last booking)"""
-            return Counter({k: counter.get(k, 0) for k in range(min(counter), max(counter) + 1)})
+            periods = counter.keys()
+            freq = Dataset._date_format_mapping[granularity]
+            return Counter({k: counter.get(k, 0) for k in pd.period_range(start=min(periods), end=max(periods), freq=freq)})
         
         user_sum = fill_granularity_gaps(series.sum())
-        mean = sum(user_sum.values()) / len(series.sum())
+        mean = sum(user_sum.values()) / len(user_sum)
 
         return round(mean, 2)
-
     avg_bookings = dataset.group_bookings(by="userId", aggregation={column_name: (column_name, mean)}, agg_col_name=column_name)
     if num_employees:
         avg_bookings = avg_bookings.sort_values(by=column_name, ascending=False).head(num_employees)
-
     if return_total_mean:
         avg_bookings = avg_bookings.mean()
 
@@ -62,13 +63,15 @@ def get_avg_employee_bookings(
 
 def get_booking_repeat_pattern(
     dataset: Dataset,
+    granularity: Literal["week", "month"] = 'week',
     min_repeat_count: int = 2, 
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
+    end_date: Optional[datetime] = None,
+    include_fixed: bool = True,
+) -> FunctionRegistryExpectedFormat:
     """
-    Identifies users who book the same desks repeatedly.
+    Identifies users who book the same desks or same days repeatedly.
 
     Args:
         min_repeat_count: Minimum number of repeated bookings.
@@ -78,20 +81,26 @@ def get_booking_repeat_pattern(
 
     Returns:
     """
+    # possible question: buchen irgendwelche personen irgendwelche tísche besonders oft
+    # anwort: hier ist eine tabelle von durchschnitten wie oft ein benutzer welhcen tisch/tag pro woche/monat bucht
+    if not include_fixed:
+        dataset = dataset.drop_fixed()
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
+    dataset = dataset.expand_time_intervals_counts("day")
+    print(dataset)
+    #avg_bookings = dataset.group_bookings(by="userId", aggregation={column_name: (column_name, mean)}, agg_col_name=column_name)
+
 
     group = dataset.groupby(['userId','userName', 'deskId']).size().reset_index(name='count')
     result = group[group['count'] >= min_repeat_count ].sort_values(by='count', ascending=False)
     
     result = result.head(10)
 
-    html = result[['userName', 'deskId', 'count']].to_html(index=False, classes="table table-striped")
-    
+
     return {
-        "type": "html_table",
-        "text": "",
-        "html": html
+        "data": result.to_dict(),
+        "plotable": True
     }
 
 def get_booking_repeat_pattern_plot(
@@ -222,8 +231,6 @@ def get_co_booking_frequencies(
 
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
-    dataset = create_dataset()
-    start = datetime(2025, 2, 2)
-    end = datetime(2025, 5, 4)
-    result = dataset.get_timeframe(start_date=start, end_date=end)
-    print(result)
+    dataset = create_dataset()  
+    double_bookings = dataset.get_double_bookings()
+    result = get_avg_employee_bookings(dataset)

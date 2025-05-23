@@ -92,7 +92,7 @@ def analyze_utilization(
     # Aggregation Key
     if by_room:                                                
         key = df["roomName"]
-        n_desks_per_room = data.get_n_desks_per_room()
+        n_desks_per_room = data.get_desks_per_room_count()
         total_possible =  n_desks_per_room * count_matching_weekdays(start_date, end_date, weekday)      # here it should be num desks in room times time period
         actual_counts = key.value_counts()
     
@@ -117,7 +117,7 @@ def analyze_utilization(
         key = df["day"]
 
         weekday_counts = count_weekday_occurrences(start_date, end_date, weekday or [])     # count the nummber of apperences od different days 
-        n_desks = data.get_n_desks()
+        n_desks = data.get_desks_count()
         total_possible = {day: count * n_desks for day, count in weekday_counts.items()}   # here the nummber of possible bookings is the nummber of apperances of the different weekday * the total nummber of desks that are available (the same for every day)
         actual_counts = key.value_counts()
 
@@ -223,7 +223,7 @@ def utilization_stats(
 
     if by_room:
         df["key"] = df["roomName"]
-        total_possible = data.get_n_desks_per_room() * count_matching_weekdays(start_date, end_date, weekday)      #  if by room the max possible boockings are desks_per_room
+        total_possible = data.get_desks_per_room_count() * count_matching_weekdays(start_date, end_date, weekday)      #  if by room the max possible boockings are desks_per_room
     
     elif by_desks:
         df["key"] = df["roomName"] + "_" + df["deskNumber"].astype(str)
@@ -232,7 +232,7 @@ def utilization_stats(
     elif by_day:
         df["key"] = df["day"]    
         weekday_counts = count_weekday_occurrences(start_date, end_date, weekday or [])         # count the nummber of apperences od different days 
-        n_desks = data.get_n_desks()
+        n_desks = data.get_desks_count()
         total_possible = {day: count * n_desks for day, count in weekday_counts.items()}        # here the nummber of possible bookings is the nummber of apperances of the different weekday * the total nummber of desks that are available (the same for every day)
     
     grouped = df.groupby(["key", "blockedFrom"]).size()                                         # create a grouped df by key and day 

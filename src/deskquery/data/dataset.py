@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, Iterable, Dict, Any
 from pathlib import Path
 from functools import wraps
@@ -86,8 +86,7 @@ def create_dataset(path: Path= (Path(__file__).resolve().parent.parent / 'data' 
     Dataset.set_desk_room_mapping(desk_room_mapping)
     data_fixed = join_fixed_bookings(sheets, desk_room_mapping)
     data_variable = join_variable_bookings(sheets, desk_room_mapping)
-    data = pd.concat([data_fixed, data_variable], axis=0).rename(columns={"id": "bookingId"})
-    
+    data = pd.concat([data_fixed, data_variable], axis=0).rename(columns={"id": "bookingId"}).reset_index(drop=True)
     userid_username_mapping = data.set_index("userId")[["userName"]].to_dict()
     Dataset.set_userid_username_mapping(userid_username_mapping)
 
@@ -95,8 +94,15 @@ def create_dataset(path: Path= (Path(__file__).resolve().parent.parent / 'data' 
 
 
 class Dataset(pd.DataFrame):
-    _desk_room_mapping = None
-    _userid_username_mapping = None
+    # both things make it easier/more efficent to map ids to names in case of sliced datasets 
+    _desk_room_mapping: Optional[pd.DataFrame] = None
+    _userid_username_mapping: Optional[dict] = None
+    _date_format_mapping: dict[str, str] = {
+        "year": "Y",
+        "month": "M",
+        "week": "W",
+        "day": "D"
+    }
 
     def __init__(self, data, *args, **kwargs):
         super().__init__(data, *args, **kwargs)
@@ -141,12 +147,12 @@ class Dataset(pd.DataFrame):
             blocked_from[is_fixed] = blocked_from[is_fixed].combine(start_date, func=max)
             blocked_until[is_fixed] = blocked_until[is_fixed].combine(end_date, func=min)
             self['blockedFrom'] = blocked_from
-            self['blockedUntil'] = blocked_until.copy().replace(datetime(2099, 12, 31), 'unlimited')
+            self['blockedUntil'] = blocked_until.copy().replace(datetime.date(pd.Timestamp.max), 'unlimited')
         
         if start_date or end_date or only_active:
             blocked_from = pd.to_datetime(self['blockedFrom'])
             # tread unlimited endtime as a very high number to make the comparison easier later
-            blocked_until = pd.to_datetime(self['blockedUntil'].copy().replace('unlimited', datetime(2099, 12, 31)))
+            blocked_until = pd.to_datetime(self['blockedUntil'].copy().replace('unlimited',  datetime.date(pd.Timestamp.max)))
 
             exchange_dates_with_intersection(blocked_from, blocked_until)
 
@@ -200,7 +206,7 @@ class Dataset(pd.DataFrame):
         weekday_numbers = [weekdays_map[day] for day in weekdays]
 
         blocked_from = pd.to_datetime(self['blockedFrom'])
-        blocked_until = pd.to_datetime(self['blockedUntil'].copy().replace('unlimited', pd.Timestamp('2099-12-31')))
+        blocked_until = pd.to_datetime(self['blockedUntil'].copy().replace('unlimited', datetime.date(pd.Timestamp.max)))
 
         mask = blocked_from.dt.weekday.isin(weekday_numbers)
 
@@ -275,31 +281,46 @@ class Dataset(pd.DataFrame):
         return grouped_data
 
 
-    def add_time_interval(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None):
+    def expand_time_intervals(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None):
         def get_period(row):
-            dates = pd.date_range(row[start_col], row[end_col], freq='B').to_series().dt
-            if granularity == "week":
-                return dates.isocalendar().week.tolist()
-            elif granularity == "month":
-                return dates.month.tolist()
-            elif granularity == "day":
-                return dates.isocalendar().week.tolist()
-            else:
-                raise ValueError(f"Unsupported granularity: {granularity}")
+            dates = pd.date_range(row[start_col], row[end_col], freq='B').to_period(self._date_format_mapping[granularity])
+            return dates
 
         column_name = column_name if column_name else f"expanded_{granularity}"
-
         self[column_name] = self.replace("unlimited", datetime.today()).apply(get_period, axis=1)
 
         return self
 
-    def add_time_interval_counts(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None):
-        column_name = column_name if column_name else f"expanded_counts_{granularity}"
-        self = self.add_time_interval(granularity, start_col, end_col, column_name=column_name)
-        self[column_name] = self[column_name].map(Counter)
+    def expand_time_intervals_desks(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None):
+        column_name = column_name if column_name else f"expanded_desks_{granularity}"
+        self = self.expand_time_intervals(granularity, start_col, end_col, column_name=column_name)
+        self = self.apply(lambda row: [row["deskId"]] * len(row[column_name]), axis=1)
         return self
 
-    def get_n_desks(self):
+    def expand_time_intervals_counts(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None):
+        column_name = column_name if column_name else f"expanded_counts_{granularity}"
+        self = self.expand_time_intervals(granularity, start_col, end_col, column_name=column_name)
+        self[column_name] = self[column_name].map(Counter)
+        return self
+    
+    def get_double_bookings(self, start_col="blockedFrom", end_col="blockedUntil") -> Dataset:
+        def has_overlapping_bookings(group):
+            group = group.replace('unlimited', datetime.date(pd.Timestamp.max)).sort_values(start_col)
+            blocked_from = pd.to_datetime(group[start_col])
+            blocked_until = pd.to_datetime(group[end_col])
+            overlaps = blocked_until.shift() > blocked_from
+            # return both entires not just the overlapsing on (second on)
+            return group[overlaps | overlaps.shift(-1, fill_value=False)].replace(datetime.date(pd.Timestamp.max), 'unlimited')   
+
+        double_bookings = self.groupby('userId', group_keys=False).apply(has_overlapping_bookings)
+        return double_bookings
+
+    def drop_double_bookings(self, start_col="blockedFrom", end_col="blockedUntil"):
+        double_bookings = self.get_double_bookings(start_col=start_col, end_col=end_col)
+        return self.drop(index=double_bookings.index)
+
+
+    def get_desks_count(self):
         """
         Returns the total number of unique desks in the dataset.
 
@@ -308,7 +329,7 @@ class Dataset(pd.DataFrame):
         """
         return len(self["deskId"].unique())
 
-    def get_n_desks_per_room(self) -> dict[str, int]:
+    def get_desks_per_room_count(self) -> dict[str, int]:
         """
         Returns the number of unique desks per room.
 
@@ -320,7 +341,7 @@ class Dataset(pd.DataFrame):
         """
         return self.groupby("roomName")["deskId"].nunique()
 
-    def get_n_employees(self) -> int:
+    def get_employees_count(self) -> int:
         """
         Returns the number of unique employees (users) in the dataset.
 
@@ -344,4 +365,3 @@ if __name__ == "__main__":
     data_days = data_timeframe.get_days(weekdays=["monday", "wednesday"])
     data_rooms = data_days.get_rooms(room_names=["Dechbetten", "Westenviertel"], room_ids=[2, 9, 5])
     data_desks = data_rooms.get_desks(desk_ids=[5, 9, 12])
-    print(data_desks)
