@@ -1,9 +1,0 @@
-{
-  "chat_id": "chat1",
-  "title": "Testanalyse heute",
-  "timestamp": "2025-05-13T10:30:00Z",
-  "messages": [
-    { "role": "user", "content": "Wie viele Tische waren gestern gebucht?" },
-    { "role": "assistant", "content": "Gestern waren insgesamt 37 Tische gebucht." }
-  ]
-}
