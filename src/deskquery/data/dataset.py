@@ -305,6 +305,8 @@ class Dataset(pd.DataFrame):
     
     def get_double_bookings(self, start_col="blockedFrom", end_col="blockedUntil") -> Dataset:
         def has_overlapping_bookings(group):
+            """All bookings for a user are processed. "Unlimited" is converted to a date far in the future. 
+            The rows are then sorted chronologically, with early bookings appearing first."""
             group = group.replace('unlimited', datetime.date(pd.Timestamp.max)).sort_values(start_col)
             blocked_from = pd.to_datetime(group[start_col])
             blocked_until = pd.to_datetime(group[end_col])
