@@ -1,7 +1,0 @@
-KIP Kundengespräch
-
-DSGVO:
-Need to know Prinzip -> Manager darf alle Infos von MAs unter sich sehen, aber nicht neben sich 
-
--> einfaches Rechtesystem: aber nicht implementierbar, da Organigramm nicht vorhanden
-- allgemein Einsicht beim Datenschutzbeauftragten anfragen und Begründung anführen
