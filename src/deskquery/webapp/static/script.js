@@ -182,10 +182,10 @@ document.addEventListener('DOMContentLoaded', () => {
   
   function groupChatsByDate(chats) {
     const groups = {
-      "Heute": [],
-      "Gestern": [],
-      "Letzte 7 Tage": [],
-      "Älter": []
+      "Today": [],
+      "Yesterday": [],
+      "Last 7 days": [],
+      "Older": []
     };
     const now = new Date();
     chats.forEach(c => {
@@ -194,13 +194,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
       if (date.toDateString() === now.toDateString()) {
-        groups["Heute"].push(c);
+        groups["Today"].push(c);
       } else if (diffDays < 2) {
-        groups["Gestern"].push(c);
+        groups["Yesterday"].push(c);
       } else if (diffDays < 7) {
-        groups["Letzte 7 Tage"].push(c);
+        groups["Last 7 days"].push(c);
       } else {
-        groups["Älter"].push(c);
+        groups["Older"].push(c);
       }
     });
     return groups;
