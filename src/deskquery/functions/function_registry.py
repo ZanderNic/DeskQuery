@@ -6,13 +6,10 @@ from deskquery.functions.core.employee import *
 from deskquery.functions.core.forecasting import *
 import inspect
 
-
 function_registry = {
     # Utilization
-    "get_utilization": get_utilization,
-    "get_over_under_utilized_desks": get_over_under_utilized_desks,
-    "get_daily_utilization_stats": get_daily_utilization_stats,
-    "get_days_above_bellow_threshold": get_days_above_bellow_threshold,
+    "analyze_utilization": analyze_utilization,
+    "utilization_stats": utilization_stats,
     "detect_utilization_anomalies": detect_utilization_anomalies,
 
     # Policy
@@ -22,7 +19,7 @@ function_registry = {
     "compare_utilization_before_after_policy": compare_utilization_before_after_policy,
 
     # Employee behavior
-    "get_avg_booking_per_employee": get_avg_booking_per_employee,
+    "get_avg_employee_bookings": get_avg_employee_bookings,
     "get_booking_repeat_pattern": get_booking_repeat_pattern,
     "get_booking_clusters": get_booking_clusters,
     "get_co_booking_frequencies": get_co_booking_frequencies,

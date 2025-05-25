@@ -11,6 +11,7 @@
     <script src="../static/script.js"></script>
 
     <div id="app">
+      
       <div id="sidebar">
         <h2>Chats</h2>
         <div id="chat-list"></div>
@@ -18,7 +19,9 @@
           <button id="new-chat-btn">+ New Chat</button>
         </div>
       </div>
+      
       <div id="main">
+        
         <div id="header">
           <button id="toggle-sidebar">☰</button>
           <span>Desk Query</span>
@@ -31,7 +34,14 @@
             <ul id="model-selector-options" class="hidden"></ul>
           </div>
         </div>
+
         <div id="chat-container"></div>
+       
+        <div id="empty-chat-overlay" class="empty-overlay hidden">
+          <h2>How can I help you today with your desk analytics?</h2>
+          <p>Ask me anything about occupancy, bookings, or workspace trends.</p>
+        </div>
+
         <div id="chat-info-wrapper">
           <div id="selected-model-container">
             <div id="selected-model-wrapper">
@@ -41,12 +51,14 @@
           </div>
           <div id="char-count">0 / 500</div>
         </div>
+
         <div id="input-container-wrapper">
           <div id="input-container">
             <textarea id="user-input" placeholder="Type your message..." maxlength="500"></textarea>
             <button id="send-btn">Send</button>
           </div>
         </div>
+
       </div>
     </div>
   </body>
