@@ -277,9 +277,6 @@ html, body {
   width: 100%;
   max-width: 1000px;
   box-sizing: border-box;
-}
-
-#chat-container {
   scrollbar-width: thin;
   scrollbar-color: #666 #121212;
 }

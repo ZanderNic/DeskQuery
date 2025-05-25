@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-  let currentChatId = null;
+  let currentChatId = null;   // the currently selected chat
+  let selectedModel = null;   // the currently selected model
   const chatContainer = document.getElementById('chat-container');
   const userInput = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
@@ -11,9 +12,63 @@ document.addEventListener('DOMContentLoaded', () => {
   const modelSelectorBtn = document.getElementById('model-selector-btn');
   const modelSelectorOptions = document.getElementById('model-selector-options');
   const selectedModelDisplay = document.getElementById('selected-model');
+  const overlay = document.getElementById('empty-chat-overlay');
 
-  // the currently selected model
-  let selectedModel = null;
+
+  // ============================
+  // === UI Utility Functions ===
+  // ============================
+
+  function appendMessage(content, sender) {
+    const msg = document.createElement('div');
+    msg.className = `message ${sender}`;
+    msg.textContent = content;
+    chatContainer.appendChild(msg);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  function createThinkingMessage() {
+    const msg = document.createElement('div');
+    msg.className = 'message thinking';
+    const spinner = document.createElement('span');
+    spinner.className = 'spinner';
+    const text = document.createElement('span');
+    text.textContent = 'Thinking ...';
+    msg.append(spinner, text);
+    return msg;
+  }
+
+  function showError(message, error = null) {
+    appendMessage(message, 'bot');
+    if (error) console.error(error);
+  }
+
+  function updateOverlayVisibility() {
+    requestAnimationFrame(() => {
+      const hasMessages = chatContainer.querySelector('.message');
+      if (!currentChatId || !hasMessages) {
+        overlay.classList.remove('hidden');
+      } else {
+        overlay.classList.add('hidden');
+      }
+    });
+  }
+
+    function setActiveChatInSidebar(chatId) {
+    chatList.querySelectorAll('.chat-entry').forEach(entry => {
+      const span = entry.querySelector('.chat-title');
+      if (span && span.getAttribute('data-id') === chatId) {
+        entry.classList.add('active');
+      } else {
+        entry.classList.remove('active');
+      }
+    });
+  }
+
+
+  // ======================
+  // === Model Handling ===
+  // ======================
 
   async function loadModels() {
     // fetch the model list
@@ -79,134 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedModelDisplay.textContent = modelLabel;
   }
   
-  modelSelectorBtn.addEventListener('click', () => {
-    modelSelectorOptions.classList.toggle('hidden');
-  });
-
-
-  toggleSidebarBtn.addEventListener('click', () => {
-    newChatBtnWrapper.classList.toggle('hidden');
-    sidebar.classList.toggle('hidden');
-  });
-
-  userInput.addEventListener('input', () => {
-    charCount.textContent = `${userInput.value.length} / 500`;
-  });
-
-  function appendMessage(content, sender) {
-    const msg = document.createElement('div');
-    msg.className = `message ${sender}`;
-    msg.textContent = content;
-    chatContainer.appendChild(msg);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-  }
-
-  
-  async function sendMessage() {
-    const text = userInput.value.trim();
-    if (!text) return;
-
-    sendBtn.disabled = true;                          // disable the send button (keep label)
-    sendBtn.style.backgroundColor = "#555";           // set color of send button to gray
-
-    if (!currentChatId) {
-      const res = await fetch('/chats/new', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const data = await res.json();
-      currentChatId = data.chat_id;
-      await loadChatList();             // refresh sidebar to include the new chat
-      await loadChat(currentChatId);    // set new chat as active chat
-    }
-
-    appendMessage(text, 'user');    
-    userInput.value = '';
-    charCount.textContent = '0 / 500';
-    updateOverlayVisibility();
-
-    // Add spinner + "Thinking..." message
-    const thinkingMsg = document.createElement('div');
-    thinkingMsg.className = 'message thinking';
-
-    const spinner = document.createElement('span');
-    spinner.className = 'spinner';
-
-    const textNode = document.createElement('span');
-    textNode.textContent = 'Thinking ...';
-
-    thinkingMsg.appendChild(spinner);
-    thinkingMsg.appendChild(textNode);
-    chatContainer.appendChild(thinkingMsg);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-
-    try {
-      const response = await fetch('/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, chat_id: currentChatId })
-      });
-
-      const data = await response.json();
-      console.log("response.data:", data);
-      currentChatId = data.chat_id;
-
-      thinkingMsg.remove();
-
-      data.messages.slice(-1).forEach(m => {
-        if (m.role === 'assistant') {
-          appendMessage(m.content, 'bot');
-        }
-      });
-
-      loadChatList();
-    } catch (error) {
-      thinkingMsg.remove();
-      appendMessage("Error while sending message.", 'bot');
-      console.error(error);
-    } finally {
-      sendBtn.disabled = false;                   // Re-enable the send button
-      sendBtn.style.backgroundColor = "";         // reset sedn button color
-      userInput.focus();                          // set cursor in text input field 
-    }
-  }
-
-  sendBtn.addEventListener('click', sendMessage);
-  userInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
-
-  
-  function groupChatsByDate(chats) {
-    const groups = {
-      "Today": [],
-      "Yesterday": [],
-      "Last 7 days": [],
-      "Older": []
-    };
-    const now = new Date();
-    chats.forEach(c => {
-      const date = new Date(c.timestamp);
-      const diffTime = now - date;
-      const diffDays = diffTime / (1000 * 60 * 60 * 24);
-
-      if (date.toDateString() === now.toDateString()) {
-        groups["Today"].push(c);
-      } else if (diffDays < 2) {
-        groups["Yesterday"].push(c);
-      } else if (diffDays < 7) {
-        groups["Last 7 days"].push(c);
-      } else {
-        groups["Older"].push(c);
-      }
-    });
-    return groups;
-  }
-
+  // ===========================
+  // === Chat CRUD Functions ===
+  // ===========================
 
   async function loadChatList() {
     const res = await fetch('/chats');
@@ -318,7 +248,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  
+  async function sendMessage() {
+    const text = userInput.value.trim();
+    if (!text) return;
+
+    sendBtn.disabled = true;                          // disable the send button (keep label)
+    sendBtn.style.backgroundColor = "#555";           // set color of send button to gray
+
+    if (!currentChatId) {
+      const res = await fetch('/chats/new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await res.json();
+      currentChatId = data.chat_id;
+      await loadChatList();                   // refresh sidebar to include the new chat
+      setActiveChatInSidebar(currentChatId);  // select chat as active chat in sidbar 
+    }
+
+    appendMessage(text, 'user');    
+    userInput.value = '';
+    charCount.textContent = '0 / 500';
+    updateOverlayVisibility();
+
+    const thinkingMsg = createThinkingMessage();  // Add spinner + "Thinking..." message
+    chatContainer.appendChild(thinkingMsg);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    try {
+      const response = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, chat_id: currentChatId })
+      });
+
+      const data = await response.json();
+      console.log("response.data:", data);
+      currentChatId = data.chat_id;
+
+      thinkingMsg.remove();
+
+      data.messages.slice(-1).forEach(m => {
+        if (m.role === 'assistant') {
+          appendMessage(m.content, 'bot');
+        }
+      });
+
+      loadChatList();
+    } catch (error) {
+      thinkingMsg.remove();
+      showError("Error while sending message.", error);
+    } finally {
+      sendBtn.disabled = false;                   // Re-enable the send button
+      sendBtn.style.backgroundColor = "";         // reset sedn button color
+      userInput.focus();                          // set cursor in text input field 
+    }
+  }
+
   async function loadChat(chatId) {
     const res = await fetch(`/chats/${chatId}`);
     const chat = await res.json();
@@ -326,32 +313,66 @@ document.addEventListener('DOMContentLoaded', () => {
     currentChatId = chat.chat_id;
     chat.messages.forEach(m => appendMessage(m.content, m.role === 'user' ? 'user' : 'bot'));     // show msg in chat
 
-    document.querySelectorAll('.chat-entry').forEach(entry => {             // set active chat in history to indicate witch one is active
-      const span = entry.querySelector('.chat-title');
-      if (span && span.getAttribute('data-id') === chatId) {
-        entry.classList.add('active');
-      } else {
-        entry.classList.remove('active');
-      }
-    });
-
+    setActiveChatInSidebar(currentChatId)    // set active chat in history to indicate which one is active
     updateOverlayVisibility();  // if empty chat show empty Overlay
   }
+  
+  // =======================
+  // === Utility Helpers ===
+  // =======================
 
+  function groupChatsByDate(chats) {
+    const groups = {
+      "Today": [],
+      "Yesterday": [],
+      "Last 7 days": [],
+      "Older": []
+    };
+    const now = new Date();
+    chats.forEach(c => {
+      const date = new Date(c.timestamp);
+      const diffTime = now - date;
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
-  function updateOverlayVisibility() {
-    const overlay = document.getElementById('empty-chat-overlay');
-
-    requestAnimationFrame(() => {
-      const hasMessages = chatContainer.querySelector('.message');
-      if (!currentChatId || !hasMessages) {
-        overlay.classList.remove('hidden');
+      if (date.toDateString() === now.toDateString()) {
+        groups["Today"].push(c);
+      } else if (diffDays < 2) {
+        groups["Yesterday"].push(c);
+      } else if (diffDays < 7) {
+        groups["Last 7 days"].push(c);
       } else {
-        overlay.classList.add('hidden');
+        groups["Older"].push(c);
       }
     });
+    return groups;
   }
 
+
+  // =======================
+  // === Event Listeners ===
+  // =======================
+
+  sendBtn.addEventListener('click', sendMessage);
+  userInput.addEventListener('keypress', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  modelSelectorBtn.addEventListener('click', () => {
+    modelSelectorOptions.classList.toggle('hidden');
+  });
+
+
+  toggleSidebarBtn.addEventListener('click', () => {
+    newChatBtnWrapper.classList.toggle('hidden');
+    sidebar.classList.toggle('hidden');
+  });
+
+  userInput.addEventListener('input', () => {
+    charCount.textContent = `${userInput.value.length} / 500`;
+  });
 
   document.getElementById('new-chat-btn').onclick = async () => {
     const res = await fetch('/chats/new', {                // get a new chat from the chats/new endpoint
@@ -369,7 +390,10 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
 
-  // initialize setup
+  // ========================
+  // === Initialize Setup ===
+  // ========================
+  
   loadChatList();
   loadModels();
   updateOverlayVisibility();
