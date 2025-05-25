@@ -109,10 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sendBtn.disabled = true;                          // disable the send button (keep label)
     sendBtn.style.backgroundColor = "#555";           // set color of send button to gray
 
-    appendMessage(text, 'user');                 
-    userInput.value = '';
-    charCount.textContent = '0 / 500';
-
     if (!currentChatId) {
       const res = await fetch('/chats/new', {
         method: 'POST',
@@ -124,6 +120,11 @@ document.addEventListener('DOMContentLoaded', () => {
       await loadChatList();             // refresh sidebar to include the new chat
       await loadChat(currentChatId);    // set new chat as active chat
     }
+
+    appendMessage(text, 'user');    
+    userInput.value = '';
+    charCount.textContent = '0 / 500';
+    updateOverlayVisibility();
 
     // Add spinner + "Thinking..." message
     const thinkingMsg = document.createElement('div');
@@ -289,13 +290,19 @@ document.addEventListener('DOMContentLoaded', () => {
           e.stopPropagation();
           if (confirm('Delete this chat?')) {
             await fetch(`/chats/delete/${c.chat_id}`, { method: 'DELETE' });
+            
+            // if current chat is deleted chat clear chat container
             if (currentChatId === c.chat_id) {
               chatContainer.innerHTML = '';
               currentChatId = null;
             }
-            // clear messages from the chat container
-            chatContainer.innerHTML = '';
-            loadChatList();
+            
+            document.querySelectorAll('.chat-entry.active').forEach(entry => {
+              entry.classList.remove('active');
+            });
+            
+            await loadChatList();
+            updateOverlayVisibility();
           }
         };
 
@@ -327,6 +334,22 @@ document.addEventListener('DOMContentLoaded', () => {
         entry.classList.remove('active');
       }
     });
+
+    updateOverlayVisibility();  // if empty chat show empty Overlay
+  }
+
+
+  function updateOverlayVisibility() {
+    const overlay = document.getElementById('empty-chat-overlay');
+
+    requestAnimationFrame(() => {
+      const hasMessages = chatContainer.querySelector('.message');
+      if (!currentChatId || !hasMessages) {
+        overlay.classList.remove('hidden');
+      } else {
+        overlay.classList.add('hidden');
+      }
+    });
   }
 
 
@@ -340,12 +363,14 @@ document.addEventListener('DOMContentLoaded', () => {
     currentChatId = data.chat_id;
     chatContainer.innerHTML = '';         // reset chat container to cantain nothing in new chat
     
-    loadChatList();                     // load the chat list with the new chat added
-    await loadChat(currentChatId);      // select the new chat
+    await loadChatList();                 // load the chat list with the new chat added
+    await loadChat(currentChatId);        // select the new chat
+    updateOverlayVisibility();            // upadte layout
   };
 
 
   // initialize setup
   loadChatList();
   loadModels();
+  updateOverlayVisibility();
 });

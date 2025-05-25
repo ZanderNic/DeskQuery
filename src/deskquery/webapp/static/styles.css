@@ -297,6 +297,34 @@ html, body {
   background-color: #121212;
 }
 
+#empty-chat-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  color: #aaa;
+  font-size: 22px;
+  font-weight: 500;
+  padding: 20px;
+  width: 100%;
+  max-width: 1000px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+#empty-chat-overlay.hidden {
+  display: none;
+}
+
+#empty-chat-overlay h2 {
+  margin-bottom: 8px;
+}
+
+#empty-chat-overlay p {
+  margin-top: 0;
+}
+
 .chat-group {
   width: 100%;
   padding: 8px 14px;
