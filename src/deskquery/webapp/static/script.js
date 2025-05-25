@@ -121,7 +121,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await res.json();
       currentChatId = data.chat_id;
-      loadChatList(); // refresh sidebar to include the new chat
+      await loadChatList();             // refresh sidebar to include the new chat
+      await loadChat(currentChatId);    // set new chat as active chat
     }
 
     // Add spinner + "Thinking..." message
@@ -316,20 +317,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const chat = await res.json();
     chatContainer.innerHTML = '';
     currentChatId = chat.chat_id;
-    chat.messages.forEach(m => appendMessage(m.content, m.role === 'user' ? 'user' : 'bot'));
+    chat.messages.forEach(m => appendMessage(m.content, m.role === 'user' ? 'user' : 'bot'));     // show msg in chat
+
+    document.querySelectorAll('.chat-entry').forEach(entry => {             // set active chat in history to indicate witch one is active
+      const span = entry.querySelector('.chat-title');
+      if (span && span.getAttribute('data-id') === chatId) {
+        entry.classList.add('active');
+      } else {
+        entry.classList.remove('active');
+      }
+    });
   }
 
+
   document.getElementById('new-chat-btn').onclick = async () => {
-    const res = await fetch('/chats/new', {
+    const res = await fetch('/chats/new', {                // get a new chat from the chats/new endpoint
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
 
     const data = await res.json();
     currentChatId = data.chat_id;
-    chatContainer.innerHTML = '';
-    loadChatList();
+    chatContainer.innerHTML = '';         // reset chat container to cantain nothing in new chat
+    
+    loadChatList();                     // load the chat list with the new chat added
+    await loadChat(currentChatId);      // select the new chat
   };
+
 
   // initialize setup
   loadChatList();

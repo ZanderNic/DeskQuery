@@ -170,6 +170,10 @@ html, body {
   color: #666666;
 }
 
+.chat-entry.active {
+  background-color: #424242;
+}
+
 #main {
   flex: 1;
   display: flex;
@@ -200,7 +204,6 @@ html, body {
   justify-content: center;
   align-items: center;
   height: 100%;
-  /* padding: 0 10px; */
 }
 
 #model-selector-btn {
