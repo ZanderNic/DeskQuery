@@ -19,7 +19,7 @@ function_registry = {
     "compare_utilization_before_after_policy": compare_utilization_before_after_policy,
 
     # Employee behavior
-    "get_avg_booking_per_employee": get_avg_booking_per_employee,
+    "get_avg_employee_bookings": get_avg_employee_bookings,
     "get_booking_repeat_pattern": get_booking_repeat_pattern,
     "get_booking_clusters": get_booking_clusters,
     "get_co_booking_frequencies": get_co_booking_frequencies,
