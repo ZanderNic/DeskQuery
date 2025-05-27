@@ -75,7 +75,7 @@ def join_variable_bookings(sheets, desk_room_mapping):
 
     return data_variable
 
-def create_dataset(path: Path= (Path(__file__).resolve().parent.parent / 'data' / 'OpTisch_anonymisiert.xlsx')) -> Dataset:
+def create_dataset(path: Path = (Path(__file__).resolve().parent.parent / 'data' / 'OpTisch_anonymisiert.xlsx')) -> Dataset:
     """This Function denormalizes the excel file to make it easier to handle.
 
     Returns:
@@ -115,7 +115,7 @@ class Dataset(pd.DataFrame):
             return wrapper
         return decorator
 
-    def __init__(self, data, *args, **kwargs):
+    def __init__(self, data = None, *args, **kwargs):
         super().__init__(data, *args, **kwargs)
 
     @classmethod

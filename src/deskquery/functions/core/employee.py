@@ -12,13 +12,13 @@ import plotly.express as px
 from collections import Counter
 
 from deskquery.data.dataset import Dataset
-from deskquery.functions.types import FunctionRegistryExpectedFormat
+from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction   
 
 def get_avg_employee_bookings(
     dataset: Dataset,
     user_names: Optional[str | Sequence[str]] = None,
     user_ids: Optional[int | Sequence[int]] = None,
-    num_employees: int = 10,
+    num_employees: Optional[int] = None,
     return_total_mean: bool = False,
     granularity: Literal["day", "week", "month", "year"] = 'year',
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
@@ -34,7 +34,8 @@ def get_avg_employee_bookings(
         dataset = dataset.drop_fixed()
     if not include_double_bookings:
         dataset = dataset.drop_double_bookings()
-
+    #PlotForFunction.default_plot = generate_heatmap()
+    #PlotForFunction.avaiable_plots = [generate_heatmap]
     if user_ids or user_names:
         user_ids = [] if not user_ids else user_ids
         user_names = [] if not user_names else user_names
@@ -64,10 +65,7 @@ def get_avg_employee_bookings(
     if return_total_mean:
         avg_bookings = avg_bookings.mean()
 
-    return {
-        "data": avg_bookings.to_dict(),
-        "plotable": True
-    }
+    return avg_bookings.to_dict()
 
 def get_booking_repeat_pattern(
     dataset: Dataset,
@@ -208,7 +206,7 @@ def get_co_booking_frequencies(
 
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
-    dataset = create_dataset()  
+    dataset = create_dataset()
     double_bookings = dataset.get_double_bookings()
     print(double_bookings)
     result = get_avg_employee_bookings(dataset, user_ids=61, include_fixed=False)
