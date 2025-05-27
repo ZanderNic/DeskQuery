@@ -1,5 +1,5 @@
 #!/usr/bin/env python 
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Sequence
 from datetime import datetime
 import json
 
@@ -16,6 +16,8 @@ from deskquery.functions.types import FunctionRegistryExpectedFormat
 
 def get_avg_employee_bookings(
     dataset: Dataset,
+    user_names: Optional[str | Sequence[str]] = None,
+    user_ids: Optional[int | Sequence[int]] = None,
     num_employees: int = 10,
     return_total_mean: bool = False,
     granularity: Literal["day", "week", "month", "year"] = 'year',
@@ -32,6 +34,11 @@ def get_avg_employee_bookings(
         dataset = dataset.drop_fixed()
     if not include_double_bookings:
         dataset = dataset.drop_double_bookings()
+
+    if user_ids or user_names:
+        user_ids = [] if not user_ids else user_ids
+        user_names = [] if not user_names else user_names
+        dataset = dataset.get_users(user_names, user_ids)
 
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
@@ -53,7 +60,7 @@ def get_avg_employee_bookings(
         return round(mean, 2)
     avg_bookings = dataset.group_bookings(by="userId", aggregation={column_name: (column_name, mean)}, agg_col_name=column_name)
     if num_employees:
-        avg_bookings = avg_bookings.sort_values(by=column_name, ascending=False).head(num_employees)
+        avg_bookings = avg_bookings.sort_bookings(by=column_name, ascending=False).head(num_employees)
     if return_total_mean:
         avg_bookings = avg_bookings.mean()
 
@@ -64,7 +71,7 @@ def get_avg_employee_bookings(
 
 def get_booking_repeat_pattern(
     dataset: Dataset,
-    most_used_desk: int = 1, # TO DO: Still needs to be implemented 
+    most_used_desk: int = 1, # TODO: Still needs to be implemented 
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
@@ -121,7 +128,7 @@ def get_booking_repeat_pattern(
     df[weekday_list] = df[weekday_list].astype(float) 
     df.loc[:, weekday_list] = (df.loc[:, weekday_list].div(df["num_desk_bookings"], axis=0)* 100).round(2)
     df["percentage_of_user"] = (df['num_desk_bookings'] / df.groupby(level='userId')['num_desk_bookings'].transform('sum') * 100).round(2)
-
+    print(df)
     result = df.loc[df.groupby('userId')['num_desk_bookings'].idxmax()]
     result = result.iloc[:, :-2].reset_index()
 
@@ -202,9 +209,7 @@ def get_co_booking_frequencies(
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
     dataset = create_dataset()  
-    # double_bookings = dataset.get_double_bookings()
-    # print(double_bookings)
-    result = get_booking_repeat_pattern(dataset, include_fixed=False)
-    
-    df = pd.DataFrame(result["data"])
-    print(df)
+    double_bookings = dataset.get_double_bookings()
+    print(double_bookings)
+    result = get_avg_employee_bookings(dataset, user_ids=61, include_fixed=False)
+    print(result)
