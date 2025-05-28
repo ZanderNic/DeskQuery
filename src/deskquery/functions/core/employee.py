@@ -85,46 +85,14 @@ def get_booking_repeat_pattern(
         dataset = dataset.drop_fixed()
     # Treating double bookings makes no sense, as no meaningful conclusion can be drawn from them
     dataset = dataset.drop_double_bookings()
-
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
-    desks = dataset.expand_time_intervals_desks("day")
+    df = dataset.expand_time_interval_desk_counter(weekdays=weekdays)
 
-    def weekdays_count(periods):
-        weekdays = [p.weekday for p in periods]
-        counter = Counter(weekdays)    
-        return {day: counter.get(day, 0) for day in range(7)}
-
-    dataset["weekday_count"] = dataset["expanded_desks_day"].apply(weekdays_count)    
-
-    weekday_df = pd.json_normalize(dataset['weekday_count']).fillna(0).astype(int)
-    weekday_list = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    weekday_df.columns = weekday_list
-    weekday_df.index = dataset.index
-
-    dataset = pd.concat([dataset, weekday_df], axis=1)
-
-    dataset["num_desk_bookings"] = desks.apply(len)
-
-    df = dataset.group_bookings(by=["userId", "userName", "deskId"],
-                            aggregation={"num_desk_bookings": ("num_desk_bookings", "sum"),
-                                         "Monday": ("Monday", "sum"),
-                                         "Tuesday": ("Tuesday", "sum"),
-                                         "Wednesday": ("Wednesday", "sum"),
-                                         "Thursday": ("Thursday", "sum"),
-                                         "Friday": ("Friday", "sum"),
-                                         "Saturday": ("Saturday", "sum"),
-                                         "Sunday": ("Sunday", "sum")
-                                         },
-                            agg_col_name="num_desk_bookings")
-
-    df[weekday_list] = df[weekday_list].astype(float) 
-    df.loc[:, weekday_list] = (df.loc[:, weekday_list].div(df["num_desk_bookings"], axis=0)* 100).round(2)
+    df.loc[:, weekdays] = (df.loc[:, weekdays].div(df["num_desk_bookings"], axis=0)* 100).round(2)
     df["percentage_of_user"] = (df['num_desk_bookings'] / df.groupby(level='userId')['num_desk_bookings'].transform('sum') * 100).round(2)
-
     result = df.loc[df.groupby('userId')['num_desk_bookings'].idxmax()]
     result = result.iloc[:, :-2].reset_index()
-
 
     return {
         "data": result.to_dict(),
@@ -179,15 +147,15 @@ def get_booking_clusters(
 
 def get_co_booking_frequencies(
     dataset: Dataset,
-    min_shared_days: int, 
-    same_room_only: bool, 
+    min_shared_days: int = None, 
+    same_room_only: bool = None, 
+    include_fixed: bool = True,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None
 )-> None:
     """
     Detects employee pairs who frequently book on the same days.
-
     Args:
         min_shared_days: Minimum number of shared booking days.
         same_room_only: If True, limits to co-bookings in the same room.
@@ -197,14 +165,52 @@ def get_co_booking_frequencies(
 
     Returns:
     """
-    pass
+    # gibt es Mitarbeiter, die immer am gleichen Tag arbeiten?
+    # gibt es Mitarbeiter die sich öfters im Büro sehen?
+    
+    # min shared -> wie oft die Leute zusammen buchen mit einem treshhold
+    # 
+
+    if not include_fixed:
+        dataset = dataset.drop_fixed()
+    # Treating double bookings makes no sense
+    dataset = dataset.drop_double_bookings()
+
+    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    dataset = dataset.get_days(weekdays=weekdays)
+    desks = dataset.expand_time_intervals_desks("day")
+    
+    dataset = dataset.sort_values("blockedFrom")
+    print(dataset)
+    
+
+
+
+
+def testing(dataset: Dataset,
+            weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"],
+            start_date = None,
+            end_date = None):
+    
+    dataset = dataset.drop_double_bookings()
+
+    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    dataset = dataset.get_days(weekdays=weekdays)
+    print(dataset)
+    desk = dataset.expand_time_interval_desk_counter()
+    print(desk)
+    return dataset
+
+
 
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
     dataset = create_dataset()  
     # double_bookings = dataset.get_double_bookings()
     # print(double_bookings)
+
     result = get_booking_repeat_pattern(dataset, include_fixed=False)
-    
     df = pd.DataFrame(result["data"])
     print(df)
+
+    
