@@ -80,7 +80,7 @@ def get_avg_employee_bookings(
                                                           title=column_name,
                                                           xaxis_title="user_name" if return_user_names else "user_id",
                                                           yaxis_title=column_name),
-                           available_plots=[generate_barchart])
+                           available_plots=[generate_barchart, generate_heatmap])
 
     return FunctionRegistryExpectedFormat(data=avg_bookings, plot=plot)
 

@@ -3,7 +3,6 @@ from typing import Optional, List, Callable
 from datetime import datetime
 import plotly.graph_objects as go
 from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot, PlotFunction
-from typing import Sequence 
 
 def generate_plot_for_function(func_result: FunctionRegistryExpectedFormat,
                                additional_plot_args: dict[str, str] = {},
@@ -20,6 +19,9 @@ def generate_plot_for_function(func_result: FunctionRegistryExpectedFormat,
     # Not needed since we will always call a function before and if default plot is not set there are anyway no available plots
     # if not plot.default_plot and not additional_plot_args:
 
+    if plot_to_generate:
+        use_default_plot = False
+
     if use_default_plot:
         return plot.default_plot
     else:
@@ -31,12 +33,12 @@ def generate_plot_for_function(func_result: FunctionRegistryExpectedFormat,
             return "The asked plot is not available for this kind of data."
 
 if __name__ == "__main__":
-    from deskquery.functions.core.employee import get_avg_employee_bookings
+    from deskquery.functions.core.employee import get_avg_employee_bookings, generate_heatmap
     from deskquery.data.dataset import create_dataset
     dataset = create_dataset()
     response = get_avg_employee_bookings(dataset, num_employees=20)
 
-    plot_response = generate_plot_for_function(response)
+    plot_response = generate_plot_for_function(response, plot_to_generate=generate_heatmap)
     if isinstance(plot_response, Plot):
         plot_response.write_html("hist.html")
     else:
