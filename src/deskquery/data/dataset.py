@@ -303,6 +303,38 @@ class Dataset(pd.DataFrame):
         self[column_name] = self[column_name].map(Counter)
         return self
     
+    def expand_time_interval_desk_counter(self, weekdays=["monday", "tuesday", "wednesday", "thursday", "friday"]):
+        """
+        Function creates a dataframe which shows the username,
+        when he booked which tables, as well as the number of table bookings with the number on which weekday they were booked
+        """
+        
+        desks = self.expand_time_intervals_desks("day")
+        def weekdays_count(periods):
+            weekdays = [p.weekday for p in periods]
+            counter = Counter(weekdays)    
+            return {day: counter.get(day, 0) for day in weekdays}
+        self["weekday_count"] = self["expanded_desks_day"].apply(weekdays_count)   
+
+        weekday_df = pd.json_normalize(self['weekday_count']).fillna(0).astype(int)
+        weekday_df.columns = weekdays
+        weekday_df.index = self.index
+
+        df = pd.concat([self, weekday_df], axis=1)
+        df["num_desk_bookings"] = desks.apply(len)
+
+        aggregation = {"num_desk_bookings": ("num_desk_bookings", "sum"),}
+        aggregation.update({col: (col, "sum") for col in weekdays})
+
+        df = df.group_bookings(by=["userId", "userName", "deskId"],
+                            aggregation=aggregation,
+                            agg_col_name="num_desk_bookings")
+
+        df[weekdays] = df[weekdays].astype(float) 
+        self.drop(columns=["weekday_count"], inplace=True)
+        return df
+
+    
     def get_double_bookings(self, start_col="blockedFrom", end_col="blockedUntil") -> Dataset:
         def has_overlapping_bookings(group):
             """All bookings for a user are processed. "Unlimited" is converted to a date far in the future. 

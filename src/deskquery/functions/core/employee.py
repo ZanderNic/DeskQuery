@@ -187,22 +187,6 @@ def get_co_booking_frequencies(
 
 
 
-def testing(dataset: Dataset,
-            weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"],
-            start_date = None,
-            end_date = None):
-    
-    dataset = dataset.drop_double_bookings()
-
-    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
-    dataset = dataset.get_days(weekdays=weekdays)
-    print(dataset)
-    desk = dataset.expand_time_interval_desk_counter()
-    print(desk)
-    return dataset
-
-
-
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
     dataset = create_dataset()  
