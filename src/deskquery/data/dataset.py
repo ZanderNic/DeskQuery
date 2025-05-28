@@ -75,6 +75,13 @@ def join_variable_bookings(sheets, desk_room_mapping):
 
     return data_variable
 
+def map_usernames(data):
+    s = data.drop_duplicates(subset=["userId"])[["userId", "userName"]].copy()
+    dup = s["userName"].duplicated(keep=False)
+    s.loc[dup, "userName"] = s["userName"] + "_" + s["userId"].astype(str)
+    return dict(zip(s["userId"], s["userName"]))
+
+
 def create_dataset(path: Path = (Path(__file__).resolve().parent.parent / 'data' / 'OpTisch_anonymisiert.xlsx')) -> Dataset:
     """This Function denormalizes the excel file to make it easier to handle.
 
@@ -89,7 +96,7 @@ def create_dataset(path: Path = (Path(__file__).resolve().parent.parent / 'data'
     data = pd.concat([data_fixed, data_variable], axis=0).rename(columns={"id": "bookingId"}).reset_index(drop=True)
     # its a float before since there are some NaN values in it
     data["userId"] = data["userId"].astype(int)
-    userid_username_mapping = data.set_index("userId")[["userName"]].to_dict()
+    userid_username_mapping = map_usernames(data)
     Dataset.set_userid_username_mapping(userid_username_mapping)
 
     return Dataset(data)
@@ -97,7 +104,7 @@ def create_dataset(path: Path = (Path(__file__).resolve().parent.parent / 'data'
 class Dataset(pd.DataFrame):
     # both things make it easier/more efficent to map ids to names in case of sliced datasets 
     _desk_room_mapping: Optional[pd.DataFrame] = None
-    _userid_username_mapping: Optional[dict] = None
+    _userid_username_mapping: dict
     _date_format_mapping: dict[str, str] = {
         "year": "Y",
         "month": "M",

@@ -1,16 +1,24 @@
-from typing import Any, Dict, Optional
+from __future__ import annotations
+from typing import Any, Dict, Optional, Sequence, Callable, List
 import plotly.graph_objects as go
+from abc import ABC, abstractmethod
 
 class FunctionRegistryExpectedFormat(Dict):
     data: dict[str, Any]
+    plot: PlotForFunction
 
-class PlotFunctionReturnFormat(go.Figure):
-    data: go.Figure
+class Plot(go.Figure):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+class PlotFunction(ABC):
+    @abstractmethod
+    def __call__(self, data, *args, **kwargs) -> Plot:
+        pass
 
 class PlotForFunction:
-    default_plot: Optional[Any] = None
-    avaiable_plots: Optional[Any] = None
-
-    @classmethod
-    def __if__(cls):
-        return True if cls.default_plot else False
+    def __init__(self, default_plot: Plot, available_plots: List[PlotFunction]):
+        self.default_plot = default_plot
+        if default_plot not in available_plots:
+            available_plots.append(default_plot)
+        self.available_plots = available_plots

@@ -12,7 +12,8 @@ import plotly.express as px
 from collections import Counter
 
 from deskquery.data.dataset import Dataset
-from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction   
+from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction
+from deskquery.functions.core.helper.plot_helper import generate_heatmap, generate_barchart, generate_hist, generate_map
 
 def get_avg_employee_bookings(
     dataset: Dataset,
@@ -26,6 +27,7 @@ def get_avg_employee_bookings(
     end_date: Optional[datetime] = None,
     include_double_bookings: bool = False,
     include_fixed: bool = True,
+    return_user_names: bool = True
 ) -> FunctionRegistryExpectedFormat:
     """
     Calculates average bookings per employee per day, week, month or year.
@@ -34,8 +36,7 @@ def get_avg_employee_bookings(
         dataset = dataset.drop_fixed()
     if not include_double_bookings:
         dataset = dataset.drop_double_bookings()
-    #PlotForFunction.default_plot = generate_heatmap()
-    #PlotForFunction.avaiable_plots = [generate_heatmap]
+
     if user_ids or user_names:
         user_ids = [] if not user_ids else user_ids
         user_names = [] if not user_names else user_names
@@ -46,7 +47,6 @@ def get_avg_employee_bookings(
 
     column_name = f"avg_bookings_{granularity}"
     dataset = dataset.expand_time_intervals_counts(granularity, column_name=column_name)
-
     def mean(series):
         """Calc the mean for the bookings correctly (with filling possible gaps)"""
         def fill_granularity_gaps(counter: Counter) -> Counter:
@@ -65,7 +65,17 @@ def get_avg_employee_bookings(
     if return_total_mean:
         avg_bookings = avg_bookings.mean()
 
-    return avg_bookings.to_dict()
+    if return_user_names:
+        avg_bookings.index = avg_bookings.index.map(Dataset._userid_username_mapping.get)
+
+    avg_bookings = avg_bookings.to_dict()
+    plot = PlotForFunction(default_plot=generate_barchart(data=avg_bookings,
+                                                          title=column_name,
+                                                          xaxis_title="user_name" if return_user_names else "user_id",
+                                                          yaxis_title=column_name),
+                           available_plots=[generate_barchart, generate_heatmap, generate_hist])
+
+    return FunctionRegistryExpectedFormat(data=avg_bookings, plot=plot)
 
 def get_booking_repeat_pattern(
     dataset: Dataset,
@@ -208,6 +218,5 @@ if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
     dataset = create_dataset()
     double_bookings = dataset.get_double_bookings()
-    print(double_bookings)
     result = get_avg_employee_bookings(dataset, user_ids=61, include_fixed=False)
     print(result)
