@@ -91,7 +91,6 @@ def mean_utilization(
         }
     """
 
-
     if sum([by_room, by_desks, by_day]) != 1:
         raise ValueError("You must set exactly one of by_room, by_desks, or by_day to True.")
 
@@ -226,7 +225,6 @@ def utilization_stats(
         }
     """
 
-
     if sum([by_room, by_desks, by_day]) != 1:
         raise ValueError("You must set exactly one of by_room, by_desks, or by_day to True.")
 
@@ -349,7 +347,6 @@ def detect_utilization_anomalies(
 
 
 ####### Helpers ########################################################################################################################################################################### 
-
 
 def expand_fixed_bookings(data, start_col="blockedFrom", end_col="blockedUntil", weekday: list[str] = None):
     """
@@ -505,7 +502,7 @@ if __name__ == "__main__":
     end = datetime(2025, 6, 1)
 
 
-    ########## Test analyze_utilization ################################################
+    ########## Test mean_utilization ################################################
 
     print("=== Utilization by room ===")
     return_dict = mean_utilization(
@@ -527,7 +524,7 @@ if __name__ == "__main__":
         start_date=start,
         end_date=end,
         threshold=0.6,
-        count_below=False
+        from_bottom=False
     )
     pprint(return_dict["data"]["utilization"])
     print("Desks over 60% Utalization:", return_dict["data"]["count"])
@@ -542,7 +539,7 @@ if __name__ == "__main__":
         start_date=start,
         end_date=end,
         top_or_bottom_n = 5,
-        count_below = False
+        from_bottom = False
     )
     print("Top 5 Desks by Utalization:", return_dict["data"]["utilization"])
     print()
