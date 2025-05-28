@@ -9,7 +9,7 @@ import pandas as pd
 from deskquery.data.dataset import Dataset
 
 
-def analyze_utilization(
+def mean_utilization(
     data: Dataset,
     include_fixed: bool = False,
     
@@ -17,65 +17,77 @@ def analyze_utilization(
     by_room: bool = False,
     by_day: bool = False,
     
-    desk_id: Optional[str] = None,
-    room_name: Optional[str] = None,
-    
+    desk_id: Optional[List[str]] = None,
+    room_name: Optional[List[str]] = None,
     weekday: Optional[List[str]] = None,
+    
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
 
     threshold: Optional[float] = None,
-    count_below: bool = False,
+    top_or_bottom_n: Optional[int] = None,
+    from_bottom: Optional[bool] = False,
 ) -> dict[str, object]:
     """
-    Computes statistical measures of workspace utilization over time, grouped by desk, room, or weekday.
+    Computes mean utilization of workspace utilization over a given timeframe, grouped by either desk, room, or weekday. Should 
+    only be used to group by one of those attributes.
 
-    Utilization is calculated by dividing the number of actual bookings by the number of possible bookings 
-    per group (based on date range, included weekdays, and number of desks). Daily booking counts are used 
-    to compute variability (min, max, variance) per group key.
+    Utilization is defined as the number of actual bookings divided by the number of possible bookings per group.
+    The possible bookings depend on the time window, included weekdays, selected desk_ids or selected room_names.
+
+    Optionally, the result can be filtered by a threshold or by selecting only the top or bottom N utilization values by 
+    providing a threshold and selecting with from_bottom = True all entities where utilization <= threshold or with False 
+    utilization >= threshold. The same goes with the top_or_bottom_n where from_bottom = False means the top N utilizations
+    and with from_bottom = True the bottom N utilizations.
 
     Args:
         data (Dataset): The dataset containing all bookings.
-        include_fixed (bool): If True, expands recurring bookings across valid weekdays.
-        by_desks (bool): If True, groups statistics by desk (e.g., 'Room_3').
+        include_fixed (bool): If True, expands recurring (fixed) bookings across valid weekdays.
+        
+        by_desks (bool): If True, groups statistics by individual desk (e.g., 'Room_3').
         by_room (bool): If True, groups statistics by room.
-        by_day (bool): If True, groups statistics by weekday (e.g., 'Monday').
-        desk_id (Optional[List[int]]): If provided, filters the analysis to the selected desk IDs.
-        room_name (Optional[List[str]]): If provided, filters the analysis to the selected rooms.
-        weekday (List[str]): List of weekday names (e.g., ['monday', 'friday']) to include. Defaults to weekdays (Mon–Fri).
+        by_day (bool): If True, groups statistics by weekday name (e.g., 'Monday').
+        
+        desk_id (Optional[List[str]]): If provided, filters the analysis to the selected desk IDs.
+        room_name (Optional[List[str]]): If provided, filters the analysis to the selected room names.
+        weekday (Optional[List[str]]): List of weekday names (e.g., ['monday', 'friday']) to include in analysis.
+        
         start_date (Optional[datetime]): Start of the evaluation period. Defaults to 90 days ago.
         end_date (Optional[datetime]): End of the evaluation period. Defaults to today.
+        
+        threshold (Optional[float]): Optional minimum or maximum utilization threshold to filter 
+                                     results where min or max is selcted by the from bottom bool.
+        top_or_bottom_n (Optional[int]): If set, returns only the top or bottom N utilization entries.
+        from_bottom (Optional[bool]): Direction of the `top_or_bottom_n` filter. 
+                                      If True, selects the lowest N or utilization <= threshold (bottom performers).
+                                      If False, selects the highest N or utilization >= threshold (top performers).
 
     Returns:
         dict: A structured result containing:
-            - "data": dict[str, dict[str, float]]
-                Mapping from group key to:
-                {
-                    "mean": Average utilization over time,
-                    "min": Lowest daily utilization,
-                    "max": Highest daily utilization,
-                    "var": Variance of daily utilization
-                }
-            - "error": int
-                0 if successful
-            - "error_msg": str
-                Empty string if no error
-            - "plotable": int
-                Placeholder for visualization integration (always 0)
+            - "data": {
+                  "utilization": dict[str, float],  # Utilization per group
+                  "count": int                      # Number of groups in result
+              }
+            - "error": int                         # 0 if successful
+            - "error_msg": str                     # Empty if no error
+            - "plotable": bool                     # Always True
 
     Raises:
         ValueError: If none or more than one of `by_desks`, `by_room`, or `by_day` is set to True.
 
     Example:
-        >>> utilization_stats(data, by_room=True, include_fixed=True)
+        >>> analyze_utilization(data, by_room=True, include_fixed=True)
         {
             "data": {
-                "Room A": {"mean": 0.63, "min": 0.4, "max": 0.9, "var": 0.02},
-                "Room B": {"mean": 0.12, "min": 0.0, "max": 0.3, "var": 0.01}
+                "utilization": {
+                    "Room A": 0.63,
+                    "Room B": 0.12
+                },
+                "count": 2
             },
             "error": 0,
             "error_msg": "",
-            "plotable": 0
+            "plotable": True
         }
     """
 
@@ -128,12 +140,15 @@ def analyze_utilization(
     else:
         raise ValueError("Invalid aggregation selection.")
 
-    if threshold is not None:
-        if count_below:
-            utilization = utilization[utilization < threshold]
+    if threshold:
+        if from_bottom:
+            utilization = utilization[utilization <= threshold]
         else:
             utilization = utilization[utilization >= threshold]
-            
+        
+    if top_or_bottom_n:
+        utilization = utilization.sort_values(ascending=from_bottom)[:top_or_bottom_n]
+        
     return {
         "data": {
             "utilization": utilization.to_dict(), 
@@ -209,7 +224,6 @@ def utilization_stats(
             "plotable": True
         }
     """
-
 
     if sum([by_room, by_desks, by_day]) != 1:
         raise ValueError("You must set exactly one of by_room, by_desks, or by_day to True.")
@@ -297,7 +311,7 @@ def detect_utilization_anomalies(
                 "plotable": True
             }
     """
-    result = analyze_utilization(
+    result = mean_utilization(
         data = data,
         include_fixed=include_fixed,
          
@@ -333,7 +347,6 @@ def detect_utilization_anomalies(
 
 
 ####### Helpers ########################################################################################################################################################################### 
-
 
 def expand_fixed_bookings(data, start_col="blockedFrom", end_col="blockedUntil", weekday: list[str] = None):
     """
@@ -379,9 +392,11 @@ def expand_fixed_bookings(data, start_col="blockedFrom", end_col="blockedUntil",
 def prepare_utilization_dataframe(
     data: Dataset,
     include_fixed: bool = False,
-    desk_id: Optional[str] = None,
-    room_name: Optional[str] = None,
-    weekday: List[str] = None,
+    
+    desk_id: Optional[List[str]] = None,
+    room_name: Optional[List[str]] = None,
+    weekday: Optional[List[str]] = None,
+    
     start_date: datetime = None,
     end_date: datetime = None,
 ) -> pd.DataFrame:
@@ -487,10 +502,10 @@ if __name__ == "__main__":
     end = datetime(2025, 6, 1)
 
 
-    ########## Test analyze_utilization ################################################
+    ########## Test mean_utilization ################################################
 
     print("=== Utilization by room ===")
-    return_dict = analyze_utilization(
+    return_dict = mean_utilization(
         data=dataset,
         by_room=True,
         include_fixed=True,
@@ -502,21 +517,36 @@ if __name__ == "__main__":
     print()
    
     print("=== Utilization by desk with threshold > 0.6 ===")
-    return_dict = analyze_utilization(
+    return_dict = mean_utilization(
         data=dataset,
         by_desks=True,
         include_fixed=True,
         start_date=start,
         end_date=end,
         threshold=0.6,
-        count_below=False
+        from_bottom=False
     )
     pprint(return_dict["data"]["utilization"])
     print("Desks over 60% Utalization:", return_dict["data"]["count"])
     print()
+    
+    
+    print("=== Utilization by desk with top 5 desks ===")
+    return_dict = mean_utilization(
+        data=dataset,
+        by_desks=True,
+        include_fixed=True,
+        start_date=start,
+        end_date=end,
+        top_or_bottom_n = 5,
+        from_bottom = False
+    )
+    print("Top 5 Desks by Utalization:", return_dict["data"]["utilization"])
+    print()
+
 
     print("=== Utilization by weekday for monday, tuesday, friday ===")
-    return_dict = analyze_utilization(
+    return_dict = mean_utilization(
         data=dataset,
         by_day=True,
         weekday=["monday", "tuesday", "friday"],

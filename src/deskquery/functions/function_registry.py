@@ -8,7 +8,7 @@ import inspect
 
 function_registry = {
     # Utilization
-    "analyze_utilization": analyze_utilization,
+    "mean_utilization": mean_utilization,
     "utilization_stats": utilization_stats,
     "detect_utilization_anomalies": detect_utilization_anomalies,
 
