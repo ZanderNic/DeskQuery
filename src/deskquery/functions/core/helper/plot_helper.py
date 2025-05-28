@@ -1,10 +1,32 @@
 #!/usr/bin/env python 
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Sequence
 from datetime import datetime
 import plotly.graph_objects as go
-from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot  
+from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot, FunctionData
 
-def generate_heatmap(data: FunctionRegistryExpectedFormat, 
+def create_plotly_figure(traces: Sequence[go.Trace],
+                      title: Optional[str] = None, 
+                      xaxis_title: Optional[str] = None,
+                      yaxis_title: Optional[str] = None):
+    fig = Plot()
+
+    for trace in traces:
+        fig.add_trace(trace)
+
+    fig.update_layout(
+        title=title,
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        template="plotly_white",
+        bargap=0.15,
+        font=dict(size=14),
+        margin=dict(l=40, r=40, t=60, b=40)
+    )
+
+    return fig
+
+
+def generate_heatmap(data: Plot, 
                       title: Optional[str] = None, 
                       xaxis_title: Optional[str] = None,
                       yaxis_title: Optional[str] = None
@@ -47,33 +69,24 @@ def generate_heatmap(data: FunctionRegistryExpectedFormat,
 
     # return fig
 
-def generate_barchart(data: FunctionRegistryExpectedFormat, 
+def generate_barchart(data: FunctionData, 
                       title: Optional[str] = None, 
                       xaxis_title: Optional[str] = None,
                       yaxis_title: Optional[str] = None
                       ) -> Plot:
     """Generates a barchart"""
-    fig = Plot()
-
     for trace_name, trace_data in data.items():
-        fig.add_trace(
-            go.Bar(
-                name=trace_name,
-                x=list(trace_data.keys()),
-                y=list(trace_data.values()),
-                textposition="auto",
-            )
+        trace = go.Bar(
+            name=trace_name,
+            x=list(trace_data.keys()),
+            y=list(trace_data.values()),
+            textposition="auto",
         )
-
-    fig.update_layout(
-        title=title,
-        xaxis_title=xaxis_title,
-        yaxis_title=yaxis_title,
-        template="plotly_white",
-        bargap=0.15,
-        font=dict(size=14),
-        margin=dict(l=40, r=40, t=60, b=40)
-    )
+    
+    fig = create_plotly_figure([trace], 
+                         title=title, 
+                         xaxis_title=xaxis_title, 
+                         yaxis_title=yaxis_title)
 
     return fig
 

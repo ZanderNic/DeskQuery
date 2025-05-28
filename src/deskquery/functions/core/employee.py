@@ -27,7 +27,8 @@ def get_avg_employee_bookings(
     end_date: Optional[datetime] = None,
     include_double_bookings: bool = False,
     include_fixed: bool = True,
-    return_user_names: bool = True
+    return_user_names: bool = True,
+    include_non_booking_users: bool = False
 ) -> FunctionRegistryExpectedFormat:
     """
     Calculates average bookings per employee per day, week, month or year.
@@ -60,20 +61,26 @@ def get_avg_employee_bookings(
 
         return round(mean, 2)
     avg_bookings = dataset.group_bookings(by="userId", aggregation={column_name: (column_name, mean)}, agg_col_name=column_name)
+    if include_non_booking_users:
+        missing_user = set(Dataset._userid_username_mapping.keys()) - set(avg_bookings.index)
+        missing_user = pd.DataFrame.from_dict({user_id: 0 for user_id in missing_user}, 
+                                              orient="index", 
+                                              columns=avg_bookings.columns)
+        avg_bookings = pd.concat([avg_bookings, missing_user])
     if num_employees:
         avg_bookings = avg_bookings.sort_bookings(by=column_name, ascending=False).head(num_employees)
+        if return_user_names:
+            avg_bookings.index = avg_bookings.index.map(Dataset._userid_username_mapping.get)
+    
     if return_total_mean:
-        avg_bookings = avg_bookings.mean()
-
-    if return_user_names:
-        avg_bookings.index = avg_bookings.index.map(Dataset._userid_username_mapping.get)
-
+        avg_bookings = avg_bookings.mean_bookings()
+    
     avg_bookings = avg_bookings.to_dict()
     plot = PlotForFunction(default_plot=generate_barchart(data=avg_bookings,
                                                           title=column_name,
                                                           xaxis_title="user_name" if return_user_names else "user_id",
                                                           yaxis_title=column_name),
-                           available_plots=[generate_barchart, generate_heatmap, generate_hist])
+                           available_plots=[generate_barchart])
 
     return FunctionRegistryExpectedFormat(data=avg_bookings, plot=plot)
 

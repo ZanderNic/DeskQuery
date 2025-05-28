@@ -1,11 +1,39 @@
 from __future__ import annotations
-from typing import Any, Dict, Optional, Sequence, Callable, List
+from typing import Any, MutableMapping, Iterator, Dict, Optional, Sequence, Callable, List
 import plotly.graph_objects as go
 from abc import ABC, abstractmethod
+from deskquery.data.dataset import Dataset
 
-class FunctionRegistryExpectedFormat(Dict):
-    data: dict[str, Any]
-    plot: PlotForFunction
+class FunctionData(Dict):
+    data: dict[str, dict[str, Any]]
+
+class FunctionRegistryExpectedFormat(MutableMapping):
+    def __init__(self, data: FunctionData, plot: PlotForFunction):
+        self.data = data
+        self.plot = plot
+
+    def __getitem__(self, key: str) -> Any:
+        if key == "plot":
+            return self.plot
+        elif key == "data":
+            return self.data
+        else:
+            raise KeyError(f"{key} not defined.")
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.data)
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __str__(self) -> str:
+        return f"{{data: {self.data}, plot: {self.plot}}}"
 
 class Plot(go.Figure):
     def __init__(self, *args, **kwargs):
@@ -13,7 +41,7 @@ class Plot(go.Figure):
 
 class PlotFunction(ABC):
     @abstractmethod
-    def __call__(self, data, *args, **kwargs) -> Plot:
+    def __call__(self, data: Dataset, *args: Any, **kwargs: Any) -> Plot:
         pass
 
 class PlotForFunction:

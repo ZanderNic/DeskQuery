@@ -76,11 +76,10 @@ def join_variable_bookings(sheets, desk_room_mapping):
     return data_variable
 
 def map_usernames(data):
-    s = data.drop_duplicates(subset=["userId"])[["userId", "userName"]].copy()
-    dup = s["userName"].duplicated(keep=False)
-    s.loc[dup, "userName"] = s["userName"] + "_" + s["userId"].astype(str)
-    return dict(zip(s["userId"], s["userName"]))
-
+    # adds the id to the duplicates names to be sure that it can be used as index (unique)
+    dup = data["userName"].duplicated(keep=False)
+    data.loc[dup, "userName"] = data["userName"] + "_" + data["ID"].astype(str)
+    return dict(zip(data["ID"], data["userName"]))
 
 def create_dataset(path: Path = (Path(__file__).resolve().parent.parent / 'data' / 'OpTisch_anonymisiert.xlsx')) -> Dataset:
     """This Function denormalizes the excel file to make it easier to handle.
@@ -96,7 +95,7 @@ def create_dataset(path: Path = (Path(__file__).resolve().parent.parent / 'data'
     data = pd.concat([data_fixed, data_variable], axis=0).rename(columns={"id": "bookingId"}).reset_index(drop=True)
     # its a float before since there are some NaN values in it
     data["userId"] = data["userId"].astype(int)
-    userid_username_mapping = map_usernames(data)
+    userid_username_mapping = map_usernames(sheets["user"])
     Dataset.set_userid_username_mapping(userid_username_mapping)
 
     return Dataset(data)
@@ -310,6 +309,12 @@ class Dataset(pd.DataFrame):
         return Dataset(grouped_data)
 
     @return_if_empty("self")
+    def mean_bookings(self):
+        self = self.mean().to_frame().T
+        self.index = ["total_mean"]
+        return self
+
+    @return_if_empty("self")
     def expand_time_intervals(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None):
         def get_period(row):
             dates = pd.date_range(row[start_col], row[end_col], freq='B').to_period(self._date_format_mapping[granularity])
@@ -395,7 +400,6 @@ class Dataset(pd.DataFrame):
         """
 
         return self["userId"].nunique()
-
 
 if __name__ == "__main__":
     data = create_dataset()
