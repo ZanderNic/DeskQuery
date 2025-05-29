@@ -140,6 +140,57 @@ def generate_barchart(data: FunctionData,
 
     return fig
 
+def generate_scatterplot(data: FunctionData, 
+                         title: Optional[str] = None, 
+                         xaxis_title: Optional[str] = None,
+                         yaxis_title: Optional[str] = None
+                         ) -> Plot:
+    """
+    Generates a scatter plot
+    """
+    traces = list()
+    for trace_name, trace_data in data.items():
+        trace = go.Scatter(
+            name=trace_name,
+            x=list(trace_data.keys()),
+            y=list(trace_data.values()),
+            mode="markers",
+        )
+        traces.append(trace)
+
+    fig = create_plotly_figure(traces, 
+                         title=title, 
+                         xaxis_title=xaxis_title, 
+                         yaxis_title=yaxis_title)
+
+    return fig
+
+
+def generate_lineplot(data: FunctionData, 
+                      title: Optional[str] = None, 
+                      xaxis_title: Optional[str] = None,
+                      yaxis_title: Optional[str] = None
+                      ) -> Plot:
+    """
+    Generates a line plot
+    """
+    traces = list()
+    for trace_name, trace_data in data.items():
+        trace = go.Scatter(
+            name=trace_name,
+            x=list(trace_data.keys()),
+            y=list(trace_data.values()),
+            mode="lines",
+        )
+        traces.append(trace)
+
+    fig = create_plotly_figure(traces, 
+                         title=title, 
+                         xaxis_title=xaxis_title, 
+                         yaxis_title=yaxis_title)
+
+    return fig
+
 def generate_hist(data: FunctionRegistryExpectedFormat,
                   nbinsx: Optional[int] = None,
                   title: Optional[str] = None, 

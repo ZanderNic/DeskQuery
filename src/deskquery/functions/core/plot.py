@@ -13,11 +13,7 @@ def generate_plot_for_function(func_result: FunctionRegistryExpectedFormat,
     plot = func_result.plot
 
     if not plot.available_plots:
-        # TODO: Maybe rather return a PlotForFunction Object with an overload to provide the string to handle it better later?
         return "Not plot available for this kind of data."
-
-    # Not needed since we will always call a function before and if default plot is not set there are anyway no available plots
-    # if not plot.default_plot and not additional_plot_args:
 
     if plot_to_generate:
         use_default_plot = False
@@ -28,7 +24,6 @@ def generate_plot_for_function(func_result: FunctionRegistryExpectedFormat,
         # plot_to_generate has to be a function from the plot function filled with arguments from llm
         if plot_to_generate in plot.available_plots:
             return plot_to_generate(data, **additional_plot_args)
-
         else:
             return "The asked plot is not available for this kind of data."
 

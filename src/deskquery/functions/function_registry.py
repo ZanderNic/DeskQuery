@@ -25,9 +25,7 @@ function_registry = {
     "get_co_booking_frequencies": get_co_booking_frequencies,
 
     # Plotting
-    "generate_heatmap": generate_heatmap,
-    "generate_plot_interactive": generate_plot_interactive,
-    "generate_plot": generate_plot,
+    "generate_plot_for_function": generate_plot_for_function,
 
     # Capacity & Forecasting
     "estimate_table_needs": estimate_table_needs,
