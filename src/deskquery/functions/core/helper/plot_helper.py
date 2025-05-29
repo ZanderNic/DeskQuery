@@ -88,7 +88,7 @@ def add_img_to_fig(fig, img, img_width, img_height):
     )
 
 
-def generate_heatmap(data: Plot, 
+def generate_heatmap(data: FunctionData, 
                       title: Optional[str] = None, 
                       xaxis_title: Optional[str] = None,
                       yaxis_title: Optional[str] = None,
@@ -96,7 +96,6 @@ def generate_heatmap(data: Plot,
                       ) -> Plot:
     """ 
     Generates a heatmap
-
     """
     traces = list()
     for trace_name, trace_data in data.items():
@@ -121,7 +120,9 @@ def generate_barchart(data: FunctionData,
                       xaxis_title: Optional[str] = None,
                       yaxis_title: Optional[str] = None
                       ) -> Plot:
-    """Generates a barchart"""
+    """
+    Generates a barchart
+    """
     traces = list()
     for trace_name, trace_data in data.items():
         trace = go.Bar(
@@ -168,6 +169,8 @@ def generate_map(room_ids: Optional[Iterable[int]] = None,
     desk_ids = set(desk_ids) if desk_ids is not None else set()
 
     room_name_id_mapping = Dataset._desk_room_mapping.set_index("roomId")["roomName"].to_dict()
+    desk_id_number_mapping = Dataset._desk_room_mapping.set_index("deskId")["deskNumber"].to_dict()
+
     room_ids.update(Dataset._desk_room_mapping.loc[
         Dataset._desk_room_mapping["roomName"].isin(room_names), "roomId"
     ])
@@ -181,87 +184,86 @@ def generate_map(room_ids: Optional[Iterable[int]] = None,
     # divide by them first
     mark_set_width, mark_set_height = (640, 480)
     # desk_id: (desk_x, desk_y)
-    desk_coords = {1: (65, 90),
-             2: (28, 100), 
-             3: (28, 115), 
-             4: (28, 200),
-             5: (28, 213),
-             6: (28, 285),
-             7: (28, 295),
-             8: (75, 285),
-             9: (75, 295),
-             10: (58, 370),
-             11: (38, 368),
-             12: (40, 370),
-             13: (47, 392),
-             14: (95, 375),
-             15: (100, 394),
-             16: (102, 430),
-             17: (104, 450),
-             18: (82, 440),
-             19: (40, 428),
-             20: (42, 445),
-             21: (155, 385),
-             22: (170, 369),
-             23: (153, 385),
-             24: (165, 445),
-             25: (182, 430),
-             26: (188, 445),
-             27: (175, 384),
-             28: (235, 431),
-             29: (235, 445),
-             30: (291, 431),
-             31: (291, 445),
-             32: (321, 431),
-             33: (321, 445),
-             34: (377, 445),
-             35: (406, 430),
-             36: (406, 445),
-             37: (463, 430),
-             38: (463, 445),
-             39: (490, 430),
-             40: (490, 445),
-             41: (550, 433),
-             42: (548, 445),
-             43: (578, 430),
-             44: (578, 445),
-             45: (620, 430),
-             46: (620, 445),
-             47: (567, 157),
-             48: (601, 157),
-             49: (567, 104),
-             50: (570, 84),
-             51: (607, 87),
-             52: (568, 37),
-             53: (610, 37)}
+    desk_coords = {1: (620, 445),
+             2: (620, 430),
+             3: (567, 157),
+             4: (601, 157),
+             5: (567, 104),
+             6: (570, 84),
+             7: (607, 87),
+             8: (568, 37),
+             9: (610, 37),
+             10: (65, 90),
+             11: (28, 100), 
+             12: (28, 115), 
+             13: (28, 200),
+             14: (28, 213),
+             15: (28, 285),
+             16: (28, 295),
+             17: (75, 285),
+             18: (75, 295),
+             19: (58, 370),
+             20: (38, 368),
+             21: (40, 370),
+             22: (47, 392),
+             23: (95, 375),
+             24: (100, 394),
+             25: (102, 430),
+             26: (104, 450),
+             27: (82, 440),
+             28: (40, 428),
+             29: (42, 445),
+             30: (155, 385),
+             31: (170, 369),
+             32: (153, 385),
+             33: (165, 445),
+             34: (182, 430),
+             35: (188, 445),
+             36: (175, 384),
+             37: (235, 431),
+             38: (235, 445),
+             39: (291, 431),
+             40: (291, 445),
+             41: (321, 431),
+             42: (321, 445),
+             43: (377, 445),
+             44: (406, 430),
+             45: (406, 445),
+             46: (463, 430),
+             47: (463, 445),
+             48: (490, 430),
+             49: (490, 445),
+             50: (550, 433),
+             51: (548, 445),
+             52: (578, 430),
+             53: (578, 445),}
 
     # room_id: (room_x, room_y)
-    room_coords = {1: (51, 111),
-        2: (51, 209),
-        3: (52, 290),
-        4: (70, 408),
-        5: (171, 411),
-        6: (264, 437),
-        7: (352, 440),
-        8: (435, 440),
-        9: (520, 440),
-        10: (599, 440),
-        11: (588, 160),
-        12: (590, 65)}
+    room_coords = {1: (599, 440),
+        2: (588, 160),
+        3: (590, 65),
+        4: (51, 111),
+        5: (51, 209),
+        6: (52, 290),
+        7: (70, 408),
+        8: (171, 411),
+        9: (264, 437),
+        10: (352, 440),
+        11: (435, 440),
+        12: (520, 440)}
 
     desks_to_mark = {
-        (f"ID: {id}"): coords
+        (f"Desk ID: {id} Desk Number: {desk_id_number_mapping[id]}"): coords
         for id, coords in desk_coords.items()
         if id in desk_ids
     }
 
-    rooms_to_mark = {f"ID: {id} Name: {room_name_id_mapping[id]}": coords
+    rooms_to_mark = {f"Room ID: {id} Room Name: {room_name_id_mapping[id]}": coords
         for id, coords in room_coords.items()
         if id in room_ids
     }
 
-
-    fig = go.Figure()
+    fig = Plot()
 
     add_to_marks_to_fig(fig, desks_to_mark, mark_set_width, mark_set_height, map_width, map_height, 10, 10, 'red')
     add_to_marks_to_fig(fig, rooms_to_mark, mark_set_width, mark_set_height, map_width, map_height, 20, 20, 'blue')
@@ -275,5 +277,5 @@ if __name__ == "__main__":
     from deskquery.functions.core.employee import get_avg_employee_bookings
     dataset = create_dataset()
     result = get_avg_employee_bookings(dataset, num_employees=200, include_fixed=False)
-    fig = generate_map(room_ids=[5, 2], room_names=["Galgenberg"], desk_ids=[1, 8, 23])
+    fig = generate_map(room_ids=[1, 5, 2], room_names=["Galgenberg"], desk_ids=[1, 8, 23])
     fig.write_html("hist.html")
