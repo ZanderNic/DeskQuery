@@ -146,12 +146,12 @@ class Dataset(pd.DataFrame):
             is_fixed = self["variableBooking"] == 0
             blocked_from[is_fixed] = blocked_from[is_fixed].combine(start_date, func=max)
             blocked_until[is_fixed] = blocked_until[is_fixed].combine(end_date, func=min)
-            self['blockedFrom'] = blocked_from
-            self['blockedUntil'] = blocked_until.copy().replace(datetime.date(pd.Timestamp.max), 'unlimited')
+            self.loc[:, 'blockedFrom'] = blocked_from  # FIXME: CHANGED
+            self.loc[:, 'blockedUntil'] = blocked_until.copy().replace(datetime.date(pd.Timestamp.max), 'unlimited')
         
         if start_date or end_date or only_active:
             blocked_from = pd.to_datetime(self['blockedFrom'])
-            # tread unlimited endtime as a very high number to make the comparison easier later
+            # treat unlimited endtime as a very high number to make the comparison easier later
             blocked_until = pd.to_datetime(self['blockedUntil'].copy().replace('unlimited',  datetime.date(pd.Timestamp.max)))
 
             exchange_dates_with_intersection(blocked_from, blocked_until)
@@ -161,13 +161,12 @@ class Dataset(pd.DataFrame):
             
             if start_date:
                 mask &= (blocked_from >= start_date)
-
             if end_date:
                 mask &= (blocked_until <= end_date)
-
+            
             if only_active:
                 mask &= (blocked_from >= datetime.today()) & (datetime.today() <= blocked_until)
-
+            
         if show_available:
             mask = (~mask)
 

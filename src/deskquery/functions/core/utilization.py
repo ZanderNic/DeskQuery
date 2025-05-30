@@ -17,8 +17,8 @@ def analyze_utilization(
     by_room: bool = False,
     by_day: bool = False,
     
-    desk_id: Optional[str] = None,
-    room_name: Optional[str] = None,
+    desk_id: Optional[List[int]] = None,
+    room_name: Optional[List[str]] = None,
     
     weekday: Optional[List[str]] = None,
     start_date: Optional[datetime] = None,
@@ -426,7 +426,11 @@ def prepare_utilization_dataframe(
     return df
 
 
-def count_matching_weekdays(start_date, end_date, allowed_days):
+def count_matching_weekdays(
+    start_date: datetime = None, 
+    end_date: datetime = None,
+    allowed_days: Optional[List[str]] = None
+) -> int:
     """
     Counts the number of dates between start_date and end_date that fall on specified weekdays.
 
@@ -455,7 +459,11 @@ def count_matching_weekdays(start_date, end_date, allowed_days):
     return count
 
 
-def count_weekday_occurrences(start_date: datetime, end_date: datetime, allowed_days: List[str]) -> dict[str, int]:
+def count_weekday_occurrences(
+    start_date: datetime, 
+    end_date: datetime, 
+    allowed_days: List[str]
+) -> dict[str, int]:
     """
     Counts how many times each allowed weekday occurs between start_date and end_date.
 
