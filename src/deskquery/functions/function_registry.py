@@ -9,7 +9,7 @@ import re
 
 function_registry = {
     # Utilization
-    "analyze_utilization": analyze_utilization,
+    "mean_utilization": mean_utilization,
     "utilization_stats": utilization_stats,
     "detect_utilization_anomalies": detect_utilization_anomalies,
 
@@ -26,9 +26,7 @@ function_registry = {
     "get_co_booking_frequencies": get_co_booking_frequencies,
 
     # Plotting
-    "generate_heatmap": generate_heatmap,
-    "generate_plot_interactive": generate_plot_interactive,
-    "generate_plot": generate_plot,
+    "generate_plot_for_function": generate_plot_for_function,
 
     # Capacity & Forecasting
     "estimate_table_needs": estimate_table_needs,

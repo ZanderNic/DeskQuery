@@ -1,77 +1,40 @@
-# std-lib import
-from typing import Optional, List
+#!/usr/bin/env python 
+from typing import Optional, List, Callable
 from datetime import datetime
+import plotly.graph_objects as go
+from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot, PlotFunction
 
-# 3 party imports
+def generate_plot_for_function(func_result: FunctionRegistryExpectedFormat,
+                               additional_plot_args: dict[str, str] = {},
+                               plot_to_generate: Optional[PlotFunction] = None, 
+                               use_default_plot: bool = True) -> Plot | str:
 
-# projekt imports
+    data = func_result.data
+    plot = func_result.plot
 
+    if not plot.available_plots:
+        return "Not plot available for this kind of data."
 
-def generate_heatmap(
-    by_room: bool, 
-    resolution: str, 
-    weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
-    """ö
-    Generates a heatmap showing desk bookings over time.
+    if plot_to_generate:
+        use_default_plot = False
 
-    Args:
-        by_room: If True, shows heatmap per room.
-        resolution: Time resolution of heatmap: 'daily', 'weekly', or 'monthly'.
-        weekdays: Days of the week to include.
-        start_date: Start date for data.
-        end_date: End date for data.
+    if use_default_plot:
+        return plot.default_plot
+    else:
+        # plot_to_generate has to be a function from the plot function filled with arguments from llm
+        if plot_to_generate in plot.available_plots:
+            return plot_to_generate(data, **additional_plot_args)
+        else:
+            return "The asked plot is not available for this kind of data."
 
-    Returns:
+if __name__ == "__main__":
+    from deskquery.functions.core.employee import get_avg_employee_bookings, generate_heatmap
+    from deskquery.data.dataset import create_dataset
+    dataset = create_dataset()
+    response = get_avg_employee_bookings(dataset, num_employees=20)
 
-    """
-    pass
-
-
-def generate_plot_interactive(
-    by_room: bool, 
-    resolution: str, weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
-    """
-    Produces an interactive plot of desk booking data.
-
-    Args:
-        by_room: If True, plots are grouped by room.
-        resolution: Level of temporal detail ('daily', 'weekly', etc.).
-        weekdays: Days of interest.
-        start_date: Analysis start date.
-        end_date: Analysis end date.
-
-    Returns:
-    
-    """
-    pass
-
-
-def generate_plot(
-    by_room: bool, 
-    resolution: str, 
-    desk: int, 
-    weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
-    """
-    Creates a plot of desk utilization over time.
-
-    Args:
-        by_room: If True, groups data by room.
-        resolution: Time granularity.
-        desk: Desk ID or 'all' to include all desks.
-        weekdays: Relevant weekdays.
-        start_date: Starting date.
-        end_date: Ending date.
-
-    Returns:
-
-    """
-    pass
+    plot_response = generate_plot_for_function(response, plot_to_generate=generate_heatmap)
+    if isinstance(plot_response, Plot):
+        plot_response.write_html("hist.html")
+    else:
+        print(plot_response)
