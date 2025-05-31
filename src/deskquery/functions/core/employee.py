@@ -1,16 +1,9 @@
 #!/usr/bin/env python 
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict
 from datetime import datetime
-import json
-
-from plotly.utils import PlotlyJSONEncoder
 import pandas as pd
-import numpy as np
-from sklearn.cluster import DBSCAN
-import plotly.graph_objs as go
-import plotly.express as px
 from collections import Counter
-
+from itertools import combinations
 from deskquery.data.dataset import Dataset
 from deskquery.functions.types import FunctionRegistryExpectedFormat
 
@@ -89,10 +82,11 @@ def get_booking_repeat_pattern(
     dataset = dataset.get_days(weekdays=weekdays)
     df = dataset.expand_time_interval_desk_counter(weekdays=weekdays)
 
-    df.loc[:, weekdays] = (df.loc[:, weekdays].div(df["num_desk_bookings"], axis=0)* 100).round(2)
-    df["percentage_of_user"] = (df['num_desk_bookings'] / df.groupby(level='userId')['num_desk_bookings'].transform('sum') * 100).round(2)
-    result = df.loc[df.groupby('userId')['num_desk_bookings'].idxmax()]
-    result = result.iloc[:, :-2].reset_index()
+    result = (df.sort_values(['userId', 'num_desk_bookings'], ascending=False)
+            .groupby('userId')
+            .head(most_used_desk)
+            .reset_index()
+        )
 
     return {
         "data": result.to_dict(),
@@ -101,11 +95,13 @@ def get_booking_repeat_pattern(
 
 def get_booking_clusters(
     dataset: Dataset,
-    distance_threshold: float = 3, 
     co_booking_count_min: int = 3, 
+    special_user: Optional[list[int]] = None,
+    include_fixed: bool = False,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None,
+
 ) -> None:
     """
     Finds booking clusters, i.e., groups of users who often book nearby desks.
@@ -120,39 +116,34 @@ def get_booking_clusters(
     Returns:
 
     """
+    if not include_fixed:
+        dataset = dataset.drop_fixed()
+    # Treating double bookings makes no sense
+    dataset = dataset.drop_double_bookings()
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
+    dataset.expand_time_interval_desk_counter()
+    dataset = dataset.explode('expanded_desks_day')[['userId', 'userName', 'roomId', 'deskNumber', 'expanded_desks_day']]
+    df_paris = booking_graph(dataset).sort_values("weight", ascending=False)
 
-    cluster_results = []
+    mask = df_paris["weight"] >= co_booking_count_min
+    df_paris = df_paris[mask]
 
-    for (blockedFrom, roomID), group in dataset.to_df().groupby(['blockedFrom', 'roomId']):
-        coords = group["deskNumber"].values.reshape(-1, 1)
-        if len(coords) >= co_booking_count_min:
-            clustering = DBSCAN(eps=distance_threshold, min_samples=co_booking_count_min).fit(coords)
-            group = group.copy()
-            group['cluster'] = clustering.labels_  # Cluster-Label -1 = no Cluster
-            cluster_results.append(group)
+    result = get_user_workmates(df_paris, special_user)
 
-    if not cluster_results:
-        return pd.DataFrame()
-    
-    result_df = pd.concat(cluster_results).reset_index(drop=True)
-
-    result_df = result_df[result_df['cluster'] != -1]
-
-    grouped = result_df.groupby(['blockedFrom', 'roomId', 'cluster'])['userName'].apply(list).reset_index()
-
-    html = grouped.to_html(index=False, classes="table table-striped")
-    return {""}
+    return {
+        "data": result,
+        "plotable": True
+    }
 
 def get_co_booking_frequencies(
     dataset: Dataset,
-    min_shared_days: int = None, 
+    min_shared_days: int = 5_000, 
     same_room_only: bool = None, 
     include_fixed: bool = True,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None,
 )-> None:
     """
     Detects employee pairs who frequently book on the same days.
@@ -165,36 +156,152 @@ def get_co_booking_frequencies(
 
     Returns:
     """
-    # gibt es Mitarbeiter, die immer am gleichen Tag arbeiten?
-    # gibt es Mitarbeiter die sich öfters im Büro sehen?
-    
-    # min shared -> wie oft die Leute zusammen buchen mit einem treshhold
-    # 
-
     if not include_fixed:
         dataset = dataset.drop_fixed()
     # Treating double bookings makes no sense
     dataset = dataset.drop_double_bookings()
-
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
-    desks = dataset.expand_time_intervals_desks("day")
-    
-    dataset = dataset.sort_values("blockedFrom")
-    print(dataset)
-    
+    dataset.expand_time_interval_desk_counter()
+
+    dataset = dataset.explode('expanded_desks_day')[['userId', 'userName', 'roomId', 'expanded_desks_day']]
+    booking_counter = dataset["userId"].value_counts().reset_index()
+    booking_counter = booking_counter.rename(columns={"count": "total_bookings"})
+
+    pairs_df = count_co_bookings(dataset, include_room=same_room_only)
+    if min_shared_days:
+        pairs_df = pairs_df[pairs_df["count"] >= min_shared_days]
+
+    merged = merge_dataframes(df_1=pairs_df,
+                              df_2=booking_counter,
+                              left_column="userId_1",
+                              right_column="userId",
+                              how="left",
+                              rename={"total_bookings": "total_bookings_user1"},
+                              drop_columns=["userId"])
+    merged = calc_percent(merged, "count", "total_bookings_user1", "share_1")
+
+    merged = merge_dataframes(df_1=pairs_df,
+                              df_2=booking_counter,
+                              left_column="userId_2",
+                              right_column="userId",
+                              how="left",
+                              rename={"total_bookings": "total_bookings_user2"},
+                              drop_columns=["userId"])
+    merged = calc_percent(merged, "count", "total_bookings_user2", "share_2")
+
+    return {"data": merged.to_dict(),
+            "plotable": True
+           }
 
 
+# --------- Helpers --------- #
 
+def merge_dataframes(
+    df_1: pd.DataFrame,
+    df_2: pd.DataFrame,
+    left_column: str = "userId_1",
+    right_column: str = "userId",
+    how: str = "left",
+    drop_columns: Optional[List[str]] = None,
+    rename: Optional[Dict[str, str]] = None
+) -> pd.DataFrame:
+    merged = pd.merge(df_1, df_2, left_on=left_column, right_on=right_column, how=how)
 
+    if rename:
+        merged = merged.rename(columns=rename)
+
+    if drop_columns:
+        cols_to_drop = [col for col in drop_columns if col in merged.columns]
+        merged = merged.drop(columns=cols_to_drop)
+
+    return merged
+
+def calc_percent(
+    df: pd.DataFrame,
+    numerator_col: str,
+    denominator_col: str,
+    result_col: str,
+    round_digits: int = 2
+) -> pd.DataFrame:
+    df[result_col] = (df[numerator_col] / df[denominator_col] * 100).round(round_digits)
+    return df
+
+def count_co_bookings(dataset: pd.DataFrame, include_room: bool = False) -> pd.DataFrame:
+    pair_counts = Counter()
+    if not include_room:
+        dataset = dataset.copy()
+        dataset['roomId'] = "__any__"
+
+    for (_, group) in dataset.groupby(['expanded_desks_day', 'roomId']):
+        users = sorted(set(group['userId']))
+        for u1, u2 in combinations(users, 2):
+            pair_counts[(u1, u2, group['roomId'].iloc[0])] += 1
+
+    pairs_df = pd.DataFrame([
+        {'userId_1': u1, 'userId_2': u2, 'roomId': room, 'count': count}
+        for (u1, u2, room), count in pair_counts.items()
+    ])
+
+    if not include_room:
+        pairs_df = pairs_df.drop(columns='roomId')
+
+    return pairs_df
+
+def booking_graph(df: pd.DataFrame):
+    grouped = df.groupby(['expanded_desks_day', 'roomId'])['userId'].apply(list)
+    pair_counts = Counter()
+
+    for (date, room), users in grouped.items():
+        unique_users = sorted(set(users))
+        for u1, u2 in combinations(unique_users, 2):
+            pair_counts[(u1, u2)] += 1
+
+    df_pairs = pd.DataFrame([
+            {'userId_1': u1, 'userId_2': u2, 'weight': weight}
+            for (u1, u2), weight in pair_counts.items()
+        ])
+
+    return df_pairs
+
+def get_user_workmates(
+    df: pd.DataFrame,
+    user_ids: Optional[list[int]],
+    col_name_user1: str = "userId_1",
+    col_name_user2: str = "userId_2"
+) -> dict[int, list[int]]:
+    if user_ids is None:
+        return df.to_dict()
+    workmate_dict = {}
+
+    for user_id in user_ids:
+        partners_1 = df.loc[df[col_name_user1] == user_id, col_name_user2].tolist()
+        partners_2 = df.loc[df[col_name_user2] == user_id, col_name_user1].tolist()
+        all_partners = list(set(partners_1 + partners_2))
+        workmate_dict[user_id] = all_partners
+
+    return workmate_dict
+
+# --------- Testing --------- #
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
     dataset = create_dataset()  
     # double_bookings = dataset.get_double_bookings()
     # print(double_bookings)
 
-    result = get_booking_repeat_pattern(dataset, include_fixed=False)
-    df = pd.DataFrame(result["data"])
-    print(df)
+    start_date_str = "2022.12.19"
+    end_date_str = "2025.05.30"
+    start_date_obj = datetime.strptime(start_date_str, "%Y.%m.%d")
+    end_date_obj = datetime.strptime(end_date_str, "%Y.%m.%d")
+
+
+    result = get_co_booking_frequencies(dataset,
+                                        start_date=start_date_obj,
+                                        end_date=end_date_obj,
+                                        include_fixed=False)
+    
+
+    # result = get_booking_clusters(dataset=dataset, special_user=[7, 8])
+    print(result)
 
     
