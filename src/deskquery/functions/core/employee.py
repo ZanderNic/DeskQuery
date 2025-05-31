@@ -1,15 +1,18 @@
 #!/usr/bin/env python 
-from typing import Optional, List, Literal, Dict
+from typing import Optional, List, Literal, Sequence, Dict
 from datetime import datetime
 import pandas as pd
 from collections import Counter
 from itertools import combinations
 from deskquery.data.dataset import Dataset
-from deskquery.functions.types import FunctionRegistryExpectedFormat
+from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction
+from deskquery.functions.core.helper.plot_helper import generate_heatmap, generate_barchart, generate_hist, generate_map
 
 def get_avg_employee_bookings(
     dataset: Dataset,
-    num_employees: int = 10,
+    user_names: Optional[str | Sequence[str]] = None,
+    user_ids: Optional[int | Sequence[int]] = None,
+    num_employees: Optional[int] = None,
     return_total_mean: bool = False,
     granularity: Literal["day", "week", "month", "year"] = 'year',
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
@@ -17,6 +20,8 @@ def get_avg_employee_bookings(
     end_date: Optional[datetime] = None,
     include_double_bookings: bool = False,
     include_fixed: bool = True,
+    return_user_names: bool = True,
+    include_non_booking_users: bool = False
 ) -> FunctionRegistryExpectedFormat:
     """
     Calculates average bookings per employee per day, week, month or year.
@@ -26,12 +31,16 @@ def get_avg_employee_bookings(
     if not include_double_bookings:
         dataset = dataset.drop_double_bookings()
 
+    if user_ids or user_names:
+        user_ids = [] if not user_ids else user_ids
+        user_names = [] if not user_names else user_names
+        dataset = dataset.get_users(user_names, user_ids)
+
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
 
     column_name = f"avg_bookings_{granularity}"
     dataset = dataset.expand_time_intervals_counts(granularity, column_name=column_name)
-
     def mean(series):
         """Calc the mean for the bookings correctly (with filling possible gaps)"""
         def fill_granularity_gaps(counter: Counter) -> Counter:
@@ -45,19 +54,32 @@ def get_avg_employee_bookings(
 
         return round(mean, 2)
     avg_bookings = dataset.group_bookings(by="userId", aggregation={column_name: (column_name, mean)}, agg_col_name=column_name)
+    if include_non_booking_users:
+        missing_user = set(Dataset._userid_username_mapping.keys()) - set(avg_bookings.index)
+        missing_user = pd.DataFrame.from_dict({user_id: 0 for user_id in missing_user}, 
+                                              orient="index", 
+                                              columns=avg_bookings.columns)
+        avg_bookings = pd.concat([avg_bookings, missing_user])
     if num_employees:
-        avg_bookings = avg_bookings.sort_values(by=column_name, ascending=False).head(num_employees)
+        avg_bookings = avg_bookings.sort_bookings(by=column_name, ascending=False).head(num_employees)
+        if return_user_names:
+            avg_bookings.index = avg_bookings.index.map(Dataset._userid_username_mapping.get)
+    
     if return_total_mean:
-        avg_bookings = avg_bookings.mean()
+        avg_bookings = avg_bookings.mean_bookings()
+    
+    avg_bookings = avg_bookings.to_dict()
+    plot = PlotForFunction(default_plot=generate_barchart(data=avg_bookings,
+                                                          title=column_name,
+                                                          xaxis_title="user_name" if return_user_names else "user_id",
+                                                          yaxis_title=column_name),
+                           available_plots=[generate_barchart, generate_heatmap])
 
-    return {
-        "data": avg_bookings.to_dict(),
-        "plotable": True
-    }
+    return FunctionRegistryExpectedFormat(data=avg_bookings, plot=plot)
 
 def get_booking_repeat_pattern(
     dataset: Dataset,
-    most_used_desk: int = 1, # TO DO: Still needs to be implemented 
+    most_used_desk: int = 1, # TODO: Still needs to be implemented 
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
@@ -80,6 +102,43 @@ def get_booking_repeat_pattern(
     dataset = dataset.drop_double_bookings()
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
+    desks = dataset.expand_time_intervals_desks("day")
+
+    def weekdays_count(periods):
+        weekdays = [p.weekday for p in periods]
+        counter = Counter(weekdays)    
+        return {day: counter.get(day, 0) for day in range(7)}
+
+    dataset["weekday_count"] = dataset["expanded_desks_day"].apply(weekdays_count)    
+
+    weekday_df = pd.json_normalize(dataset['weekday_count']).fillna(0).astype(int)
+    weekday_list = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    weekday_df.columns = weekday_list
+    weekday_df.index = dataset.index
+
+    dataset = pd.concat([dataset, weekday_df], axis=1)
+
+    dataset["num_desk_bookings"] = desks.apply(len)
+
+    df = dataset.group_bookings(by=["userId", "userName", "deskId"],
+                            aggregation={"num_desk_bookings": ("num_desk_bookings", "sum"),
+                                         "Monday": ("Monday", "sum"),
+                                         "Tuesday": ("Tuesday", "sum"),
+                                         "Wednesday": ("Wednesday", "sum"),
+                                         "Thursday": ("Thursday", "sum"),
+                                         "Friday": ("Friday", "sum"),
+                                         "Saturday": ("Saturday", "sum"),
+                                         "Sunday": ("Sunday", "sum")
+                                         },
+                            agg_col_name="num_desk_bookings")
+
+    df[weekday_list] = df[weekday_list].astype(float) 
+    df.loc[:, weekday_list] = (df.loc[:, weekday_list].div(df["num_desk_bookings"], axis=0)* 100).round(2)
+    df["percentage_of_user"] = (df['num_desk_bookings'] / df.groupby(level='userId')['num_desk_bookings'].transform('sum') * 100).round(2)
+    print(df)
+    result = df.loc[df.groupby('userId')['num_desk_bookings'].idxmax()]
+    result = result.iloc[:, :-2].reset_index()
+
     df = dataset.expand_time_interval_desk_counter(weekdays=weekdays)
 
     result = (df.sort_values(['userId', 'num_desk_bookings'], ascending=False)

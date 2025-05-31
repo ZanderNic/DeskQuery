@@ -1,5 +1,6 @@
 # std lib imports
 from io import BytesIO
+import traceback
 import uuid
 import json
 from pathlib import Path
@@ -27,6 +28,8 @@ global current_model
 current_model = None
 global dataset
 dataset = create_dataset()
+global NEXT_STEP
+NEXT_STEP = 1
 
 @app.route('/')
 def index():
@@ -46,10 +49,20 @@ def chat():
         chat_data = load_chat(chat_id)
         messages = chat_data["messages"] if chat_data else []
 
+        # Check if the last message was a question by the system
+        if messages:
+            global NEXT_STEP
+            NEXT_STEP = 3 if messages[-1].get("status", None) == "ask_user" else 1
+
         if user_input:
             messages.append({"role": "user", "content": user_input})
 
-        response = desk_query(user_input, data=dataset, model=current_model)
+        response = desk_query(
+            user_input, 
+            data=dataset, 
+            model=current_model, 
+            START_STEP=NEXT_STEP if NEXT_STEP else 1
+        )
         print(response)
         
         if isinstance(response, str):
@@ -61,7 +74,7 @@ def chat():
             })
 
         elif isinstance(response, dict) and response.get("message"):
-            messages.append({"role": "assistant", "content": response["message"]})
+            messages.append({"role": "assistant", "status": response["status"], "content": response["message"]})
             save_chat(chat_id, messages)
             return jsonify({
                 "chat_id": chat_id,
@@ -151,6 +164,7 @@ def chat():
 
     except Exception as e:
         print("Fehler im /chat-Endpoint:", str(e))
+        traceback.print_exc()
         return jsonify({
             "type": "error",
             "message": "Ein Fehler ist aufgetreten. Bitte versuche es erneut."
