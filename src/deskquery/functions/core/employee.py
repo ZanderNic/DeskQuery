@@ -102,44 +102,9 @@ def get_booking_repeat_pattern(
     dataset = dataset.drop_double_bookings()
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
-    desks = dataset.expand_time_intervals_desks("day")
-
-    def weekdays_count(periods):
-        weekdays = [p.weekday for p in periods]
-        counter = Counter(weekdays)    
-        return {day: counter.get(day, 0) for day in range(7)}
-
-    dataset["weekday_count"] = dataset["expanded_desks_day"].apply(weekdays_count)    
-
-    weekday_df = pd.json_normalize(dataset['weekday_count']).fillna(0).astype(int)
-    weekday_list = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    weekday_df.columns = weekday_list
-    weekday_df.index = dataset.index
-
-    dataset = pd.concat([dataset, weekday_df], axis=1)
-
-    dataset["num_desk_bookings"] = desks.apply(len)
-
-    df = dataset.group_bookings(by=["userId", "userName", "deskId"],
-                            aggregation={"num_desk_bookings": ("num_desk_bookings", "sum"),
-                                         "Monday": ("Monday", "sum"),
-                                         "Tuesday": ("Tuesday", "sum"),
-                                         "Wednesday": ("Wednesday", "sum"),
-                                         "Thursday": ("Thursday", "sum"),
-                                         "Friday": ("Friday", "sum"),
-                                         "Saturday": ("Saturday", "sum"),
-                                         "Sunday": ("Sunday", "sum")
-                                         },
-                            agg_col_name="num_desk_bookings")
-
-    df[weekday_list] = df[weekday_list].astype(float) 
-    df.loc[:, weekday_list] = (df.loc[:, weekday_list].div(df["num_desk_bookings"], axis=0)* 100).round(2)
-    df["percentage_of_user"] = (df['num_desk_bookings'] / df.groupby(level='userId')['num_desk_bookings'].transform('sum') * 100).round(2)
-    print(df)
-    result = df.loc[df.groupby('userId')['num_desk_bookings'].idxmax()]
-    result = result.iloc[:, :-2].reset_index()
 
     df = dataset.expand_time_interval_desk_counter(weekdays=weekdays)
+
 
     result = (df.sort_values(['userId', 'num_desk_bookings'], ascending=False)
             .groupby('userId')
@@ -197,7 +162,7 @@ def get_booking_clusters(
 
 def get_co_booking_frequencies(
     dataset: Dataset,
-    min_shared_days: int = 5_000, 
+    min_shared_days: int = 5, 
     same_room_only: bool = None, 
     include_fixed: bool = True,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
@@ -354,13 +319,13 @@ if __name__ == "__main__":
     end_date_obj = datetime.strptime(end_date_str, "%Y.%m.%d")
 
 
-    result = get_co_booking_frequencies(dataset,
+    result = get_booking_repeat_pattern(dataset,
                                         start_date=start_date_obj,
                                         end_date=end_date_obj,
                                         include_fixed=False)
     
 
     # result = get_booking_clusters(dataset=dataset, special_user=[7, 8])
-    print(result)
+    # print(result)
 
     
