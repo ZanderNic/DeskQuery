@@ -79,11 +79,15 @@ def get_avg_employee_bookings(
 
 def get_booking_repeat_pattern(
     dataset: Dataset,
-    most_used_desk: int = 1, # TODO: Still needs to be implemented 
+    user_names: Optional[str | Sequence[str]] = None,
+    user_ids: Optional[int | Sequence[int]] = None,
+    most_used_desk: int = 1,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
     include_fixed: bool = True,
+
+
 ) -> FunctionRegistryExpectedFormat:
     """
     Identifies users who book the same desks or same days repeatedly.
@@ -98,6 +102,12 @@ def get_booking_repeat_pattern(
     """
     if not include_fixed:
         dataset = dataset.drop_fixed()
+
+    if user_ids or user_names:
+        user_ids = [] if not user_ids else user_ids
+        user_names = [] if not user_names else user_names
+        dataset = dataset.get_users(user_names, user_ids)
+
     # Treating double bookings makes no sense, as no meaningful conclusion can be drawn from them
     dataset = dataset.drop_double_bookings()
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
@@ -105,39 +115,48 @@ def get_booking_repeat_pattern(
 
     df = dataset.expand_time_interval_desk_counter(weekdays=weekdays)
 
-
     result = (df.sort_values(['userId', 'num_desk_bookings'], ascending=False)
             .groupby('userId')
             .head(most_used_desk)
             .reset_index()
         )
+    
+    def plot_data(df: pd.DataFrame, index_col: str) -> dict:
+        df = df.set_index(index_col)
+        return {col: df[col].to_dict() for col in df.columns}
+    
+    plot_dict = plot_data(result[['userName'] + weekdays], index_col='userName')
 
-    return {
-        "data": result.to_dict(),
-        "plotable": True
-    }
+
+    plot = PlotForFunction(default_plot=generate_barchart(data=plot_dict,
+                                                          title="Repeat Pattern",
+                                                          xaxis_title="user_id",
+                                                          yaxis_title="frequencies"),
+                           available_plots=[generate_barchart, generate_heatmap])
+    
+    return FunctionRegistryExpectedFormat(data=plot_dict, plot=plot)
 
 def get_booking_clusters(
     dataset: Dataset,
     co_booking_count_min: int = 3, 
-    special_user: Optional[list[int]] = None,
+    user_ids: Optional[list[int]] = None,
     include_fixed: bool = False,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
-
-) -> None:
+) -> dict:
     """
     Finds booking clusters, i.e., groups of users who often book nearby desks.
 
     Args:
         distance_threshold: Spatial proximity to define a cluster.
         co_booking_count_min: Minimum times users must co-book nearby desks.
+        user_ids: cluster for only spezific users
         weekdays: Days to consider.
         start_date: Start date.
         end_date: End date.
 
-    Returns:
+    Returns: dict
 
     """
     if not include_fixed:
@@ -153,12 +172,24 @@ def get_booking_clusters(
     mask = df_paris["weight"] >= co_booking_count_min
     df_paris = df_paris[mask]
 
-    result = get_user_workmates(df_paris, special_user)
+    result = get_user_workmates(df_paris, user_ids)
 
-    return {
-        "data": result,
-        "plotable": True
-    }
+    def prepare_heatmap_data(result):
+        df = pd.DataFrame(result)
+        heatmap_dict = {(row.userId_1, row.userId_2): row.weight for _, row in df.iterrows()}
+
+        return {"weights": heatmap_dict}
+
+    data = prepare_heatmap_data(result)
+
+    # To Do Fixing Heatmap
+    # plot = PlotForFunction(default_plot=generate_heatmap(data=data,
+    #                                                       title="User Bookings Heatmap",
+    #                                                       xaxis_title="User 1",
+    #                                                       yaxis_title="User 2"),
+    #                        available_plots=[generate_heatmap])
+
+    # return FunctionRegistryExpectedFormat(data=data, plot=plot)
 
 def get_co_booking_frequencies(
     dataset: Dataset,
@@ -214,9 +245,8 @@ def get_co_booking_frequencies(
                               drop_columns=["userId"])
     merged = calc_percent(merged, "count", "total_bookings_user2", "share_2")
 
-    return {"data": merged.to_dict(),
-            "plotable": True
-           }
+    return FunctionRegistryExpectedFormat(data=merged.to_dict(), plot=None)
+
 
 
 # --------- Helpers --------- #
@@ -319,13 +349,16 @@ if __name__ == "__main__":
     end_date_obj = datetime.strptime(end_date_str, "%Y.%m.%d")
 
 
-    result = get_booking_repeat_pattern(dataset,
-                                        start_date=start_date_obj,
-                                        end_date=end_date_obj,
-                                        include_fixed=False)
-    
 
-    # result = get_booking_clusters(dataset=dataset, special_user=[7, 8])
-    # print(result)
+    # Testing Function 2
+    # print("------ Testing Function 2 ------")
+    # result = get_booking_repeat_pattern(dataset, start_date=start_date_obj, end_date=end_date_obj, include_fixed=False)
+    # Done
 
-    
+    # Testing Fuction 3
+    # print("------ Testing Function 3 ------")
+    # result = get_booking_clusters(dataset=dataset)
+
+    # Testing Function 4
+    # print("------ Testing Function 4 ------")
+    # result = get_co_booking_frequencies(dataset=dataset)
