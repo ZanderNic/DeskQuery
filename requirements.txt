@@ -10,3 +10,5 @@ tabulate
 plotly
 scikit-learn
 openpyxl
+scikit-learn
+statsmodels
