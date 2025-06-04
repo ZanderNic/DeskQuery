@@ -34,8 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
       wrapper.appendChild(text);
     }
 
-
-
     switch (data?.type) {
       case 'plot':
         wrapper.appendChild(renderPlot(data.plotly, messageId));
@@ -156,9 +154,9 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedModelDisplay.textContent = modelLabel;
   }
   
-  // ===========================
-  // === Chat CRUD Functions ===
-  // ===========================
+  // ======================
+  // === Chat Functions ===
+  // ======================
 
   async function loadChatList() {
     const res = await fetch('/chats');
@@ -352,7 +350,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
     
-   
     setActiveChatInSidebar(currentChatId)    // set active chat in history to indicate which one is active
     updateOverlayVisibility();  // if empty chat show empty Overlay
   }
@@ -370,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const now = new Date();
     chats.forEach(c => {
-      const date = new Date(c.timestamp);
+      const date = new Date(c.last_updated);
       const diffTime = now - date;
       const diffDays = diffTime / (1000 * 60 * 60 * 24);
 

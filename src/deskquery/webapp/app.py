@@ -82,15 +82,6 @@ def chat():
         }), 500
 
 
-@app.route('/image/<img_id>')
-def serve_image(img_id):
-    if img_id not in generated_images:
-        return "Image not found", 404
-    img_io = generated_images[img_id]
-    img_io.seek(0)
-    return send_file(img_io, mimetype='image/png')
-
-
 @app.route('/get-models', methods=['GET'])
 def get_models():
     try:
@@ -127,6 +118,7 @@ def set_model():
 def get_chats():
     return jsonify(list_chats())
 
+# returns a chat as json
 @app.route('/chats/<chat_id>', methods=['GET'])
 def get_single_chat(chat_id):
     chat = Chat.load(chat_id)
