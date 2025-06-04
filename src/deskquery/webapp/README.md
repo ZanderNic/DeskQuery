@@ -90,7 +90,6 @@ Use this for local testing without a real LLM:
 
     def test_query(user_input, data=None, model=None, START_STEP=1):
         return {
-            "id": 1,
             "role": "assistant",
             "content": "Here is your test plot!",
             "status": "done",
