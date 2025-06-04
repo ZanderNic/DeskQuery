@@ -192,7 +192,20 @@ def detect_policy_violations(
                     if week_label not in weekly_stats:
                         weekly_stats[week_label] = {}
                     for rule in broken_rules:
-                        weekly_stats[week_label][rule] = weekly_stats[week_label].get(rule, 0) + 1
+                        if rule.startswith("Missing fixed day"):
+                            rule_key = "Missing fixed day"
+                        elif rule.startswith("Too few chooseable days"):
+                            rule_key = "Too few chooseable days"
+                        elif rule.startswith("Too few days"):
+                            rule_key = "Too few days"
+                        elif rule.startswith("Too many days"):
+                            rule_key = "Too many days"
+                        else:
+                            rule_key = rule
+
+                        if week_label not in weekly_stats:
+                            weekly_stats[week_label] = {}
+                        weekly_stats[week_label][rule_key] = weekly_stats[week_label].get(rule_key, 0) + 1
                 else:
                     if user_id not in violations:
                         violations[user_id] = []
@@ -304,6 +317,9 @@ def create_attendance_dataframe(
     """
     Create a dataframe that contains all attendances
     """
+    data["blockedFrom"] = pd.to_datetime(data["blockedFrom"], errors="coerce")
+    data["blockedUntil"] = pd.to_datetime(data["blockedUntil"], errors="coerce")
+
     data = data[
         (data["blockedFrom"].dt.date >= start_date) &
         (data["blockedFrom"].dt.date <= end_date)
@@ -343,7 +359,9 @@ def load_attendance_profiles(
     selected_weekdays = [weekday_map[day] for day in weekdays]
 
     data["blockedFrom"] = pd.to_datetime(data["blockedFrom"], errors="coerce")
-    end_date = data["blockedFrom"].max().date()
+
+    variable = data[data["variableBooking"] == 1].copy()
+    end_date = variable["blockedFrom"].max().date()
 
     data["blockedUntil"] = data["blockedUntil"].astype(str)
     data.loc[data["blockedUntil"] == "unlimited", "blockedUntil"] = pd.Timestamp(end_date)
@@ -351,8 +369,6 @@ def load_attendance_profiles(
 
     fixed = data[data["variableBooking"] == 0].copy()
     fixed_expanded = expand_fixed_bookings(fixed)
-
-    variable = data[data["variableBooking"] == 1].copy()
 
     data = pd.concat([fixed_expanded, variable], ignore_index=True)
 
@@ -403,7 +419,9 @@ def load_attendances(
         Dictionary with user IDs as keys and list of attendance dates (YYYY-MM-DD) as values.
     """
     data["blockedFrom"] = pd.to_datetime(data["blockedFrom"], errors="coerce")
-    end_date = data["blockedFrom"].max().date()
+
+    variable = data[data["variableBooking"] == 1].copy()
+    end_date = variable["blockedFrom"].max().date()
 
     data["blockedUntil"] = data["blockedUntil"].astype(str)
     data.loc[data["blockedUntil"] == "unlimited", "blockedUntil"] = pd.Timestamp(end_date)
@@ -411,8 +429,6 @@ def load_attendances(
 
     fixed = data[data["variableBooking"] == 0].copy()
     fixed_expanded = expand_fixed_bookings(fixed)
-
-    variable = data[data["variableBooking"] == 1].copy()
 
     start_date = end_date - timedelta(days=lag)
 
