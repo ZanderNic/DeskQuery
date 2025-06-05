@@ -187,30 +187,6 @@ def estimate_necessary_desks(
     return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
     
 
-# not started yet
-def simulate_room_changes(
-    room_id: str, 
-    reassign_strategy: str, 
-    time_closed: Optional[str] = None, 
-    data_for_forcast_start_date: Optional[datetime] = None, 
-    data_for_forcast_end_date: Optional[datetime] = None
-) -> None:
-    """
-    Simulates what happens if a room is closed.
-
-    Args:
-        room_id: Identifier of the room to close.
-        reassign_strategy: Strategy to reassign affected bookings (e.g., 'random').
-        time_closed: Timeframe of the closure.
-        data_for_forcast_start_date: Data window start.
-        data_for_forcast_end_date: Data window end.
-
-    Returns:
-
-    """
-    pass
-
-
 ### Helper functions
 def load_active_worker_timeseries(
         data: Dataset,

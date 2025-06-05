@@ -240,62 +240,6 @@ def detect_policy_violations(
     return FunctionRegistryExpectedFormat(data=weekly_stats, plot=PlotForFunction(default_plot=None, available_plots=[]))
 
 
-# not finished
-def suggest_balanced_utilization_policy(
-    data: Dataset,
-    target_utilization: float,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"]
-) -> dict[str, object]:
-    """
-    Suggests an attendance policy to achieve a more balanced desk utilization. The policy consists of only the number_of_days.
-
-    Args:
-        data (Dataset): The dataset containing booking data.
-        target_utilization (float): Desired average utilization rate per weekday, between 0 and 1.
-        weekdays (List[str]): Days of the week considered, e.g., ["Mo", "Di", "Mi", "Do", "Fr"].
-
-    Returns:
-        dict[str, object]: A suitable policy configuration that aims to meet the target utilization.
-    """
-
-    if not 0 < target_utilization <= 1:
-        return ValueError("Target utilization has to be between 0 and 1")
-
-    total_desks = data["deskId"].nunique()
-    num_weekdays = len(weekdays)
-    target_attendance_per_day = target_utilization * total_desks
-
-    candidate_policies = []
-    for num_days in range(1, min(6, num_weekdays + 1)):
-        policy = {
-            "timeframe": "week",
-            "fixed_days": [],
-            "choseable_days": None,
-            "number_choseable_days": None,
-            "number_days": num_days,
-            "more_days_allowed": True
-        }
-        candidate_policies.append(policy)
-
-    best_policy = None
-    best_error = float("inf")
-
-    for candidate in candidate_policies:
-        attendance = simulate_policy(data, candidate, num_weeks=100, weekdays=weekdays)
-        avg_per_day = [val for val in attendance[:len(weekdays)]]
-        error = sum(abs(day - target_attendance_per_day) for day in avg_per_day)
-
-        if error < best_error:
-            best_error = error
-            best_policy = candidate
-
-    return {
-        "data": best_policy,
-        "plotable": False
-    }
-
-
-
 ####### Helpers ###########################################################################################################################################################################
 
 def expand_fixed_bookings(
