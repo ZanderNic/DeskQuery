@@ -322,6 +322,11 @@ def generate_map(room_ids: Optional[Iterable[int]] = None,
 
     return fig
 
+def generate_table():
+    #TO DO:
+    #Function which creates beautiful tables using plotly
+    pass
+
 
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
