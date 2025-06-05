@@ -7,6 +7,7 @@ from pathlib import Path
 from deskquery.data.dataset import Dataset
 import PIL
 
+
 def create_plotly_figure(traces: Sequence[go.Trace],
                       title: Optional[str] = None, 
                       xaxis_title: Optional[str] = None,
@@ -27,6 +28,7 @@ def create_plotly_figure(traces: Sequence[go.Trace],
     )
 
     return fig
+
 
 def add_to_marks_to_fig(fig, mark_dict, mark_set_width, mark_set_height, img_width, img_height, shape_width, shape_height, color):
     if not mark_dict:
@@ -60,6 +62,7 @@ def add_to_marks_to_fig(fig, mark_dict, mark_set_width, mark_set_height, img_wid
         text=list(mark_dict.keys()),
         showlegend=False
     ))
+
 
 def add_img_to_fig(fig, img, img_width, img_height):
     fig.update_layout(
@@ -115,6 +118,7 @@ def generate_heatmap(data: FunctionData,
 
     return fig
 
+
 def generate_barchart(data: FunctionData, 
                       title: Optional[str] = None, 
                       xaxis_title: Optional[str] = None,
@@ -139,6 +143,7 @@ def generate_barchart(data: FunctionData,
                          yaxis_title=yaxis_title)
 
     return fig
+
 
 def generate_scatterplot(data: FunctionData, 
                          title: Optional[str] = None, 
@@ -191,6 +196,7 @@ def generate_lineplot(data: FunctionData,
 
     return fig
 
+
 def generate_hist(data: FunctionRegistryExpectedFormat,
                   nbinsx: Optional[int] = None,
                   title: Optional[str] = None, 
@@ -210,6 +216,7 @@ def generate_hist(data: FunctionRegistryExpectedFormat,
                          yaxis_title=yaxis_title)
 
     return fig
+
 
 def generate_map(room_ids: Optional[Iterable[int]] = None, 
                  room_names: Optional[Iterable[str]] = None, 
@@ -325,8 +332,27 @@ def generate_map(room_ids: Optional[Iterable[int]] = None,
 
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
-    from deskquery.functions.core.employee import get_avg_employee_bookings
+    from deskquery.functions.core.forecasting import estimate_necessary_desks, forecast_employees
+    from deskquery.functions.core.policy import simulate_policy, detect_policy_violations
     dataset = create_dataset()
-    result = get_avg_employee_bookings(dataset, num_employees=200, include_fixed=False)
-    fig = generate_map(room_ids=[1, 5, 2], room_names=["Galgenberg"], desk_ids=[1, 8, 23])
+
+    policy = {
+        "fixed_days":["Di"],
+        "choseable_days":["Mi", "Do"],
+        "number_choseable_days":1,
+        "number_days":3,
+        "more_days_allowed":True
+    }
+
+    exceptions = {
+        4: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True},
+        14: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True}
+    }
+
+    random_assignments = [
+        (10, {'number_days': 1, 'more_days_allowed': False})
+    ]
+
+    result = detect_policy_violations(dataset, policy, exceptions, random_assignments, only_stats=True)
+    fig = generate_lineplot(result["data"])
     fig.write_html("hist.html")

@@ -45,8 +45,8 @@ class PlotFunction(ABC):
         pass
 
 class PlotForFunction:
-    def __init__(self, default_plot: Plot, available_plots: List[PlotFunction]):
+    def __init__(self, default_plot: Optional[Plot], available_plots: List[PlotFunction]):
         self.default_plot = default_plot
-        if default_plot not in available_plots:
+        if default_plot not in available_plots and default_plot:
             available_plots.append(default_plot)
         self.available_plots = available_plots

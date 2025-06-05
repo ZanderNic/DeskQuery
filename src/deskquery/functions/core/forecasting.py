@@ -16,14 +16,98 @@ from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFun
 from deskquery.functions.core.helper.plot_helper import generate_lineplot
 
 
+def forecast_employees(
+    data: Dataset,
+    lag: int = 90,
+    booking_type: str = "all",
+    weekly_growth_rate: float = None,
+    weekly_absolute_growth: float = None,
+    forecast_model = "linear",
+    weeks_ahead: int = 52,
+    plotable: bool = True
+) -> FunctionRegistryExpectedFormat:
+    """
+    Forecasts the number of employees.
+
+    Args:
+        data (Dataset): The dataset containing booking data.
+        lag (int): Number of days used to build the attendance profile (default: 90).
+        booking_type (str): Either all, fixed (only fixed bookings) or variable (only variable bookings)
+        weekly_growth_rate (float, optional): Expected weekly multiplicative growth rate (e.g., 1.02 for +2% per week).
+        weekly_absolute_growth (float, optional): Expected weekly absolute growth in employee count.
+        forecast_model (str): Model used to forecast time series if weekly_growth_rate and weekly_absolute_growth are not given.
+        weeks_ahead (int): Number of weeks into the future to simulate.
+        plotable (bool): If called from another function set to False
+
+    Returns:
+        dict[str, object]: Contains the forecasted desk needs under key "data" and a "plotable" flag.
+    """
+    worker_history_series = load_active_worker_timeseries(data, lag)[booking_type]
+
+    current_worker_count = worker_history_series.iloc[-1]
+
+    start_week = worker_history_series.index[-1] + pd.Timedelta(weeks=1)
+    forecast_index = pd.date_range(
+        start=start_week,
+        periods=weeks_ahead,
+        freq="W-MON"
+    )
+
+    if weekly_growth_rate and weekly_absolute_growth:
+        return ValueError("Either use weekly_growth_rate or weekly_absolute_growth. If None is given the forecast is done with the forecast_model")
+
+    if weekly_growth_rate is not None:
+        worker_forecast = np.array([
+            current_worker_count * (weekly_growth_rate ** i)
+            for i in range(weeks_ahead)
+        ])
+    elif weekly_absolute_growth is not None:
+        worker_forecast = np.array([
+            current_worker_count + (weekly_absolute_growth * i)
+            for i in range(weeks_ahead)
+        ])
+    else:
+        forecast = forecast_timeseries(worker_history_series, weeks_ahead, forecast_model)
+        if isinstance(forecast, pd.Series):
+            forecast = forecast.resample("W-MON").mean().iloc[:weeks_ahead].values
+        worker_forecast = forecast
+
+    worker_forecast_series = pd.Series(worker_forecast, index=forecast_index, name="Worker forecast")
+
+    if plotable:
+        num_desks = data["deskId"].nunique()
+        combined_index = worker_history_series.index.union(worker_forecast_series.index)
+        num_desks_series = pd.Series(num_desks, index=combined_index, name="number_of_desks")
+
+        final_data = {
+            "worker_history": worker_history_series.to_dict(),
+            "worker_forecast": worker_forecast_series.to_dict(),
+            "number_of_desks": num_desks_series.to_dict()
+        }
+
+        plot = PlotForFunction(
+            default_plot=generate_lineplot(
+                data=final_data,
+                title=f"Number of employees with {booking_type} bookings",
+                xaxis_title="Date",
+                yaxis_title="Number of employees"
+            ),
+            available_plots=[generate_lineplot]
+        )
+
+        return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
+    
+    return current_worker_count, worker_forecast_series
+
+
 def estimate_necessary_desks(
     data: Dataset,
     lag: int = 90,
     booking_type: str = "all",
-    target_utilization: float = 1.0,
     weekly_growth_rate: float = None,
     weekly_absolute_growth: float = None,
     forecast_model = "linear",
+    target_utilization: float = 1.0,
     weeks_ahead: int = 52,
     policy: Dict = None,
     exceptions: Optional[Dict[int, Dict]] = None,
@@ -46,11 +130,11 @@ def estimate_necessary_desks(
         data (Dataset): The dataset containing booking data.
         lag (int): Number of days used to build the attendance profile (default: 90).
         booking_type (str): Either all, fixed (only fixed bookings) or variable (only variable bookings)
-        target_utilization (float): Target average utilization (e.g., 0.8 for 80%).
         weekly_growth_rate (float, optional): Expected weekly multiplicative growth rate (e.g., 1.02 for +2% per week).
         weekly_absolute_growth (float, optional): Expected weekly absolute growth in employee count.
         forecast_model (str): Model used to forecast time series if weekly_growth_rate and weekly_absolute_growth are not given.
         weeks_ahead (int): Number of weeks into the future to simulate.
+        target_utilization (float): Target average utilization (e.g., 0.8 for 80%).
         policy (Dict): Base policy definition (see `simulate_policy` for structure).
         exceptions (Optional[Dict[int, Dict]]): Individual employee-specific exceptions to the policy.
         random_assignments (Optional[List[Tuple[int, Dict]]]): Random policy variants for specified number of employees.
@@ -58,35 +142,9 @@ def estimate_necessary_desks(
     Returns:
         dict[str, object]: Contains the forecasted desk needs under key "data" and a "plotable" flag.
     """
-    worker_timeseries = load_active_worker_timeseries(data, lag)[booking_type]
+    current_worker_count, worker_forecast_series = forecast_employees(data, lag, booking_type, weekly_growth_rate, weekly_absolute_growth, forecast_model, weeks_ahead, False)
 
-    current_worker_count = worker_timeseries.iloc[-1]
-
-    start_week = worker_timeseries.index[-1] + pd.Timedelta(weeks=1)
-    forecast_index = pd.date_range(
-        start=start_week,
-        periods=weeks_ahead,
-        freq="W-MON"
-    )
-
-    if weekly_growth_rate and weekly_absolute_growth:
-        return ValueError("Either use weekly_growth_rate or weekly_absolute_growth. If None is given the forecast is done with the forecast_model")
-
-    if weekly_growth_rate is not None:
-        worker_timeseries_forecast = np.array([
-            current_worker_count * (weekly_growth_rate ** i)
-            for i in range(weeks_ahead)
-        ])
-    elif weekly_absolute_growth is not None:
-        worker_timeseries_forecast = np.array([
-            current_worker_count + (weekly_absolute_growth * i)
-            for i in range(weeks_ahead)
-        ])
-    else:
-        forecast = forecast_timeseries(worker_timeseries, weeks_ahead, forecast_model)
-        if isinstance(forecast, pd.Series):
-            forecast = forecast.resample("W-MON").mean().iloc[:weeks_ahead].values
-        worker_timeseries_forecast = forecast
+    worker_forecast = worker_forecast_series.values
 
     if not policy and (exceptions or random_assignments):
         raise ValueError("A policy is required when using exceptions or random assignments.")
@@ -99,26 +157,32 @@ def estimate_necessary_desks(
         policy=policy,
         exceptions=exceptions,
         random_assignments=random_assignments,
-        num_weeks=100
-    )["data"]
+        num_weeks=100,
+        plotable=False
+    )
 
     scaling_factor = np.max(simulation) / current_worker_count
-    desk_forecast = worker_timeseries_forecast * scaling_factor / target_utilization
+    desk_forecast = worker_forecast * scaling_factor / target_utilization
 
-    forecast_dataframe = pd.DataFrame({
-        "necessary_desks": desk_forecast
-    }, index=forecast_index)
+    desk_forecast_series = pd.Series(desk_forecast, index=worker_forecast_series.index, name="necessary_desks")
+
+    num_desks = data["deskId"].nunique()
+    num_desks_series = pd.Series(num_desks, index=worker_forecast_series.index, name="number_of_desks")
 
     final_data = {
-        "historical": worker_timeseries,
-        "forecast": forecast_dataframe
+        "desk_forecast": desk_forecast_series.to_dict(),
+        "number_of_desks": num_desks_series.to_dict()
     }
 
-    plot = PlotForFunction(default_plot=generate_lineplot(data=final_data,
-                                                          title=f"Necessary desks for {booking_type} bookings",
-                                                          xaxis_title="Date",
-                                                          yaxis_title="Necessary desks"),
-                           available_plots=[generate_lineplot])
+    plot = PlotForFunction(
+        default_plot=generate_lineplot(
+            data=final_data,
+            title=f"Necessary desks for {booking_type} bookings",
+            xaxis_title="Date",
+            yaxis_title="Necessary desks"
+        ),
+        available_plots=[generate_lineplot]
+    )
 
     return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
     
@@ -145,7 +209,6 @@ def simulate_room_changes(
 
     """
     pass
-
 
 
 ### Helper functions

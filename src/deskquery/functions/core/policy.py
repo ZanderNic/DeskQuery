@@ -9,6 +9,8 @@ import numpy as np
 
 # projekt imports
 from deskquery.data.dataset import Dataset
+from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction
+from deskquery.functions.core.helper.plot_helper import generate_barchart, generate_lineplot
 
 
 def simulate_policy(
@@ -17,8 +19,9 @@ def simulate_policy(
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
     num_weeks: int = 100,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"]
-) -> dict[str, object]:
+    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"],
+    plotable: bool = True
+) -> FunctionRegistryExpectedFormat:
     """
     Assigns policies and simulates the weekly attendance of all employees based on them. A policy is a dict of the following parameters 
     which are included in the policy, exceptions (if given) and random_assignments (if given):
@@ -37,6 +40,7 @@ def simulate_policy(
         random_assignments (Optional[List[Tuple[int, Dict]]]): List of tuples (number_of_employees, policy_dict) for random policy assignment.
         num_weeks (int): Number of weeks over which the attendance is simulated.
         weekdays (List[str]): List of weekdays used in the simulation, e.g., ["Mo", "Di", "Mi", "Do", "Fr"].
+        plotable (bool): If called from another function set to False
 
     Returns:
         dict[str, object]: Dictionary containing the average total attendance (Monday to Sunday) across all employees and potentially other metrics.
@@ -75,10 +79,20 @@ def simulate_policy(
 
     total_attendance = np.sum(all_weeks, axis=0)
 
-    return {
-        "data": total_attendance.tolist(),
-        "plotable": True
-    }
+    if plotable:
+        final_data: Dict[str, Dict[str, float]] = {
+            "total_attendance": dict(zip(weekdays, total_attendance))
+        }
+
+        plot = PlotForFunction(default_plot=generate_barchart(data=final_data,
+                                                            title=f"Attendance per weekday",
+                                                            xaxis_title="Weekday",
+                                                            yaxis_title="Attendance"),
+                            available_plots=[generate_barchart])
+
+        return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
+
+    return total_attendance
 
 
 def detect_policy_violations(
@@ -90,7 +104,7 @@ def detect_policy_violations(
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
     only_stats: bool = False
-) -> dict[str, object]:
+) -> FunctionRegistryExpectedFormat:
     """
     Takes a policy and searches the data for violations. A policy is a dict of the following parameters 
     which are included in the policy, exceptions (if given) and random_assignments (if given):
@@ -189,8 +203,6 @@ def detect_policy_violations(
 
             if broken_rules:
                 if only_stats:
-                    if week_label not in weekly_stats:
-                        weekly_stats[week_label] = {}
                     for rule in broken_rules:
                         if rule.startswith("Missing fixed day"):
                             rule_key = "Missing fixed day"
@@ -203,9 +215,9 @@ def detect_policy_violations(
                         else:
                             rule_key = rule
 
-                        if week_label not in weekly_stats:
-                            weekly_stats[week_label] = {}
-                        weekly_stats[week_label][rule_key] = weekly_stats[week_label].get(rule_key, 0) + 1
+                        if rule_key not in weekly_stats:
+                            weekly_stats[rule_key] = {}
+                        weekly_stats[rule_key][week_label] = weekly_stats[rule_key].get(week_label, 0) + 1
                 else:
                     if user_id not in violations:
                         violations[user_id] = []
@@ -217,15 +229,15 @@ def detect_policy_violations(
         current += one_week
 
     if only_stats:
-        return {
-            "data": weekly_stats,
-            "plotable": True
-        }
+        plot = PlotForFunction(default_plot=generate_lineplot(data=weekly_stats,
+                                                            title=f"Weekly policy violations",
+                                                            xaxis_title="Date",
+                                                            yaxis_title="Violations"),
+                            available_plots=[generate_lineplot])
+
+        return FunctionRegistryExpectedFormat(data=weekly_stats, plot=plot)
     
-    return {
-        "data": violations,
-        "plotable": False
-    }
+    return FunctionRegistryExpectedFormat(data=weekly_stats, plot=PlotForFunction(default_plot=None, available_plots=[]))
 
 
 # not finished
@@ -269,9 +281,7 @@ def suggest_balanced_utilization_policy(
     best_error = float("inf")
 
     for candidate in candidate_policies:
-        simulation = simulate_policy(data, candidate, num_weeks=100, weekdays=weekdays)
-        attendance = simulation["data"]
-
+        attendance = simulate_policy(data, candidate, num_weeks=100, weekdays=weekdays)
         avg_per_day = [val for val in attendance[:len(weekdays)]]
         error = sum(abs(day - target_attendance_per_day) for day in avg_per_day)
 
