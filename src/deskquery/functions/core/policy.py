@@ -9,6 +9,8 @@ import numpy as np
 
 # projekt imports
 from deskquery.data.dataset import Dataset
+from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction
+from deskquery.functions.core.helper.plot_helper import generate_barchart, generate_lineplot
 
 
 def simulate_policy(
@@ -17,8 +19,9 @@ def simulate_policy(
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
     num_weeks: int = 100,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"]
-) -> dict[str, object]:
+    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"],
+    plotable: bool = True
+) -> FunctionRegistryExpectedFormat:
     """
     Assigns policies and simulates the weekly attendance of all employees based on them. A policy is a dict of the following parameters 
     which are included in the policy, exceptions (if given) and random_assignments (if given):
@@ -37,6 +40,7 @@ def simulate_policy(
         random_assignments (Optional[List[Tuple[int, Dict]]]): List of tuples (number_of_employees, policy_dict) for random policy assignment.
         num_weeks (int): Number of weeks over which the attendance is simulated.
         weekdays (List[str]): List of weekdays used in the simulation, e.g., ["Mo", "Di", "Mi", "Do", "Fr"].
+        plotable (bool): If called from another function set to False
 
     Returns:
         dict[str, object]: Dictionary containing the average total attendance (Monday to Sunday) across all employees and potentially other metrics.
@@ -75,10 +79,20 @@ def simulate_policy(
 
     total_attendance = np.sum(all_weeks, axis=0)
 
-    return {
-        "data": total_attendance.tolist(),
-        "plotable": True
-    }
+    if plotable:
+        final_data: Dict[str, Dict[str, float]] = {
+            "total_attendance": dict(zip(weekdays, total_attendance))
+        }
+
+        plot = PlotForFunction(default_plot=generate_barchart(data=final_data,
+                                                            title=f"Attendance per weekday",
+                                                            xaxis_title="Weekday",
+                                                            yaxis_title="Attendance"),
+                            available_plots=[generate_barchart])
+
+        return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
+
+    return total_attendance
 
 
 def detect_policy_violations(
@@ -90,7 +104,7 @@ def detect_policy_violations(
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
     only_stats: bool = False
-) -> dict[str, object]:
+) -> FunctionRegistryExpectedFormat:
     """
     Takes a policy and searches the data for violations. A policy is a dict of the following parameters 
     which are included in the policy, exceptions (if given) and random_assignments (if given):
@@ -189,10 +203,21 @@ def detect_policy_violations(
 
             if broken_rules:
                 if only_stats:
-                    if week_label not in weekly_stats:
-                        weekly_stats[week_label] = {}
                     for rule in broken_rules:
-                        weekly_stats[week_label][rule] = weekly_stats[week_label].get(rule, 0) + 1
+                        if rule.startswith("Missing fixed day"):
+                            rule_key = "Missing fixed day"
+                        elif rule.startswith("Too few chooseable days"):
+                            rule_key = "Too few chooseable days"
+                        elif rule.startswith("Too few days"):
+                            rule_key = "Too few days"
+                        elif rule.startswith("Too many days"):
+                            rule_key = "Too many days"
+                        else:
+                            rule_key = rule
+
+                        if rule_key not in weekly_stats:
+                            weekly_stats[rule_key] = {}
+                        weekly_stats[rule_key][week_label] = weekly_stats[rule_key].get(week_label, 0) + 1
                 else:
                     if user_id not in violations:
                         violations[user_id] = []
@@ -204,73 +229,15 @@ def detect_policy_violations(
         current += one_week
 
     if only_stats:
-        return {
-            "data": weekly_stats,
-            "plotable": True
-        }
+        plot = PlotForFunction(default_plot=generate_lineplot(data=weekly_stats,
+                                                            title=f"Weekly policy violations",
+                                                            xaxis_title="Date",
+                                                            yaxis_title="Violations"),
+                            available_plots=[generate_lineplot])
+
+        return FunctionRegistryExpectedFormat(data=weekly_stats, plot=plot)
     
-    return {
-        "data": violations,
-        "plotable": False
-    }
-
-
-# not finished
-def suggest_balanced_utilization_policy(
-    data: Dataset,
-    target_utilization: float,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"]
-) -> dict[str, object]:
-    """
-    Suggests an attendance policy to achieve a more balanced desk utilization. The policy consists of only the number_of_days.
-
-    Args:
-        data (Dataset): The dataset containing booking data.
-        target_utilization (float): Desired average utilization rate per weekday, between 0 and 1.
-        weekdays (List[str]): Days of the week considered, e.g., ["Mo", "Di", "Mi", "Do", "Fr"].
-
-    Returns:
-        dict[str, object]: A suitable policy configuration that aims to meet the target utilization.
-    """
-
-    if not 0 < target_utilization <= 1:
-        return ValueError("Target utilization has to be between 0 and 1")
-
-    total_desks = data["deskId"].nunique()
-    num_weekdays = len(weekdays)
-    target_attendance_per_day = target_utilization * total_desks
-
-    candidate_policies = []
-    for num_days in range(1, min(6, num_weekdays + 1)):
-        policy = {
-            "timeframe": "week",
-            "fixed_days": [],
-            "choseable_days": None,
-            "number_choseable_days": None,
-            "number_days": num_days,
-            "more_days_allowed": True
-        }
-        candidate_policies.append(policy)
-
-    best_policy = None
-    best_error = float("inf")
-
-    for candidate in candidate_policies:
-        simulation = simulate_policy(data, candidate, num_weeks=100, weekdays=weekdays)
-        attendance = simulation["data"]
-
-        avg_per_day = [val for val in attendance[:len(weekdays)]]
-        error = sum(abs(day - target_attendance_per_day) for day in avg_per_day)
-
-        if error < best_error:
-            best_error = error
-            best_policy = candidate
-
-    return {
-        "data": best_policy,
-        "plotable": False
-    }
-
+    return FunctionRegistryExpectedFormat(data=weekly_stats, plot=PlotForFunction(default_plot=None, available_plots=[]))
 
 
 ####### Helpers ###########################################################################################################################################################################
@@ -304,6 +271,9 @@ def create_attendance_dataframe(
     """
     Create a dataframe that contains all attendances
     """
+    data["blockedFrom"] = pd.to_datetime(data["blockedFrom"], errors="coerce")
+    data["blockedUntil"] = pd.to_datetime(data["blockedUntil"], errors="coerce")
+
     data = data[
         (data["blockedFrom"].dt.date >= start_date) &
         (data["blockedFrom"].dt.date <= end_date)
@@ -343,7 +313,9 @@ def load_attendance_profiles(
     selected_weekdays = [weekday_map[day] for day in weekdays]
 
     data["blockedFrom"] = pd.to_datetime(data["blockedFrom"], errors="coerce")
-    end_date = data["blockedFrom"].max().date()
+
+    variable = data[data["variableBooking"] == 1].copy()
+    end_date = variable["blockedFrom"].max().date()
 
     data["blockedUntil"] = data["blockedUntil"].astype(str)
     data.loc[data["blockedUntil"] == "unlimited", "blockedUntil"] = pd.Timestamp(end_date)
@@ -351,8 +323,6 @@ def load_attendance_profiles(
 
     fixed = data[data["variableBooking"] == 0].copy()
     fixed_expanded = expand_fixed_bookings(fixed)
-
-    variable = data[data["variableBooking"] == 1].copy()
 
     data = pd.concat([fixed_expanded, variable], ignore_index=True)
 
@@ -403,7 +373,9 @@ def load_attendances(
         Dictionary with user IDs as keys and list of attendance dates (YYYY-MM-DD) as values.
     """
     data["blockedFrom"] = pd.to_datetime(data["blockedFrom"], errors="coerce")
-    end_date = data["blockedFrom"].max().date()
+
+    variable = data[data["variableBooking"] == 1].copy()
+    end_date = variable["blockedFrom"].max().date()
 
     data["blockedUntil"] = data["blockedUntil"].astype(str)
     data.loc[data["blockedUntil"] == "unlimited", "blockedUntil"] = pd.Timestamp(end_date)
@@ -411,8 +383,6 @@ def load_attendances(
 
     fixed = data[data["variableBooking"] == 0].copy()
     fixed_expanded = expand_fixed_bookings(fixed)
-
-    variable = data[data["variableBooking"] == 1].copy()
 
     start_date = end_date - timedelta(days=lag)
 
