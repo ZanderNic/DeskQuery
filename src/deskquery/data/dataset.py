@@ -340,6 +340,7 @@ class Dataset(pd.DataFrame):
             self[column_name] = self[column_name].map(Counter)
         return self
 
+    @return_if_empty("self")
     def weekday_counter(self, weekdays: list[str], column_counter: str="weekday_count", column_desks: str="expanded_desks_day"):
         """
         Counts the occurrence of a weekday within the booking period. Example: Booking from Monday to Friday 
@@ -358,7 +359,8 @@ class Dataset(pd.DataFrame):
         weekday_df.index = self.index
         return weekday_df
 
-    def expand_time_interval_desk_counter(self, weekdays=["monday", "tuesday", "wednesday", "thursday", "friday"]):
+    @return_if_empty("self")
+    def expand_time_interval_desk_counter(self, weekdays: list[str]=["monday", "tuesday", "wednesday", "thursday", "friday"]):
         """
         Function creates a dataframe which shows the username,
         when he booked which tables, as well as the number of table bookings with the number on which weekday they were booked

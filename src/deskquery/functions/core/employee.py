@@ -91,14 +91,19 @@ def get_booking_repeat_pattern(
 ) -> FunctionRegistryExpectedFormat:
     """
     Identifies users who book the same desks or same days repeatedly.
-
-    Args:
-        most_used_desk: If several tables are booked, specifies how many tables should be issued
-        weekdays: Days of interest.
-        start_date: Start date.
-        end_date: End date.
+    
+    Args
+    dataset (Dataset): The booking dataset to analyze.
+    user_names (Optional[list[str]]): Filter by specific user names.
+    user_ids (Optional[list[int]]): Filter by specific user IDs.
+    most_used_desk (int): Number of top booked desks to consider per user.
+    weekdays (List[str]): List of weekdays to include.
+    start_date (Optional[datetime]): Start of the analysis period.
+    end_date (Optional[datetime]): End of the analysis period.
+    include_fixed (bool): Whether to include fixed desk bookings.
 
     Returns:
+        FunctionRegistryExpectedFormat: Contains the data and plots of booking repeat patterns.
     """
     if not include_fixed:
         dataset = dataset.drop_fixed()
@@ -108,33 +113,37 @@ def get_booking_repeat_pattern(
         user_names = [] if not user_names else user_names
         dataset = dataset.get_users(user_names, user_ids)
 
+    if dataset.empty:
+        return FunctionRegistryExpectedFormat(data={}, 
+                                       plot=PlotForFunction(default_plot=None, 
+                                        available_plots=[]))
+
+
     # Treating double bookings makes no sense, as no meaningful conclusion can be drawn from them
     dataset = dataset.drop_double_bookings()
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
 
     df = dataset.expand_time_interval_desk_counter(weekdays=weekdays)
-
     result = (df.sort_values(['userId', 'num_desk_bookings'], ascending=False)
             .groupby('userId')
             .head(most_used_desk)
             .reset_index()
         )
-    
-    def plot_data(df: pd.DataFrame, index_col: str) -> dict:
-        df = df.set_index(index_col)
-        return {col: df[col].to_dict() for col in df.columns}
-    
-    plot_dict = plot_data(result[['userName'] + weekdays], index_col='userName')
 
+    def df_to_function_data(df, weekdays):
+        result = {}
+        for day in weekdays:
+            result[day.capitalize()] = dict(zip(df['userName'], df[day]))
+        return result
 
-    plot = PlotForFunction(default_plot=generate_barchart(data=plot_dict,
-                                                          title="Repeat Pattern",
-                                                          xaxis_title="user_id",
-                                                          yaxis_title="frequencies"),
+    plot_data = df_to_function_data(result, weekdays)
+    plot = PlotForFunction(default_plot=generate_barchart(data=plot_data,
+                                                          title="Booking Repeat Pattern",
+                                                          xaxis_title="User",
+                                                          yaxis_title="Booking Percentage"),
                            available_plots=[generate_barchart, generate_heatmap])
-    
-    return FunctionRegistryExpectedFormat(data=plot_dict, plot=plot)
+    return FunctionRegistryExpectedFormat(data=plot_data, plot=plot)
 
 def get_booking_clusters(
     dataset: Dataset,
@@ -146,18 +155,21 @@ def get_booking_clusters(
     end_date: Optional[datetime] = None,
 ) -> dict:
     """
-    Finds booking clusters, i.e., groups of users who often book nearby desks.
+    Finds groups of users who frequently book desks close to each other.
+    Filters data by users, dates, and weekdays, then identifies clusters based 
+    on a minimum number of shared bookings.
 
     Args:
-        distance_threshold: Spatial proximity to define a cluster.
-        co_booking_count_min: Minimum times users must co-book nearby desks.
-        user_ids: cluster for only spezific users
-        weekdays: Days to consider.
-        start_date: Start date.
-        end_date: End date.
+        dataset (Dataset): Booking data.
+        co_booking_count_min (int): Minimum number of shared bookings.
+        user_ids (Optional[list[int]]): list of user IDs to filter by.
+        include_fixed (bool): excludes fixed desk bookings from analysis.
+        weekdays (List[str]): weekdays to consider.
+        start_date (Optional[datetime]): start date.
+        end_date (Optional[datetime]): end date.
 
-    Returns: dict
-
+    Returns:
+        dict: Information about the found booking clusters.
     """
     if not include_fixed:
         dataset = dataset.drop_fixed()
@@ -165,7 +177,8 @@ def get_booking_clusters(
     dataset = dataset.drop_double_bookings()
     dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
     dataset = dataset.get_days(weekdays=weekdays)
-    dataset.expand_time_interval_desk_counter()
+    dataset.expand_time_interval_desk_counter(weekdays=weekdays)
+    
     dataset = dataset.explode('expanded_desks_day')[['userId', 'userName', 'roomId', 'deskNumber', 'expanded_desks_day']]
     df_paris = booking_graph(dataset).sort_values("weight", ascending=False)
 
@@ -174,22 +187,16 @@ def get_booking_clusters(
 
     result = get_user_workmates(df_paris, user_ids)
 
-    def prepare_heatmap_data(result):
-        df = pd.DataFrame(result)
-        heatmap_dict = {(row.userId_1, row.userId_2): row.weight for _, row in df.iterrows()}
+    # Heatmap (Data)
+    # z = result["weight"]
+    # x = result["userId_1"]
+    # y = result["userId_2"]
+    # title="Co-Booking Heatmap",
+    # xaxis_title="User ID 2",
+    # yaxis_title="User ID 1",
 
-        return {"weights": heatmap_dict}
-
-    data = prepare_heatmap_data(result)
-
-    # To Do Fixing Heatmap
-    # plot = PlotForFunction(default_plot=generate_heatmap(data=data,
-    #                                                       title="User Bookings Heatmap",
-    #                                                       xaxis_title="User 1",
-    #                                                       yaxis_title="User 2"),
-    #                        available_plots=[generate_heatmap])
-
-    # return FunctionRegistryExpectedFormat(data=data, plot=plot)
+    # TO DO: None is not currently being treated
+    return FunctionRegistryExpectedFormat(data=result, plot=None)
 
 def get_co_booking_frequencies(
     dataset: Dataset,
@@ -201,15 +208,23 @@ def get_co_booking_frequencies(
     end_date: Optional[datetime] = None,
 )-> None:
     """
-    Detects employee pairs who frequently book on the same days.
+    Identifies pairs of users who frequently book on the same days and calculates co-booking statistics.
+
+    This function analyzes booking behavior over a specified timeframe and set of weekdays,
+    identifying user pairs who have booked on the same day at least `min_shared_days` times.
+    Optionally, it can restrict analysis to bookings in the same room.
+
     Args:
-        min_shared_days: Minimum number of shared booking days.
-        same_room_only: If True, limits to co-bookings in the same room.
-        weekdays: Days to analyze.
-        start_date: Start date.
-        end_date: End date.
+        dataset (Dataset): dataset with booking information.
+        min_shared_days (int): minimum number of shared booking days required to include a user pair.
+        same_room_only (bool): only consider co-bookings where both users were in the same room.
+        include_fixed (bool): excludes fixed desk bookings from analysis.
+        weekdays (List[str]): weekdays to consider for the analysis (e.g., ["monday", "wednesday"]).
+        start_date (Optional[datetime]): start date 
+        end_date (Optional[datetime]): end date
 
     Returns:
+        FunctionRegistryExpectedFormat:
     """
     if not include_fixed:
         dataset = dataset.drop_fixed()
@@ -236,7 +251,8 @@ def get_co_booking_frequencies(
                               drop_columns=["userId"])
     merged = calc_percent(merged, "count", "total_bookings_user1", "share_1")
 
-    merged = merge_dataframes(df_1=pairs_df,
+ 
+    merged = merge_dataframes(df_1=merged,
                               df_2=booking_counter,
                               left_column="userId_2",
                               right_column="userId",
@@ -245,7 +261,29 @@ def get_co_booking_frequencies(
                               drop_columns=["userId"])
     merged = calc_percent(merged, "count", "total_bookings_user2", "share_2")
 
-    return FunctionRegistryExpectedFormat(data=merged.to_dict(), plot=None)
+    # Heatmap (Data)
+    # heatmap_df = merged.pivot(index="userId_1", columns="userId_2", values="count").fillna(0)
+    # z = heatmap_df.values,
+    # x = heatmap_df.columns.astype(str),
+    # y = heatmap_df.index.astype(str)
+    # title = "Co-Booking Counts Heatmap"
+    # xaxis_title="UserId 2",
+    # yaxis_title="UserId 1"
+
+
+    # Barchart (Data)
+    plot_dict_barchart = (
+    merged.sort_values(["userId_1", "share_1"], ascending=False)
+    .groupby("userId_1")
+    .apply(lambda df: dict(zip(df["userId_2"], df["share_1"])))
+    .to_dict()
+    )
+    plot = PlotForFunction(default_plot=generate_barchart(plot_dict_barchart,
+                                                          title="Co-Booking Share per User",
+                                                          xaxis_title="UserId2",
+                                                          yaxis_title="Share (%)"),
+                            available_plots=[generate_barchart, generate_heatmap])
+    return FunctionRegistryExpectedFormat(data=plot_dict_barchart, plot=plot)
 
 
 
@@ -348,17 +386,3 @@ if __name__ == "__main__":
     start_date_obj = datetime.strptime(start_date_str, "%Y.%m.%d")
     end_date_obj = datetime.strptime(end_date_str, "%Y.%m.%d")
 
-
-
-    # Testing Function 2
-    # print("------ Testing Function 2 ------")
-    # result = get_booking_repeat_pattern(dataset, start_date=start_date_obj, end_date=end_date_obj, include_fixed=False)
-    # Done
-
-    # Testing Fuction 3
-    # print("------ Testing Function 3 ------")
-    # result = get_booking_clusters(dataset=dataset)
-
-    # Testing Function 4
-    # print("------ Testing Function 4 ------")
-    # result = get_co_booking_frequencies(dataset=dataset)
