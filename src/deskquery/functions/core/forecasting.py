@@ -1,6 +1,7 @@
 # std-lib import
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime, date, timedelta
+from deskquery.functions.types import FunctionData
 
 # 3 party imports
 import pandas as pd
@@ -79,11 +80,11 @@ def forecast_employees(
         combined_index = worker_history_series.index.union(worker_forecast_series.index)
         num_desks_series = pd.Series(num_desks, index=combined_index, name="number_of_desks")
 
-        final_data = {
+        final_data = FunctionData({
             "worker_history": worker_history_series.to_dict(),
             "worker_forecast": worker_forecast_series.to_dict(),
             "number_of_desks": num_desks_series.to_dict()
-        }
+        })
 
         plot = PlotForFunction(
             default_plot=generate_lineplot(
@@ -104,12 +105,12 @@ def estimate_necessary_desks(
     data: Dataset,
     lag: int = 90,
     booking_type: str = "all",
-    weekly_growth_rate: float = None,
-    weekly_absolute_growth: float = None,
+    weekly_growth_rate: Optional[float] = None,
+    weekly_absolute_growth: Optional[float] = None,
     forecast_model = "linear",
     target_utilization: float = 1.0,
     weeks_ahead: int = 52,
-    policy: Dict = None,
+    policy: Optional[Dict] = None,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
 ) -> FunctionRegistryExpectedFormat:
@@ -169,10 +170,10 @@ def estimate_necessary_desks(
     num_desks = data["deskId"].nunique()
     num_desks_series = pd.Series(num_desks, index=worker_forecast_series.index, name="number_of_desks")
 
-    final_data = {
+    final_data = FunctionData({
         "desk_forecast": desk_forecast_series.to_dict(),
         "number_of_desks": num_desks_series.to_dict()
-    }
+    })
 
     plot = PlotForFunction(
         default_plot=generate_lineplot(

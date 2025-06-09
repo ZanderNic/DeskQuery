@@ -3,6 +3,19 @@ from typing import Optional, List, Callable
 from datetime import datetime
 import plotly.graph_objects as go
 from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot, PlotFunction
+from deskquery.functions.core.helper.plot_helper import generate_heatmap, generate_hist, generate_barchart, generate_scatterplot, generate_lineplot, generate_map, generate_table
+
+# TODO: Think of a way to add them smart to generate_plot_for_function since thats
+# TODO: the only summary the llm sees to pick the correct plot
+helper_docstrings = {
+    "generate_heatmap": generate_heatmap.__doc__,
+    "generate_hist": generate_hist.__doc__,
+    "generate_barchart": generate_barchart.__doc__,
+    "generate_scatterplot": generate_scatterplot.__doc__,
+    "generate_lineplot": generate_lineplot.__doc__,
+    "generate_map": generate_map.__doc__,
+    "generate_table": generate_table.__doc__
+}
 
 def generate_plot_for_function(func_result: FunctionRegistryExpectedFormat,
                                additional_plot_args: dict[str, str] = {},
