@@ -7,7 +7,8 @@ import pandas as pd
 
 # project imports
 from deskquery.data.dataset import Dataset
-
+from deskquery.functions.types import PlotForFunction, FunctionRegistryExpectedFormat
+from deskquery.functions.core.helper.plot_helper import *
 
 def mean_utilization(
     data: Dataset,
@@ -17,9 +18,9 @@ def mean_utilization(
     by_room: bool = False,
     by_day: bool = False,
     
-    desk_id: Optional[List[str]] = None,
+    desk_id: Optional[List[int]] = None,
     room_name: Optional[List[str]] = None,
-    weekday: Optional[List[str]] = None,
+    weekday: Optional[List[str]] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
     
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
@@ -48,7 +49,7 @@ def mean_utilization(
         by_room (bool): If True, groups statistics by room.
         by_day (bool): If True, groups statistics by weekday name (e.g., 'Monday').
         
-        desk_id (Optional[List[str]]): If provided, filters the analysis to the selected desk IDs.
+        desk_id (Optional[List[int]]): If provided, filters the analysis to the selected desk IDs.
         room_name (Optional[List[str]]): If provided, filters the analysis to the selected room names.
         weekday (Optional[List[str]]): List of weekday names (e.g., ['monday', 'friday']) to include in analysis.
         
@@ -99,14 +100,24 @@ def mean_utilization(
     if end_date is None:
         end_date = datetime.today()
     
-    df = prepare_utilization_dataframe(data, include_fixed, desk_id, room_name, weekday, start_date, end_date)
+    df = prepare_utilization_dataframe(
+        data=data,
+        start_date=start_date,
+        end_date=end_date,
+        include_fixed=include_fixed,
+        desk_id=desk_id,
+        room_name=room_name,
+        weekday=weekday
+    )
 
+    
     # Aggregation Key
     if by_room:                                                
         key = df["roomName"]
         n_desks_per_room = data.get_desks_per_room_count()
         total_possible =  n_desks_per_room * count_matching_weekdays(start_date, end_date, weekday)      # here it should be num desks in room times time period
         actual_counts = key.value_counts()
+        column_name= "room"
     
         utilization = pd.Series({
             room: round(actual_counts.get(room, 0) / total_possible.get(room, 1), 3)
@@ -117,6 +128,7 @@ def mean_utilization(
         key = df["roomName"] + "_" + df["deskNumber"].astype(str)   
         desk_keys = key.unique()
         total_possible = count_matching_weekdays(start_date, end_date, weekday)     # here the max utilaization is the nummber of days for every desk 
+        column_name= "desk"
         
         actual_counts = key.value_counts()
         utilization = pd.Series({
@@ -132,6 +144,7 @@ def mean_utilization(
         n_desks = data.get_desks_count()
         total_possible = {day: count * n_desks for day, count in weekday_counts.items()}   # here the nummber of possible bookings is the nummber of apperances of the different weekday * the total nummber of desks that are available (the same for every day)
         actual_counts = key.value_counts()
+        column_name= "day"
 
         utilization = pd.Series({
             day: round(actual_counts.get(day, 0) / total_possible.get(day, 1), 3)
@@ -148,16 +161,20 @@ def mean_utilization(
         
     if top_or_bottom_n:
         utilization = utilization.sort_values(ascending=from_bottom)[:top_or_bottom_n]
-        
-    return {
-        "data": {
-            "utilization": utilization.to_dict(), 
-            "count": len(utilization)
-        },
-        "error":  0,
-        "error_msg": "",
-        "plotable": True
+    
+    data_return = {
+        "utilization": utilization.to_dict(), 
+        "count": len(utilization)
     }
+    
+    plot = PlotForFunction(default_plot=generate_barchart(data=data_return["utilization"],
+                                                          title=column_name,
+                                                          xaxis_title=column_name,
+                                                          yaxis_title="mean utilization"),
+                           available_plots=[generate_barchart, generate_heatmap])
+
+   
+    return FunctionRegistryExpectedFormat(data=data_return, plot=plot)
 
 
 def utilization_stats(
@@ -233,12 +250,19 @@ def utilization_stats(
     if end_date is None:
         end_date = datetime.today()
 
-    df = prepare_utilization_dataframe(data, include_fixed, desk_id, room_name, weekday, start_date, end_date)
-
+    df = prepare_utilization_dataframe(
+        data=data,
+        start_date=start_date,
+        end_date=end_date,
+        include_fixed=include_fixed,
+        desk_id=desk_id,
+        room_name=room_name,
+        weekday=weekday
+    )
     if by_room:
         df["key"] = df["roomName"]
         total_possible = data.get_desks_per_room_count() * count_matching_weekdays(start_date, end_date, weekday)      #  if by room the max possible boockings are desks_per_room
-    
+        
     elif by_desks:
         df["key"] = df["roomName"] + "_" + df["deskNumber"].astype(str)
         total_possible = count_matching_weekdays(start_date, end_date, weekday)     # here the max utilaization is the nummber of days for every desk 
@@ -264,13 +288,8 @@ def utilization_stats(
             "max": float(round(values["max"] / max_possible, 3)),                       # scale the min, max with max possible to get the utilization
             "var": float(round(values["sumsq"] / max_possible - (mean) ** 2, 6)),       # use the mean and the sumsq to callculate the var
         }
-
-    return {
-        "data": result_data_dict,
-        "error": 0,
-        "plotable": 0,
-        "error_msg": ""
-    }
+   
+    return FunctionRegistryExpectedFormat(data=result_data_dict, plot=None)
 
 
 def detect_utilization_anomalies(
@@ -335,15 +354,12 @@ def detect_utilization_anomalies(
         key: value for key, value in utilization.items()
         if abs(value - mean_util) >= threshold
     }
-
-    return {
-        "data": anomalies,
-        "count": len(anomalies),
-        "error": 0,
-        "error_msg": "",
-        "plotable": True
-    }
-
+    
+    plot = PlotForFunction(default_plot=generate_barchart(data=anomalies,
+                                                          yaxis_title="mean utilization"),
+                           available_plots=[generate_barchart])
+    
+    return FunctionRegistryExpectedFormat(data=anomalies, plot=plot)
 
 
 ####### Helpers ########################################################################################################################################################################### 
@@ -362,7 +378,7 @@ def expand_fixed_bookings(data, start_col="blockedFrom", end_col="blockedUntil",
     Returns:
         pd.DataFrame: Expanded bookings filtered by weekday.
     """
-    if weekday is None:
+    if not weekday:
         weekday = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
 
     weekday = [w.lower() for w in weekday]
@@ -391,14 +407,16 @@ def expand_fixed_bookings(data, start_col="blockedFrom", end_col="blockedUntil",
 
 def prepare_utilization_dataframe(
     data: Dataset,
+    
+    start_date: datetime,
+    end_date: datetime,
+    
     include_fixed: bool = False,
     
     desk_id: Optional[List[str]] = None,
     room_name: Optional[List[str]] = None,
-    weekday: Optional[List[str]] = None,
+    weekday: Optional[list[str]] = None,
     
-    start_date: datetime = None,
-    end_date: datetime = None,
 ) -> pd.DataFrame:
     """
     Filters, expands, and prepares the booking DataFrame for utilization analysis.
@@ -415,9 +433,6 @@ def prepare_utilization_dataframe(
     Returns:
         pd.DataFrame: Filtered and preprocessed DataFrame ready for aggregation.
     """
-    if start_date is None or end_date is None:
-       raise ValueError("please Provide start and end data")
-    
     if start_date > end_date:
         raise ValueError("Start date should be before end date")
      
@@ -442,8 +457,8 @@ def prepare_utilization_dataframe(
 
 
 def count_matching_weekdays(
-    start_date: datetime = None, 
-    end_date: datetime = None,
+    start_date: datetime, 
+    end_date: datetime,
     allowed_days: Optional[List[str]] = None
 ) -> int:
     """
@@ -605,7 +620,6 @@ if __name__ == "__main__":
         end_date=end
     )
     pprint(result["data"])
-    print("Count:", result["count"])
     print()
 
     print("=== Anomaly detection by weekday ===")
@@ -618,5 +632,4 @@ if __name__ == "__main__":
         end_date=end
     )
     pprint(result["data"])
-    print("Count:", result["count"])
     print()
