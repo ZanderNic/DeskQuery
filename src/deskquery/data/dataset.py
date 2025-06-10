@@ -161,8 +161,8 @@ class Dataset(pd.DataFrame):
             # this blocks handles the fixed bookings and takes the intersection between start and end
             # blockFrom and blockedUntil is longer
             is_fixed = self["variableBooking"] == 0
-            blocked_from[is_fixed] = blocked_from[is_fixed].combine(start_date, func=max)
-            blocked_until[is_fixed] = blocked_until[is_fixed].combine(end_date, func=min)
+            blocked_from[is_fixed] = blocked_from[is_fixed].combine(start_date, func=lambda ts_cur, ts_new: ts_cur if ts_cur > pd.Timestamp(ts_new) else pd.Timestamp(ts_new))
+            blocked_until[is_fixed] = blocked_until[is_fixed].combine(end_date, func=lambda ts_cur, ts_new: ts_cur if ts_cur < pd.Timestamp(ts_new) else pd.Timestamp(ts_new))
             self.loc[:, 'blockedFrom'] = blocked_from  # FIXME: CHANGED
             self.loc[:, 'blockedUntil'] = blocked_until.copy().replace(datetime.date(pd.Timestamp.max), 'unlimited')
         
@@ -177,9 +177,9 @@ class Dataset(pd.DataFrame):
             mask &= (blocked_from <= blocked_until)
             
             if start_date:
-                mask &= (blocked_from >= start_date)
+                mask &= (blocked_from >= pd.Timestamp(start_date))
             if end_date:
-                mask &= (blocked_until <= end_date)
+                mask &= (blocked_until <= pd.Timestamp(end_date))
             
             if only_active:
                 mask &= (blocked_from >= datetime.today()) & (datetime.today() <= blocked_until)
@@ -220,7 +220,7 @@ class Dataset(pd.DataFrame):
             'sunday': 6
         }
 
-        weekday_numbers = [weekdays_map[day] for day in weekdays]
+        weekday_numbers = [weekdays_map[day.lower()] for day in weekdays]
 
         blocked_from = pd.to_datetime(self['blockedFrom'])
         blocked_until = pd.to_datetime(self['blockedUntil'].copy().replace('unlimited', datetime.date(pd.Timestamp.max)))

@@ -25,19 +25,21 @@ class LLM_Client(ABC):
         Creates a model client and initializes the chat with a system message
         and output schema if desired.
 
-        Parameters
-        ----------
-            model: str
+        Args:
+            model (str):
                 The model to be used with the client.
-            chat_history: bool
-                If True, the chat history will be saved.
-                If False, every input message and response will be a new chat.
-            sys_msg: str
+            chat_history (bool, optional):
+                If `True`, the chat history will be saved.
+                If `False`, every input message and response will be a new
+                chat. Defaults to `True`.
+            sys_msg (str, optional):
                 The system message to be used with the model.
                 This message will be used as the first message in the chat.
-            output_schema: str
+                Defaults to `None`.
+            output_schema (str, optional):
                 The output schema to be used with the model.
                 This message will be used as the second message in the chat.
+                Defaults to `None`.
         """
         pass
     
@@ -46,28 +48,31 @@ class LLM_Client(ABC):
         self, 
         input_str: str, 
         role: str = 'user',
-        response_json: bool = False
+        response_json: bool = False,
+        temperature: float = 0.7
     ) -> str:
         """
-        Provides a chat response to a given input calling the asynchronous
-        function `_get_response()`.
+        Provides a chat response to a given input.
         The role associated with the input message can usually be defined
-        to either `system`, `user` or `assistant`.
+        to either `system`, `user` or `assistant`. The available roles may
+        differ between the different models and providers.
         
-        Parameters
-        ----------
-            input_str: str
+        Args:
+            input_str (str):
                 The input message to be sent to the model.
-            role: str
+            role (str, optional):
                 The role of the input message. Can be either `system`,
-                `user` or `assistant`.
-            response_json: bool
-                If True, the response will be returned as a json object.
-                If False, the response will be returned as a string.
+                `user` or `assistant`. Defaults to `user`.
+            response_json (bool, optional):
+                If `True`, the response will be returned as a json object.
+                If `False`, the response will be returned as a string. Defaults
+                to `False`.
+            temperature (float, optional):
+                The temperature to be used for the model response. Defaults to
+                `0.7`. 
                 
-        Returns
-        -------
-            response: str
+        Returns:
+            response (str):
                 The model response string
         """
         pass
@@ -77,17 +82,18 @@ class LLM_Client(ABC):
         filename: str
     ):
         """
-        Saves the current conversation history to `json` format if a chat
+        Saves the current conversation history to `JSON` format if a chat
         history exists.
 
-        Parameters
-        ----------
-            filename: str
+        Args:
+            filename (str):
                 The name of the json file to save the chat history to.
-                If None, defaults to `chat_history.json` in the current
+                If `None`, defaults to `chat_history.json` in the current
                 directory.
         """
         if self._chf:
+            if not filename:
+                filename = 'chat_history.json'
             fn = filename if filename.endswith('.json') else filename + '.json'
             with open(fn, 'w') as json_file:
                 json.dump(self.chat_history, json_file, indent=2)
@@ -119,7 +125,7 @@ class GroqClient(LLM_Client):
                 self.chat_completion(sys_msg, 'system')
             if output_schema:
                 self.chat_completion(
-                    f'Use this following json schema to provide your answers:\n{output_schema}',
+                    f'Use this following JSON schema to provide your answers:\n{output_schema}',
                     'system'
                 )
         else:
@@ -127,13 +133,16 @@ class GroqClient(LLM_Client):
             if sys_msg:
                 self._sys_msg += sys_msg
             if self.output_schema:
-                self._sys_msg += f'\n\nUse this following json schema to provide your answers:\n{self.output_schema}'
+                if self._sys_msg:
+                    self._sys_msg += '\n\n'
+                self._sys_msg += f'Use this following JSON schema to provide your answers:\n{self.output_schema}'
     
     def chat_completion(
         self, 
         input_str: str, 
         role: str = 'user',
-        response_json: bool = False
+        response_json: bool = False,
+        temperature: float = 0.7
     ) -> str:
         if self._chf:
             self.chat_history.append({"role": role, "content": input_str})
@@ -143,7 +152,11 @@ class GroqClient(LLM_Client):
         chat_comp = self.client.chat.completions.create(
             messages=self.chat_history if self.chat_history else message,
             model=self.model,
-            response_format={"type": "json_object"} if self.output_schema and response_json else None
+            temperature=temperature if 0.0 <= temperature <= 2.0 else None,
+            response_format={
+                "type": "json_object", 
+                "json_schema": self.output_schema
+            } if self.output_schema and response_json else None
         )
         
         if self._chf:
@@ -199,7 +212,8 @@ class GoogleClient(LLM_Client):
         self,
         input_str: str, 
         role: str = 'user',
-        response_json: bool = False
+        response_json: bool = False,
+        temperature: float = 0.7
     ):
         """
         `role` must be either `user` or `model` to work with the api.
@@ -209,6 +223,10 @@ class GoogleClient(LLM_Client):
             self.chat_history.append({"role": 'user', "content": input_str})
             chat_comp = self._chat.send_message(input_str)
         else:
+            if self._config is None:
+                self._config = types.GenerateContentConfig(
+                    temperature=temperature if 0.0 <= temperature <= 2.0 else None
+                )
             chat_comp = self.client.models.generate_content(
                 model=self.model,
                 contents=input_str,
@@ -224,9 +242,9 @@ class GoogleClient(LLM_Client):
         return chat_comp.text
 
 
-######################################
+###############################################################################
 # Available model providers and models
-######################################
+###############################################################################
 
 _model_providers = {
     "google": {
@@ -248,7 +266,7 @@ _model_providers = {
     }
 }
 
-######################################
+###############################################################################
 
 def get_model_providers() -> dict:
     """

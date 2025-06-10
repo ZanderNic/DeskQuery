@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="../static/styles.css" />
     <title>Desk Query</title>
-    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
+    <link rel="icon" href="{{ url_for('static', filename='image.svg') }}" type="image/svg+xml" /> <!-- {{ url_for('static', filename='image.svg') }} -->
   </head>
   <body>
     <script src="../static/script.js"></script>
@@ -35,11 +35,11 @@
           </div>
         </div>
 
-        <div id="chat-container"></div>
-       
-        <div id="empty-chat-overlay" class="empty-overlay hidden">
-          <h2>How can I help you today with your desk analytics?</h2>
-          <p>Ask me anything about occupancy, bookings, or workspace trends.</p>
+        <div id="chat-container">
+          <div id="empty-chat-overlay">
+            <h2>How can I help you today with your desk analytics?</h2>
+            <p>Ask me anything about occupancy, bookings, or workspace trends.</p>
+          </div>
         </div>
 
         <div id="chat-info-wrapper">

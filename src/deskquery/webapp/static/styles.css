@@ -188,7 +188,7 @@ html, body {
   height: 60px;
   background-color: #1e1e1e;
   padding: 15px 20px;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: bold;
   text-align: center;
   border-bottom: 1px solid #333;
@@ -296,9 +296,11 @@ html, body {
 
 #empty-chat-overlay {
   display: flex;
+  flex-direction: column;
+  justify-self: center;
+  align-self: center;
   justify-content: center;
   align-items: center;
-  flex-direction: column;
   text-align: center;
   color: #aaa;
   font-size: 22px;
@@ -306,7 +308,7 @@ html, body {
   padding: 20px;
   width: 100%;
   max-width: 1000px;
-  height: 100%;
+  
   box-sizing: border-box;
 }
 

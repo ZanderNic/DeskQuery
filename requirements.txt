@@ -10,3 +10,4 @@ tabulate
 plotly
 scikit-learn
 openpyxl
+nbformat

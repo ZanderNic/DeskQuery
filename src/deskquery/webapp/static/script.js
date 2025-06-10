@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateOverlayVisibility() {
     requestAnimationFrame(() => {
       const hasMessages = chatContainer.querySelector('.message');
+      print(`updateOverlayVisibility: currentChatId=${currentChatId}, hasMessages=${hasMessages}`);
       if (!currentChatId || !hasMessages) {
         overlay.classList.remove('hidden');
       } else {
@@ -54,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-    function setActiveChatInSidebar(chatId) {
+  function setActiveChatInSidebar(chatId) {
     chatList.querySelectorAll('.chat-entry').forEach(entry => {
       const span = entry.querySelector('.chat-title');
       if (span && span.getAttribute('data-id') === chatId) {

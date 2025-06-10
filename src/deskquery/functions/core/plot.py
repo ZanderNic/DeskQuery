@@ -4,22 +4,32 @@ from datetime import datetime
 import plotly.graph_objects as go
 from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot, PlotFunction
 
-def generate_plot_for_function(func_result: FunctionRegistryExpectedFormat,
-                               additional_plot_args: dict[str, str] = {},
-                               plot_to_generate: Optional[PlotFunction] = None, 
-                               use_default_plot: bool = True) -> Plot | str:
-
+def generate_plot_for_function(
+    func_result: FunctionRegistryExpectedFormat,
+    additional_plot_args: dict[str, str] = {},
+    plot_to_generate: Optional[PlotFunction] = None, 
+    use_default_plot: bool = True
+) -> Plot | str:
+    """
+    
+    """
     data = func_result.data
     plot = func_result.plot
 
     if not plot.available_plots:
-        return "Not plot available for this kind of data."
+        return {
+            "status": "not_available",
+            "message": "Unfortunately there are no other plots available for this function result."
+        }
 
     if plot_to_generate:
         use_default_plot = False
 
     if use_default_plot:
-        return plot.default_plot
+        return {
+            "status": "success",
+            "plot": plot.default_plot.to_json(),
+        }
     else:
         # plot_to_generate has to be a function from the plot function filled with arguments from llm
         if plot_to_generate in plot.available_plots:

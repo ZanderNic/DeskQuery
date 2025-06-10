@@ -1,4 +1,4 @@
-def analyze_utilization(
+def mean_utilization(
     data: Dataset,
     include_fixed: bool = False,
     
@@ -6,20 +6,26 @@ def analyze_utilization(
     by_room: bool = False,
     by_day: bool = False,
     
-    desk_id: Optional[List[int]] = None,
+    desk_id: Optional[List[str]] = None,
     room_name: Optional[List[str]] = None,
-    
     weekday: Optional[List[str]] = None,
+    
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     threshold: Optional[float] = None,
-    count_below: bool = False,
+    top_or_bottom_n: Optional[int] = None,
+    from_bottom: Optional[bool] = False,
 ) -> dict[str, object]:
-Computes statistical measures of workspace utilization over time, grouped by desk, room, or weekday.
+Computes mean utilization of workspace utilization over a given timeframe, grouped by either desk, room, or weekday. Should 
+only be used to group by one of those attributes.
 
-Utilization is calculated by dividing the number of actual bookings by the number of possible bookings 
-per group (based on date range, included weekdays, and number of desks). Daily booking counts are used 
-to compute variability (min, max, variance) per group key.
+Utilization is defined as the number of actual bookings divided by the number of possible bookings per group.
+The possible bookings depend on the time window, included weekdays, selected desk_ids or selected room_names.
+
+Optionally, the result can be filtered by a threshold or by selecting only the top or bottom N utilization values by 
+providing a threshold and selecting with from_bottom = True all entities where utilization <= threshold or with False 
+utilization >= threshold. The same goes with the top_or_bottom_n where from_bottom = False means the top N utilizations
+and with from_bottom = True the bottom N utilizations.
 
 ---
 
@@ -104,7 +110,7 @@ across weekdays and rooms.
 
 def get_booking_repeat_pattern(
     dataset: Dataset,
-    most_used_desk: int = 1, # TO DO: Still needs to be implemented 
+    most_used_desk: int = 1, # TODO: Still needs to be implemented 
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
@@ -135,40 +141,6 @@ def get_co_booking_frequencies(
     end_date: Optional[datetime] = None
 )-> None:
 Detects employee pairs who frequently book on the same days.
-
----
-
-def generate_heatmap(
-    by_room: bool, 
-    resolution: str, 
-    weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
-ö
-Generates a heatmap showing desk bookings over time.
-
----
-
-def generate_plot_interactive(
-    by_room: bool, 
-    resolution: str, weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
-Produces an interactive plot of desk booking data.
-
----
-
-def generate_plot(
-    by_room: bool, 
-    resolution: str, 
-    desk: int, 
-    weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
-Creates a plot of desk utilization over time.
 
 ---
 

@@ -90,7 +90,6 @@ def mean_utilization(
             "plotable": True
         }
     """
-
     if sum([by_room, by_desks, by_day]) != 1:
         raise ValueError("You must set exactly one of by_room, by_desks, or by_day to True.")
 
