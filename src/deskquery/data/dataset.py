@@ -101,7 +101,7 @@ def create_dataset(path: Path = (Path(__file__).resolve().parent.parent / 'data'
     return Dataset(data)
 
 class Dataset(pd.DataFrame):
-    # both things make it easier/more efficent to map ids to names in case of sliced datasets 
+    # both things make it easier/more efficient to map ids to names in case of sliced datasets
     _desk_room_mapping: pd.DataFrame
     _userid_username_mapping: dict
     _date_format_mapping: dict[str, str] = {

@@ -84,7 +84,7 @@ def chat():
                 "role": "assistant", 
                 "content": response["message"]
             }
-            if response.get("data", None):
+            if response.get("data", False):
                 message_data["data"] = {
                     "function_data": response["data"].data,
                     "plotable": response["data"].plotable,
@@ -92,8 +92,9 @@ def chat():
                     "available_plots": [plot.__name__ for plot in response["data"].plot.available_plots[:-1]],
                     "type": "mixed"
                 }
-            chat_data.add_message(message_data)
-            chat_data.save_to_json()
+
+            print("message_data:", message_data, sep="\n")
+            chat_data.add_message(**message_data)
                 
             return jsonify({
                 "chat_id": chat_id,

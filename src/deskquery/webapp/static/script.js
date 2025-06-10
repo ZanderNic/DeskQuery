@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateOverlayVisibility() {
     requestAnimationFrame(() => {
       const hasMessages = chatContainer.querySelector('.message');
-      print(`updateOverlayVisibility: currentChatId=${currentChatId}, hasMessages=${hasMessages}`);
+      console.log(`updateOverlayVisibility: currentChatId=${currentChatId}, hasMessages=${hasMessages}`);
       if (!currentChatId || !hasMessages) {
         overlay.classList.remove('hidden');
       } else {
