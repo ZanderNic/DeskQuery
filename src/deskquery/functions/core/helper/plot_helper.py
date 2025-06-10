@@ -482,8 +482,7 @@ def generate_table(
 
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
-    from deskquery.functions.core.forecasting import estimate_necessary_desks, forecast_employees
-    from deskquery.functions.core.policy import simulate_policy, detect_policy_violations
+    from deskquery.functions.core.policy import detect_policy_violations
     dataset = create_dataset()
 
     policy = {
