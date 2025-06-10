@@ -100,7 +100,7 @@ def mean_utilization(
     if end_date is None:
         end_date = datetime.today()
     
-    df = prepare_utilization_dataframe(
+    df = prepare_utilization_dataset(
         data=data,
         start_date=start_date,
         end_date=end_date,
@@ -140,7 +140,7 @@ def mean_utilization(
         df["day"] = pd.to_datetime(df["blockedFrom"]).dt.day_name()
         key = df["day"]
 
-        weekday_counts = count_weekday_occurrences(start_date, end_date, weekday or [])     # count the nummber of apperences od different days 
+        weekday_counts = count_weekday_occurrences(start_date, end_date, weekday)     # count the nummber of apperences od different days 
         n_desks = data.get_desks_count()
         total_possible = {day: count * n_desks for day, count in weekday_counts.items()}   # here the nummber of possible bookings is the nummber of apperances of the different weekday * the total nummber of desks that are available (the same for every day)
         actual_counts = key.value_counts()
@@ -250,7 +250,7 @@ def utilization_stats(
     if end_date is None:
         end_date = datetime.today()
 
-    df = prepare_utilization_dataframe(
+    df = prepare_utilization_dataset(
         data=data,
         start_date=start_date,
         end_date=end_date,
@@ -259,6 +259,7 @@ def utilization_stats(
         room_name=room_name,
         weekday=weekday
     )
+    
     if by_room:
         df["key"] = df["roomName"]
         total_possible = data.get_desks_per_room_count() * count_matching_weekdays(start_date, end_date, weekday)      #  if by room the max possible boockings are desks_per_room
@@ -269,7 +270,7 @@ def utilization_stats(
         
     elif by_day:
         df["key"] = df["day"]    
-        weekday_counts = count_weekday_occurrences(start_date, end_date, weekday or [])         # count the nummber of apperences od different days 
+        weekday_counts = count_weekday_occurrences(start_date, end_date, weekday)         # count the nummber of apperences od different days 
         n_desks = data.get_desks_count()
         total_possible = {day: count * n_desks for day, count in weekday_counts.items()}        # here the nummber of possible bookings is the nummber of apperances of the different weekday * the total nummber of desks that are available (the same for every day)
     
@@ -405,7 +406,7 @@ def expand_fixed_bookings(data, start_col="blockedFrom", end_col="blockedUntil",
     return pd.concat([fixed, variable], ignore_index=True)
 
 
-def prepare_utilization_dataframe(
+def prepare_utilization_dataset(
     data: Dataset,
     
     start_date: datetime,
@@ -417,7 +418,7 @@ def prepare_utilization_dataframe(
     room_name: Optional[List[str]] = None,
     weekday: Optional[list[str]] = None,
     
-) -> pd.DataFrame:
+) -> Dataset:
     """
     Filters, expands, and prepares the booking DataFrame for utilization analysis.
 
@@ -440,20 +441,21 @@ def prepare_utilization_dataframe(
         data = data.get_rooms(room_name)
     if desk_id:
         data = data.get_desks(desk_id)
-    if weekday:
-        data = data.get_days(weekday)
 
-    df = data.get_timeframe(start_date=start_date, end_date=end_date)
+    dataset = data.get_timeframe(start_date=start_date, end_date=end_date)
 
     if include_fixed:
-        df = df.replace("unlimited", end_date)
-        df = expand_fixed_bookings(df, weekday=weekday)
+        dataset = dataset.replace("unlimited", end_date)
+        dataset = expand_fixed_bookings(dataset, weekday=weekday)
     else:
-        df = df[df["variableBooking"] == 1]
+        dataset = dataset[dataset["variableBooking"] == 1]
 
-    df["day"] = pd.to_datetime(df["blockedFrom"]).dt.day_name()
+    if weekday:
+        dataset = dataset.get_days(weekday)
 
-    return df
+    dataset["day"] = pd.to_datetime(dataset["blockedFrom"]).dt.day_name()
+
+    return dataset
 
 
 def count_matching_weekdays(
@@ -595,11 +597,11 @@ if __name__ == "__main__":
     pprint(return_dict["data"])
     print()
     
-    print("\n=== Weekday-wise Utilization Stats for monday, tuesday, friday ===")
+    print("\n=== Weekday-wise Utilization Stats for monday, friday ===")
     return_dict = utilization_stats(
         data=dataset,
         by_day=True,
-        weekday=["monday", "tuesday", "friday"],
+        weekday=["monday", "friday"],
         include_fixed=True,
         start_date=start,
         end_date=end,
