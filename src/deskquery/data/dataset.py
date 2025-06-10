@@ -341,6 +341,61 @@ class Dataset(pd.DataFrame):
         return self
 
     @return_if_empty("self")
+    def weekday_counter(self, weekdays: list[str], column_counter: str="weekday_count", column_desks: str="expanded_desks_day"):
+        """
+        Counts the occurrence of a weekday within the booking period. Example: Booking from Monday to Friday 
+        -> Returns a dataframe that has each weekday as a column (if the weekdays were specified) with their number.
+        In the example, 1 for each weekday.
+        """
+        
+        def weekdays_count(periods):
+            weekdays = [p.weekday for p in periods]
+            counter = Counter(weekdays)    
+            return {day: counter.get(day, 0) for day in weekdays}
+        self[column_counter] = self[column_desks].apply(weekdays_count)  
+        
+        weekday_df = pd.json_normalize(self['weekday_count']).fillna(0).astype(int)
+        weekday_df.columns = weekdays
+        weekday_df.index = self.index
+        return weekday_df
+
+    @return_if_empty("self")
+    def expand_time_interval_desk_counter(self, weekdays: list[str]=["monday", "tuesday", "wednesday", "thursday", "friday"]):
+        """
+        Function creates a dataframe which shows the username,
+        when he booked which tables, as well as the number of table bookings with the number on which weekday they were booked
+        
+        Dataframe with columns [userId, userName, deskId, num_desk_bookings, Monday, Tuesday,..., Friday, percentage_of_user].
+        For each user, all booked tables, their total frequency,
+        and how often they were booked on which day of the week can be viewed.
+        Args:
+            weekdays: Weekdays to be considered for statistics
+        Returns:
+            pd.Dataframe
+        """
+        desks = self.expand_time_intervals_desks("day")
+        weekday_df = self.weekday_counter(weekdays)  
+
+        df = pd.concat([self, weekday_df], axis=1)
+        df["num_desk_bookings"] = desks.apply(len)
+
+        aggregation = {"num_desk_bookings": ("num_desk_bookings", "sum"),}
+        aggregation.update({col: (col, "sum") for col in weekdays})
+        df = df.group_bookings(by=["userId", "userName", "deskId"],
+                            aggregation=aggregation,
+                            agg_col_name="num_desk_bookings")
+
+        df[weekdays] = df[weekdays].astype(float) 
+        # delete the previously added column
+        self.drop(columns=["weekday_count"], inplace=True)
+
+        df.loc[:, weekdays] = (df.loc[:, weekdays].div(df["num_desk_bookings"], axis=0)* 100).round(2)
+        df["percentage_of_user"] = (df['num_desk_bookings'] / df.groupby(level='userId')['num_desk_bookings'].transform('sum') * 100).round(2)
+
+        return df
+
+    
+    @return_if_empty("self")
     def get_double_bookings(self, start_col="blockedFrom", end_col="blockedUntil") -> Dataset:
         def has_overlapping_bookings(group):
             """All bookings for a user are processed. "Unlimited" is converted to a date far in the future. 
