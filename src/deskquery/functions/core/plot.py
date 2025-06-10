@@ -1,11 +1,17 @@
 #!/usr/bin/env python 
-from typing import Optional, List, Callable
-from datetime import datetime
-import plotly.graph_objects as go
-from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot, PlotFunction
-from deskquery.functions.core.helper.plot_helper import generate_heatmap, generate_hist, generate_barchart, generate_scatterplot, generate_lineplot, generate_map, generate_table
+from typing import Optional, Dict
+from deskquery.functions.types import FunctionRegistryExpectedFormat, Plot, PlotFunction
+from deskquery.functions.core.helper.plot_helper import (
+    generate_heatmap,
+    generate_hist,
+    generate_barchart,
+    generate_scatterplot,
+    generate_lineplot,
+    generate_map,
+    generate_table
+)
 
-# TODO: Think of a way to add them smart to generate_plot_for_function since thats
+# TODO: Think of a smart way to add them to generate_plot_for_function since that's
 # TODO: the only summary the llm sees to pick the correct plot
 helper_docstrings = {
     "generate_heatmap": generate_heatmap.__doc__,
@@ -19,18 +25,40 @@ helper_docstrings = {
 
 def generate_plot_for_function(
     func_result: FunctionRegistryExpectedFormat,
-    additional_plot_args: dict[str, str] = {},
+    additional_plot_args: Dict[str, str] = {},
     plot_to_generate: Optional[PlotFunction] = None,
     use_default_plot: bool = True
 ) -> dict:
+    """
+    Takes a function result and creates a visualization of the data.
+    Therefore, a specific plot function or the function results default plot may be used.
 
+    Args:
+        func_result (FunctionRegistryExpectedFormat):
+            Function result object containing a FunctionData and PlotForFunction object.
+        additional_plot_args (Dict[str, str]):
+            A dict with keyword arguments for the plot creation usually containing the keys "title"
+            for the main plot title, "xaxis_title" and "yaxis_title" for specific axes titles.
+        plot_to_generate (PlotFunction, optional):
+            The PlotFunction to use for the visualization indicating the plot type. The choices are given by the
+            function result's available plots. If this is `None`, the default plot for the result data is used.
+        use_default_plot (bool):
+            If `True`, the function result's predefined default plot type is used.
+            If `False`, another available plot than the default one must be specified as `plot_to_generate` to not
+            result in an error.
+
+    Returns:
+        dict:
+            A json like message with a "status" field indicating the success of the plot creation
+            and either a "message" filed with the error message or a "plot" field with the plot data.
+    """
     data = func_result.data
     plot = func_result.plot
 
-    if not plot.available_plots:
+    if not plot.available_plots and not use_default_plot:
         return {
             "status": "not_available",
-            "message": "Unfortunately there are no other plots available for this function result."
+            "message": "Unfortunately, there are no other plots than the default one available for this function result."
         }
 
     if plot_to_generate:
@@ -42,16 +70,17 @@ def generate_plot_for_function(
             "plot": plot.default_plot.to_json(),
         }
     else:
-        # plot_to_generate has to be a function from the plot function filled with arguments from llm
+        # plot_to_generate has to be a function from the plot function filled with arguments
         if plot_to_generate in plot.available_plots:
             return {
                 "status": "success",
+                # TODO: Maybe infer the needed plot kwargs from the default plot definition
                 "plot": plot_to_generate(data, **additional_plot_args)
             }
         else:
             return {
                 "status": "not_available"
-                "Unfortunately the desired plot is not available for this function result."
+                "Unfortunately, the desired plot is not available for this function result."
             }
 
 if __name__ == "__main__":

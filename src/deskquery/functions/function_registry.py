@@ -16,8 +16,6 @@ function_registry = {
     # Policy
     "simulate_policy": simulate_policy,
     "detect_policy_violations": detect_policy_violations,
-    "suggest_balanced_utilization_policy": suggest_balanced_utilization_policy,
-    "compare_utilization_before_after_policy": compare_utilization_before_after_policy,
 
     # Employee behavior
     "get_avg_employee_bookings": get_avg_employee_bookings,
@@ -29,10 +27,8 @@ function_registry = {
     "generate_plot_for_function": generate_plot_for_function,
 
     # Capacity & Forecasting
-    "estimate_table_needs": estimate_table_needs,
-    "forecast_desk_demand": forecast_desk_demand,
-    "simulate_room_closure": simulate_room_closure,
-    "estimate_max_employees_per_room": estimate_max_employees_per_room,
+    "forecast_employees": forecast_employees,
+    "estimate_necessary_desks": estimate_necessary_desks
 }
  
 def create_function_summaries(
@@ -76,7 +72,7 @@ def create_function_summaries(
                 function_summaries += docstring + "\n"
                 function_summaries += "\n---\n\n"
             else:
-                # if the function doesn´t exist or the docstring misses
+                # if the function doesn't exist or the docstring misses
                 # its deleted from the function_registry
                 to_remove.append(name)
 
@@ -92,7 +88,7 @@ def create_function_summaries(
 def get_function_docstring(
     function_name: str,
     function_registry: dict = function_registry,
-) -> str:
+) -> str | None:
     function = function_registry.get(function_name, None)
     if function:
         docstring = inspect.getdoc(function)

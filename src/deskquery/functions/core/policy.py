@@ -19,7 +19,7 @@ def simulate_policy(
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
     num_weeks: int = 100,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"], # FIXME: Change to English
+    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"],  # FIXME: Change to English
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
     """
@@ -233,18 +233,30 @@ def detect_policy_violations(
         current += one_week
 
     if only_stats:
-        plot = PlotForFunction(default_plot=generate_lineplot(data=weekly_stats,
-                                                            title=f"Weekly policy violations",
-                                                            xaxis_title="Date",
-                                                            yaxis_title="Violations"),
-                            available_plots=[generate_lineplot])
+        plot = PlotForFunction(
+            default_plot=generate_lineplot(
+                data=weekly_stats,
+                title=f"Weekly policy violations",
+                xaxis_title="Date",
+                yaxis_title="Violations"),
+            available_plots=[generate_lineplot]
+        )
 
-        return FunctionRegistryExpectedFormat(data=weekly_stats, plot=plot)
-    
-    return FunctionRegistryExpectedFormat(data=weekly_stats, plot=PlotForFunction(default_plot=None, available_plots=[]))
+        return FunctionRegistryExpectedFormat(
+            data=weekly_stats,
+            plot=plot
+        )
+
+    return FunctionRegistryExpectedFormat(
+        data=weekly_stats,
+        plot=PlotForFunction(
+            default_plot=None,
+            available_plots=[]
+        )
+    )
 
 
-####### Helpers ###########################################################################################################################################################################
+####### Helpers ########################################################################################################
 
 def expand_fixed_bookings(
     fixed: Dataset
