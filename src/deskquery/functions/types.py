@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import Any, MutableMapping, Iterator, Dict, Optional, Sequence, Callable, List
+from typing import Any, MutableMapping, Iterator, Dict, Optional, List
 import plotly.graph_objects as go
 from abc import ABC, abstractmethod
 from deskquery.data.dataset import Dataset
+
 
 class Plot(go.Figure):
     def __init__(self, *args, **kwargs):

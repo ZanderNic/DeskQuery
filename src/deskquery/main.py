@@ -929,7 +929,7 @@ def validate_function_execution(
             print("400) Function Execution Result:", response, sep="\n")  # FIXME: DEBUG
             error = False
         except Exception as e:
-            print(f"Error while executing function '{function_data["selected_function"]}':", e)
+            print(f"Error while executing function {function_data['selected_function']}:", e)
             traceback.print_exc()  # Print the stack trace to the console
             print("Raw response was:", response, sep="\n")
             error = True
@@ -1232,7 +1232,7 @@ def handleMessage(
             if not function_docstring:
                 return {
                     "status": "error",
-                    "message": f"The function '{function_data["selected_function"]}' does not exist or has no documentation."
+                    "message": f"The function {function_data['selected_function']} does not exist or has no documentation."
                 }
             else:
                 # save the function docstring for the next step
