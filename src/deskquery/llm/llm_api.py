@@ -64,9 +64,9 @@ class LLM_Client(ABC):
                 The role of the input message. Can be either `system`,
                 `user` or `assistant`. Defaults to `user`.
             response_json (bool, optional):
-                If `True`, the response will be returned as a json object.
+                If `True`, the response will be returned as a JSON string.
                 If `False`, the response will be returned as a string. Defaults
-                to `False`.
+                to `False`. Availability depends on the model and provider.
             temperature (float, optional):
                 The temperature to be used for the model response. Defaults to
                 `0.7`. 
@@ -79,7 +79,7 @@ class LLM_Client(ABC):
     
     def conv_to_json(
         self,
-        filename: str
+        filename: str = None
     ):
         """
         Saves the current conversation history to `JSON` format if a chat
@@ -97,7 +97,10 @@ class LLM_Client(ABC):
             fn = filename if filename.endswith('.json') else filename + '.json'
             with open(fn, 'w') as json_file:
                 json.dump(self.chat_history, json_file, indent=2)
-    
+
+##########################
+# Derived Client Classes #
+##########################
 
 class GroqClient(LLM_Client):
 
@@ -242,9 +245,9 @@ class GoogleClient(LLM_Client):
         return chat_comp.text
 
 
-###############################################################################
-# Available model providers and models
-###############################################################################
+########################################
+# Available model providers and models #
+########################################
 
 _model_providers = {
     "google": {
@@ -266,7 +269,7 @@ _model_providers = {
     }
 }
 
-###############################################################################
+########################################
 
 def get_model_providers() -> dict:
     """
