@@ -19,11 +19,31 @@ document.addEventListener('DOMContentLoaded', () => {
   // === UI Utility Functions ===
   // ============================
 
-  function appendMessage(content, sender) {
-    const msg = document.createElement('div');
-    msg.className = `message ${sender}`;
-    msg.textContent = content;
-    chatContainer.appendChild(msg);
+  function appendMessage(content, sender, data = null, messageId = null) {
+     
+    console.log("DEBUG appendMessage()", { sender, content, data });  
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `message ${sender}`;
+
+    // Append text content if present
+    if (content) {
+      const text = document.createElement('div');
+      text.className = 'message-text';
+      text.textContent = content;
+      wrapper.appendChild(text);
+    }
+
+    switch (data?.type) {
+      case 'plot':
+        wrapper.appendChild(renderPlot(data.plotly, messageId));
+        break;
+      case 'table':
+        wrapper.appendChild(renderTable(data.df));
+        break;
+    }
+
+    chatContainer.appendChild(wrapper);
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
 
@@ -46,7 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateOverlayVisibility() {
     requestAnimationFrame(() => {
       const hasMessages = chatContainer.querySelector('.message');
-      console.log(`updateOverlayVisibility: currentChatId=${currentChatId}, hasMessages=${hasMessages}`);
       if (!currentChatId || !hasMessages) {
         overlay.classList.remove('hidden');
       } else {
@@ -135,12 +154,14 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedModelDisplay.textContent = modelLabel;
   }
   
-  // ===========================
-  // === Chat CRUD Functions ===
-  // ===========================
+  // ======================
+  // === Chat Functions ===
+  // ======================
 
   async function loadChatList() {
     const res = await fetch('/chats');
+    if (!res.ok) throw new Error("Failed to load chats");
+
     const chats = await res.json();
     chatList.innerHTML = '';
 
@@ -265,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       currentChatId = data.chat_id;
       await loadChatList();                   // refresh sidebar to include the new chat
-      setActiveChatInSidebar(currentChatId);  // select chat as active chat in sidbar 
+      setActiveChatInSidebar(currentChatId);  // select chat as active chat in sidebar
     }
 
     appendMessage(text, 'user');    
@@ -290,19 +311,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       thinkingMsg.remove();
 
-      data.messages.slice(-1).forEach(m => {
+      data.messages.forEach(m => {
         if (m.role === 'assistant') {
-          appendMessage(m.content, 'bot');
+          renderAssistantMessage(m)
         }
       });
 
       loadChatList();
+
     } catch (error) {
       thinkingMsg.remove();
       showError("Error while sending message.", error);
     } finally {
       sendBtn.disabled = false;                   // Re-enable the send button
-      sendBtn.style.backgroundColor = "";         // reset sedn button color
+      sendBtn.style.backgroundColor = "";         // reset send button color
       userInput.focus();                          // set cursor in text input field 
     }
   }
@@ -312,8 +334,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const chat = await res.json();
     chatContainer.innerHTML = '';
     currentChatId = chat.chat_id;
-    chat.messages.forEach(m => appendMessage(m.content, m.role === 'user' ? 'user' : 'bot'));     // show msg in chat
-
+    chat.messages.forEach(m => {
+      if (m.role === 'assistant') {
+        renderAssistantMessage(m);  
+      
+      } else {
+        let parsedData = null;
+        try {
+          parsedData = typeof m.data === 'string' ? JSON.parse(m.data) : m.data;
+        } catch (e) {
+          console.warn('Error while parsing:', m.data, e);
+        }
+        appendMessage(m.content, 'user', parsedData, m.id);
+      }
+    });
+    
     setActiveChatInSidebar(currentChatId)    // set active chat in history to indicate which one is active
     updateOverlayVisibility();  // if empty chat show empty Overlay
   }
@@ -331,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const now = new Date();
     chats.forEach(c => {
-      const date = new Date(c.timestamp);
+      const date = new Date(c.last_updated);
       const diffTime = now - date;
       const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
@@ -348,6 +383,80 @@ document.addEventListener('DOMContentLoaded', () => {
     return groups;
   }
 
+  function renderAssistantMessage(m) {
+    const content = m.content || '';
+    const data = m.data || null;
+    const type = data?.type || null;
+
+    if (type === 'mixed' && data.plotly) {
+      appendMessage(content, 'bot', null, m.id);
+      appendMessage('', 'bot', { type: 'plot', plotly: data.plotly }, m.id + '-plot');
+    } else {
+      appendMessage(content, 'bot', data, m.id);
+    }
+  }
+
+  function renderPlot(plotData, messageId) {
+    const plotDiv = document.createElement('div');
+    plotDiv.id = `plot-${messageId || Math.random().toString(36).slice(2)}`;
+    plotDiv.className = 'plot-container';
+
+    const render = () => {
+      if (!plotDiv.offsetParent) {
+        requestAnimationFrame(render);
+        return;
+      }
+
+      try {
+        const parentWidth = plotDiv.parentElement?.offsetWidth || 600;
+
+        Plotly.newPlot(
+          plotDiv,
+          plotData.data,
+          {
+            ...plotData.layout,
+             autosize: true,
+            height: 450,
+            margin: { l: 30, r: 30, t: 30, b: 30 }
+          },
+          { responsive: true }
+        );
+      } catch (e) {
+        console.warn("Plotly render error", e);
+      }
+    };
+
+    requestAnimationFrame(render);
+
+    return plotDiv;
+  }
+
+  function renderTable(df) {
+    const table = document.createElement('table');
+    table.className = 'dataframe';
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    df.columns.forEach(col => {
+      const th = document.createElement('th');
+      th.textContent = col;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    df.rows.forEach(row => {
+      const tr = document.createElement('tr');
+      row.forEach(cell => {
+        const td = document.createElement('td');
+        td.textContent = cell;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    return table;
+  }
 
   // =======================
   // === Event Listeners ===
@@ -383,11 +492,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const data = await res.json();
     currentChatId = data.chat_id;
-    chatContainer.innerHTML = '';         // reset chat container to cantain nothing in new chat
+    chatContainer.innerHTML = '';         // reset chat container to contain nothing in new chat
     
     await loadChatList();                 // load the chat list with the new chat added
     await loadChat(currentChatId);        // select the new chat
-    updateOverlayVisibility();            // upadte layout
+    updateOverlayVisibility();            // update layout
   };
 
 
