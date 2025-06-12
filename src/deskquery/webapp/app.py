@@ -8,7 +8,6 @@ from pathlib import Path
 # 3 Party-import 
 from flask import Flask, request, jsonify, render_template, send_file
 
-
 # import from project files
 from deskquery.main import main as desk_query
 from deskquery.data.dataset import create_dataset
@@ -17,10 +16,9 @@ from deskquery.webapp.helpers.chat_data import ChatData, list_chats
 from deskquery.llm.llm_api import models_to_json
 
 
-# webapp\llm_chat\choose_function.py
 app = Flask(__name__)
 
-generated_images = {}
+generated_images = {}   # TODO evaluate if we still need this: this is was used for a first start
 
 global current_model
 current_model = None
@@ -78,7 +76,7 @@ def chat():
         )
         print("main.py response:\n", response)
        
-        if isinstance(response, dict) and response.get("message"):
+        if isinstance(response, dict) and response.get("message", False):
             message_data = {
                 "status": response["status"], 
                 "role": "assistant", 
@@ -192,17 +190,8 @@ def chat():
         return jsonify({
             "status": "error",
             "chat_id": chat_id,
-            "message": "An error occurred. Please try again later."
+            "message": "An error occurred. Please try again."
         }), 500
-
-
-@app.route('/image/<img_id>')
-def serve_image(img_id):
-    if img_id not in generated_images:
-        return "Image not found", 404
-    img_io = generated_images[img_id]
-    img_io.seek(0)
-    return send_file(img_io, mimetype='image/png')
 
 
 @app.route('/get-models', methods=['GET'])
@@ -224,12 +213,9 @@ def get_models():
 @app.route('/set-model', methods=['POST'])
 def set_model():
     data = request.get_json()
-    # print("backend: set_model: ", data)
     provider = data.get('provider')
     model = data.get('model')
-    # print(f"backend: set_model: provider: {provider}, model: {model}")
     if model:
-        # print(f"backend: model set to '{model}'")
         global current_model
         current_model = {'provider': provider, 'model': model}
         print(f"backend: current_model set to '{current_model}'")
@@ -244,7 +230,8 @@ def set_model():
 def get_chats():
     return jsonify(list_chats(to_dict=True))
 
-# returns a single chat
+
+# returns a chat as json
 @app.route('/chats/<chat_id>', methods=['GET'])
 def get_single_chat(chat_id):
     chat = ChatData.load(chat_id)
@@ -252,14 +239,14 @@ def get_single_chat(chat_id):
         return jsonify(chat.to_dict())
     return jsonify({'status': 'Chat not found'}), 404
 
-# renames a chat 
+
+# renames a chat
 @app.route('/chats/<chat_id>/rename', methods=['POST'])
 def rename_chat_route(chat_id):
     data = request.get_json()
-
     new_title = data.get("title", "").strip()
     if not new_title:
-        return jsonify({"status": "Title cannot be empty"}), 400
+        return jsonify({"error": "Title cannot be empty"}), 400
 
     chat = ChatData.load(chat_id)
     if not chat:
@@ -272,7 +259,8 @@ def rename_chat_route(chat_id):
     except Exception as e:
         return jsonify({"status": "error"}), 500
 
-# deletes a chat by his id
+
+# deletes a chat by ID
 @app.route('/chats/delete/<chat_id>', methods=['DELETE'])
 def delete_chat_route(chat_id):
     chat = ChatData.load(chat_id)
@@ -285,6 +273,7 @@ def delete_chat_route(chat_id):
         return jsonify({"status": "deleted"}), 200
     except Exception as e:
         return jsonify({"status": "error"}), 500
+
 
 # creates a new chat
 @app.route('/chats/new', methods=['POST'])
