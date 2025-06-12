@@ -797,7 +797,7 @@ Answer in a strict JSON format as shown below.
 {{
 "status": "abort | pending | success",
 "function": "{function_name}",
-# for paramter definitions, put strings in extra quotes, e.g. "param1": "\'<str_value>\'" and everything else in one quotes, e.g. "param2": "<int_value>".
+# for parameter definitions, put strings in extra quotes, e.g. "param1": "\'<str_value>\'" and everything else in one quotes, e.g. "param2": "<int_value>".
 # Write values in Python syntax if applicable, e.g. "param3": "<list_value>".
 # Do not make any comments in the JSON response.
 "parameters": {{
