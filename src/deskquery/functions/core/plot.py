@@ -1,6 +1,6 @@
 #!/usr/bin/env python 
 from typing import Optional, Dict
-from deskquery.functions.types import FunctionRegistryExpectedFormat, Plot, PlotFunction
+from deskquery.functions.types import FunctionRegistryExpectedFormat, Plot, PlotFunction, PlotForFunction
 from deskquery.functions.core.helper.plot_helper import (
     generate_heatmap,
     generate_hist,
@@ -56,32 +56,29 @@ def generate_plot_for_function(
     plot = func_result.plot
 
     if not plot.available_plots and not use_default_plot:
-        return {
-            "status": "not_available",
-            "message": "Unfortunately, there are no other plots than the default one available for this function result."
-        }
+        raise ValueError(
+            "Unfortunately, there are no other plots than the default one available for this function result."
+        )
 
     if plot_to_generate:
         use_default_plot = False
 
     if use_default_plot:
-        return {
-            "status": "success",
-            "plot": plot.default_plot.to_json(),
-        }
+        return func_result
     else:
         # plot_to_generate has to be a function from the plot function filled with arguments
         if plot_to_generate in plot.available_plots:
-            return {
-                "status": "success",
-                # TODO: Maybe infer the needed plot kwargs from the default plot definition
-                "plot": plot_to_generate(data, **additional_plot_args)
-            }
+            return FunctionRegistryExpectedFormat(
+                data=data,
+                plot=PlotForFunction(
+                    default_plot=plot_to_generate(data, **additional_plot_args),
+                    available_plots=plot.available_plots
+                )
+            )
         else:
-            return {
-                "status": "not_available"
-                "Unfortunately, the desired plot is not available for this function result."
-            }
+            raise ValueError(
+                f"The plot function {plot_to_generate.__name__} is not available for this function result."
+            )
 
 if __name__ == "__main__":
     from deskquery.functions.core.employee import get_avg_employee_bookings, generate_heatmap

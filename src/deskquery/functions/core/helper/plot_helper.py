@@ -1,6 +1,5 @@
 #!/usr/bin/env python 
-from typing import Optional, List, Callable, Sequence, Iterable
-from datetime import datetime
+from typing import Optional, Sequence, Iterable
 import plotly.graph_objects as go
 from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot, FunctionData
 from pathlib import Path
@@ -97,7 +96,7 @@ def generate_heatmap(
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None,
     colorscale: str = 'Viridis'
-) -> Plot | str:
+) -> Plot:
     """ 
     Generate a heatmap from structured input data of correct format.
 
@@ -120,7 +119,9 @@ def generate_heatmap(
             y = list(trace_data.values())[1]
             z = list(trace_data.values())[2]
         except IndexError:
-            return "Data for heatmap have to be in the following format: {trace1_name: {x: x_data, y: y_data, z: z_data}}"
+            raise ValueError(
+                "Data for heatmap have to be in the following format: {trace1_name: {x: x_data, y: y_data, z: z_data}}"
+            )
 
         trace = go.Heatmap(
             x=x,
@@ -130,10 +131,12 @@ def generate_heatmap(
         )
         traces.append(trace)
 
-    fig = create_plotly_figure(traces, 
-                         title=title, 
-                         xaxis_title=xaxis_title, 
-                         yaxis_title=yaxis_title)
+    fig = create_plotly_figure(
+        traces, 
+        title=title, 
+        xaxis_title=xaxis_title, 
+        yaxis_title=yaxis_title
+    )
 
     return fig
 
@@ -143,7 +146,7 @@ def generate_barchart(
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None
-) -> Plot | str:
+) -> Plot:
     """
     Generate a bar chart/bar plot from structured input data of correct format.
 
@@ -164,9 +167,9 @@ def generate_barchart(
             x = list(trace_data.keys())
             y = list(trace_data.values())
         except AttributeError:
-            # TODO: Maybe rather break and throw an error or to go into next iteration but I think to return to
-            # TODO: to user is better for usability (Talk to Julian how he handles them it and maybe change)
-            return "Data for barchart have to be in following format: {trace1_name: {x: y}}"
+            raise ValueError(
+                "Data for barchart have to be in following format: {trace1_name: {x: y}}"
+            )
 
         trace = go.Bar(
             name=trace_name,
@@ -177,10 +180,12 @@ def generate_barchart(
 
         traces.append(trace)
 
-    fig = create_plotly_figure(traces, 
-                         title=title, 
-                         xaxis_title=xaxis_title, 
-                         yaxis_title=yaxis_title)
+    fig = create_plotly_figure(
+        traces, 
+        title=title, 
+        xaxis_title=xaxis_title, 
+        yaxis_title=yaxis_title
+    )
 
     return fig
 
@@ -214,10 +219,12 @@ def generate_scatterplot(
         )
         traces.append(trace)
 
-    fig = create_plotly_figure(traces, 
-                         title=title, 
-                         xaxis_title=xaxis_title, 
-                         yaxis_title=yaxis_title)
+    fig = create_plotly_figure(
+        traces, 
+        title=title, 
+        xaxis_title=xaxis_title, 
+        yaxis_title=yaxis_title
+    )
 
     return fig
 
@@ -227,7 +234,7 @@ def generate_lineplot(
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None
-) -> Plot | str:
+) -> Plot:
     """
     Generate a line plot from structured input data of correct format.
 
@@ -248,7 +255,9 @@ def generate_lineplot(
             x = list(trace_data.keys())
             y = list(trace_data.values())
         except AttributeError:
-            return "Data for lineplot have to be in following format: {trace1_name: {x: y}}"
+            raise ValueError(
+                "Data for lineplot have to be in following format: {trace1_name: {x: y}}"
+            )
 
         trace = go.Scatter(
             name=trace_name,
@@ -258,10 +267,12 @@ def generate_lineplot(
         )
         traces.append(trace)
 
-    fig = create_plotly_figure(traces, 
-                         title=title, 
-                         xaxis_title=xaxis_title, 
-                         yaxis_title=yaxis_title)
+    fig = create_plotly_figure(
+        traces, 
+        title=title, 
+        xaxis_title=xaxis_title, 
+        yaxis_title=yaxis_title
+    )
 
     return fig
 
@@ -272,7 +283,7 @@ def generate_hist(
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None
-) -> Plot | str:
+) -> Plot:
     """
     Generate a histogram from structured input data of correct format.
 
@@ -293,16 +304,22 @@ def generate_hist(
         try:
             x = list(trace_data.values())
         except AttributeError:
-            return "Data for histogramm have to be in following format: {trace1_name: {x: x_data}}"
+            raise ValueError(
+                "Data for histogramm have to be in following format: {trace1_name: {x: x_data}}"
+            )
 
-        traces.append(go.Histogram(name=trace_name,
-                                   x=x,
-                                   nbinsx=nbinsx if nbinsx else len(trace_data.values())))
+        traces.append(go.Histogram(
+            name=trace_name,
+            x=x,
+            nbinsx=nbinsx if nbinsx else len(trace_data.values())
+        ))
 
-    fig = create_plotly_figure(traces, 
-                         title=title, 
-                         xaxis_title=xaxis_title, 
-                         yaxis_title=yaxis_title)
+    fig = create_plotly_figure(
+        traces, 
+        title=title, 
+        xaxis_title=xaxis_title, 
+        yaxis_title=yaxis_title
+    )
 
     return fig
 

@@ -75,6 +75,8 @@ def mean_utilization(
         start_date = datetime.datetime.today() - timedelta(days=90)
     if end_date is None:
         end_date = datetime.datetime.today()
+    if weekday is None:
+        weekday = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
     
     df = prepare_utilization_dataset(
         data=data,

@@ -23,6 +23,7 @@ from deskquery.functions.function_registry import (
 from deskquery.data.dataset import Dataset
 from deskquery.llm.llm_api import LLM_Client, get_model_client, get_model_providers
 from deskquery.webapp.helpers.chat_data import ChatData
+from deskquery.functions.core.helper.plot_helper import *
 
 global current_model
 current_model = None
@@ -871,7 +872,7 @@ def validate_function_parameter_extraction(
         if json_data.get("status", "") in ["abort", "pending", "success"]:
             # if the function is specified, return it
             if json_data["status"] == "success" and json_data.get("parameters", None):
-                print("3) Parsing parameters to python objects...")  # FIXME: DEBUG
+                print("300) Parsing parameters to python objects...")  # FIXME: DEBUG
                 for param in json_data["parameters"]:
                     # imply the parameter type by python evaluation
                     try:
