@@ -65,7 +65,7 @@ The function that handles user input (e.g. desk_query or test_query) must return
         "content": "Here is your result.",
         "status": "done",
         "data": {
-            "type": "mixed",            # must be one of: table, plot, mixed if none will just display the text that is present in contetn
+            "type": "mixed",            # must be one of: table, plot, mixed if none will just display the text that is present in content
             "plotly": {
                 "data": [...],
                 "layout": {...}
@@ -213,15 +213,17 @@ The frontend uses this data to reconstruct the conversation history and render v
 
 ### 6. API Endpoints
 
-GET     /                       - Load chat UI
-POST    /chat                   - Send message, receive response
-GET     /chats                  - Get list of all chats
-GET     /chats/<chat_id>        - Get one chat and its messages
-POST    /chats/new              - Create new chat
-POST    /chats/<id>/rename      - Rename a chat
-DELETE  /chats/delete/<id>      - Delete a chat
-GET     /get-models             - Get list of available LLM models
-POST    /set-model              - Set current model (provider + model)
+| Method     | Endpoint                  | Description                                 |
+|------------|---------------------------|---------------------------------------------|
+| ``GET``    | /                         | Load chat UI                                |
+| ``POST``   | /chat                     | Send message, receive response              |
+| ``GET``    | /chats                    | Get list of all chats                       |
+| ``GET``    | /chats/<chat_id>          | Get one chat and its messages               |
+| ``POST``   | /chats/new                | Create new chat                             |
+| ``POST``   | /chats/<id>/rename        | Rename a chat                               |
+| ``DELETE`` | /chats/delete/<id>        | Delete a chat                               |
+| ``GET``    | /get-models               | Get list of available LLM models            |
+| ``POST``   | /set-model                | Set current model (provider + model)        |
 
 ---
 

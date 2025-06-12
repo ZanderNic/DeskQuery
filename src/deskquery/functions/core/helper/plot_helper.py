@@ -7,10 +7,12 @@ from pathlib import Path
 from deskquery.data.dataset import Dataset
 import PIL
 
-def create_plotly_figure(traces: Sequence[go.Trace],
-                      title: Optional[str] = None, 
-                      xaxis_title: Optional[str] = None,
-                      yaxis_title: Optional[str] = None):
+def create_plotly_figure(
+    traces: Sequence[go.Trace],
+    title: Optional[str] = None, 
+    xaxis_title: Optional[str] = None,
+    yaxis_title: Optional[str] = None
+) -> Plot:
     fig = Plot()
 
     for trace in traces:
@@ -89,12 +91,13 @@ def add_img_to_fig(fig, img, img_width, img_height):
         margin=dict(l=0, r=0, t=0, b=0)
     )
 
-def generate_heatmap(data: FunctionData,
-                     title: Optional[str] = None, 
-                     xaxis_title: Optional[str] = None,
-                     yaxis_title: Optional[str] = None,
-                     colorscale: str = 'Viridis'
-                     ) -> Plot | str:
+def generate_heatmap(
+    data: FunctionData,
+    title: Optional[str] = None, 
+    xaxis_title: Optional[str] = None,
+    yaxis_title: Optional[str] = None,
+    colorscale: str = 'Viridis'
+) -> Plot | str:
     """ 
     Generate a heatmap from structured input data of correct format.
 
@@ -135,11 +138,12 @@ def generate_heatmap(data: FunctionData,
     return fig
 
 
-def generate_barchart(data: FunctionData, 
-                      title: Optional[str] = None, 
-                      xaxis_title: Optional[str] = None,
-                      yaxis_title: Optional[str] = None
-                      ) -> Plot | str:
+def generate_barchart(
+    data: FunctionData, 
+    title: Optional[str] = None, 
+    xaxis_title: Optional[str] = None,
+    yaxis_title: Optional[str] = None
+) -> Plot | str:
     """
     Generate a bar chart/bar plot from structured input data of correct format.
 
@@ -181,11 +185,12 @@ def generate_barchart(data: FunctionData,
     return fig
 
 
-def generate_scatterplot(data: FunctionData, 
-                         title: Optional[str] = None, 
-                         xaxis_title: Optional[str] = None,
-                         yaxis_title: Optional[str] = None
-                         ) -> Plot:
+def generate_scatterplot(
+    data: FunctionData, 
+    title: Optional[str] = None, 
+    xaxis_title: Optional[str] = None,
+    yaxis_title: Optional[str] = None
+) -> Plot:
     """
     Generate a scatter plot from structured input data of correct format.
 
@@ -217,11 +222,12 @@ def generate_scatterplot(data: FunctionData,
     return fig
 
 
-def generate_lineplot(data: FunctionData, 
-                      title: Optional[str] = None, 
-                      xaxis_title: Optional[str] = None,
-                      yaxis_title: Optional[str] = None
-                      ) -> Plot | str:
+def generate_lineplot(
+    data: FunctionData, 
+    title: Optional[str] = None, 
+    xaxis_title: Optional[str] = None,
+    yaxis_title: Optional[str] = None
+) -> Plot | str:
     """
     Generate a line plot from structured input data of correct format.
 
@@ -260,12 +266,13 @@ def generate_lineplot(data: FunctionData,
     return fig
 
 
-def generate_hist(data: FunctionRegistryExpectedFormat,
-                  nbinsx: Optional[int] = None,
-                  title: Optional[str] = None, 
-                  xaxis_title: Optional[str] = None,
-                  yaxis_title: Optional[str] = None
-                  ) -> Plot | str:
+def generate_hist(
+    data: FunctionRegistryExpectedFormat,
+    nbinsx: Optional[int] = None,
+    title: Optional[str] = None, 
+    xaxis_title: Optional[str] = None,
+    yaxis_title: Optional[str] = None
+) -> Plot | str:
     """
     Generate a histogram from structured input data of correct format.
 
@@ -300,9 +307,11 @@ def generate_hist(data: FunctionRegistryExpectedFormat,
     return fig
 
 
-def generate_map(room_ids: Optional[Iterable[int]] = None, 
-                 room_names: Optional[Iterable[str]] = None, 
-                 desk_ids: Optional[Iterable[int]] = None):
+def generate_map(
+    room_ids: Optional[Iterable[int]] = None, 
+    room_names: Optional[Iterable[str]] = None, 
+    desk_ids: Optional[Iterable[int]] = None
+) -> Plot:
     """
     Generate a visual map of an office layout with optional desk and room highlights.
 
@@ -430,9 +439,10 @@ def generate_map(room_ids: Optional[Iterable[int]] = None,
 
     return fig
 
-def generate_table(data: FunctionData, 
-                   title: Optional[str] = None
-                   ) -> Plot | str:
+def generate_table(
+    data: FunctionData, 
+    title: Optional[str] = None
+) -> Plot | str:
     """
     Generate a formatted table using Plotly.
 
@@ -463,16 +473,16 @@ def generate_table(data: FunctionData,
         )
         traces.append(trace)
 
-    fig = create_plotly_figure(traces, 
-                         title=title
-                         )
+    fig = create_plotly_figure(
+        traces, 
+        title=title
+    )
 
     return fig
 
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
-    from deskquery.functions.core.forecasting import estimate_necessary_desks, forecast_employees
-    from deskquery.functions.core.policy import simulate_policy, detect_policy_violations
+    from deskquery.functions.core.policy import detect_policy_violations
     dataset = create_dataset()
 
     policy = {

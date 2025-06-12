@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     chatContainer.appendChild(wrapper);
     chatContainer.scrollTop = chatContainer.scrollHeight;
-  };
+  }
 
   function createThinkingMessage() {
     const msg = document.createElement('div');
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-    function setActiveChatInSidebar(chatId) {
+  function setActiveChatInSidebar(chatId) {
     chatList.querySelectorAll('.chat-entry').forEach(entry => {
       const span = entry.querySelector('.chat-title');
       if (span && span.getAttribute('data-id') === chatId) {
@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       currentChatId = data.chat_id;
       await loadChatList();                   // refresh sidebar to include the new chat
-      setActiveChatInSidebar(currentChatId);  // select chat as active chat in sidbar 
+      setActiveChatInSidebar(currentChatId);  // select chat as active chat in sidebar
     }
 
     appendMessage(text, 'user');    
@@ -315,7 +315,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (m.role === 'assistant') {
           renderAssistantMessage(m)
         }
-        
       });
 
       loadChatList();
@@ -325,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showError("Error while sending message.", error);
     } finally {
       sendBtn.disabled = false;                   // Re-enable the send button
-      sendBtn.style.backgroundColor = "";         // reset sedn button color
+      sendBtn.style.backgroundColor = "";         // reset send button color
       userInput.focus();                          // set cursor in text input field 
     }
   }
@@ -493,11 +492,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const data = await res.json();
     currentChatId = data.chat_id;
-    chatContainer.innerHTML = '';         // reset chat container to cantain nothing in new chat
+    chatContainer.innerHTML = '';         // reset chat container to contain nothing in new chat
     
     await loadChatList();                 // load the chat list with the new chat added
     await loadChat(currentChatId);        // select the new chat
-    updateOverlayVisibility();            // upadte layout
+    updateOverlayVisibility();            // update layout
   };
 
 

@@ -7,21 +7,18 @@ from pathlib import Path
 
 # 3 Party-import 
 from flask import Flask, request, jsonify, render_template, send_file
-import matplotlib.pyplot as plt
 
-
-# import from projekt files
+# import from project files
 from deskquery.main import main as desk_query
 from deskquery.data.dataset import create_dataset
 from deskquery.webapp.helpers.helper import *
-from deskquery.webapp.helpers.chat_history import Chat, list_chats
+from deskquery.webapp.helpers.chat_data import ChatData, list_chats
 from deskquery.llm.llm_api import models_to_json
 
 
-# webapp\llm_chat\choose_function.py
 app = Flask(__name__)
 
-generated_images = {}   # TODO evaluate if we still need this: this is was used for a first start 
+generated_images = {}   # TODO evaluate if we still need this: this is was used for a first start
 
 global current_model
 current_model = None
@@ -34,50 +31,165 @@ NEXT_STEP = 1
 def index():
     return render_template('index.html')
 
+
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
         data = request.get_json()
         user_input = data.get('message', '')
-        chat_id = data.get('chat_id') or str(uuid.uuid4())
+        chat_id = data.get('chat_id', None) or str(uuid.uuid4())
 
         global current_model
         print("backend: chat: current_model:", current_model)
 
-        chat = Chat.load(chat_id) or Chat(chat_id)
+        chat_data = ChatData.load(chat_id)
 
-        # Determine NEXT_STEP if needed
-        global NEXT_STEP
-        if chat.messages:
-            NEXT_STEP = 3 if chat.messages[-1].get("status") == "ask_user" else 1
+        # Check if the last message was a question by the system
+        if chat_data.messages:
+            global NEXT_STEP
+            NEXT_STEP = 300 if chat_data.messages[-1].get("status", "") == "ask_user" else 1
 
-        if user_input:
-            chat.append_message("user", user_input)
+        message = {
+            "role": "user",
+            "content": user_input,
+        }
+        # if the chat history is empty, append the user message
+        if not chat_data.messages:
+            message["status"] = "user_msg"
+        # if the last message is refinement question to the user, append the user response
+        elif chat_data.messages[-1].get("content", "") != user_input:
+            if chat_data.messages[-1].get("status", "") == "ask_user":
+                message["status"] = "user_response"
+            else:
+                message["status"] = "user_msg"
+        
+        # if the message object has been altered, add it to the chat history
+        if message.get("status", None): 
+            chat_data.add_message(**message)
 
-        # LLM response
-        # response = desk_query(
-        #     user_input,
-        #     data=dataset,
-        #     model=current_model,
-        #     START_STEP=NEXT_STEP
-        # )
-        # print("LLM response:", response)
-
-        ### TEST
-        response = test_query(
+        response = desk_query(
             user_input,
-            data=dataset,
-            model=current_model,
-            START_STEP=NEXT_STEP
+            chat_data=chat_data,
+            data=dataset, 
+            model=current_model, 
+            START_STEP=NEXT_STEP if NEXT_STEP else 1
         )
-            
-        return format_chat_response(chat, response)
+        print("main.py response:\n", response)
+       
+        if isinstance(response, dict) and response.get("message", False):
+            message_data = {
+                "status": response["status"], 
+                "role": "assistant", 
+                "content": response["message"]
+            }
+            if response.get("data", False):
+                message_data["data"] = {
+                    "function_data": response["data"].data,
+                    "plotable": response["data"].plotable,
+                    "plotly": response["data"].plot.default_plot.to_json(),
+                    "available_plots": [plot.__name__ for plot in response["data"].plot.available_plots[:-1]],
+                    "type": "mixed"
+                }
+
+            print("message_data:", message_data, sep="\n")
+            chat_data.add_message(**message_data)
+                
+            return jsonify({
+                "chat_id": chat_id,
+                "messages": chat_data.messages
+            })
+        else:
+            print("main.py response is not an expected standard dict:", response)
+        
+        #########
+
+        # if isinstance(response, dict) and response.get("type") == "html_table":
+        #     messages.append({"role": "assistant", "content": response.get("text", "[Table]")})
+        #     save_chat(chat_id, messages)
+        #     return jsonify({
+        #         "chat_id": chat_id,
+        #         "type": "mixed",
+        #         **response
+        #     })
+
+        # elif isinstance(response, dict) and response.get("type") == "plot":
+        #     messages.append({"role": "assistant", "content": response.get("text", "[Plot]")})
+        #     save_chat(chat_id, messages)
+        #     return jsonify({
+        #         "chat_id": chat_id,
+        #         "type": "mixed",
+        #         **response
+        #     })
+
+        # elif isinstance(response, dict) and response.get("type") == "text":
+        #     messages.append({"role": "assistant", "content": response["content"]})
+        #     save_chat(chat_id, messages)
+        #     return jsonify({
+        #         "chat_id": chat_id,
+        #         "type": "text",
+        #         "content": response["content"]
+        #     })
+
+        # elif "image and text" in user_input:
+        #     img_id = str(uuid.uuid4())
+        #     generated_images[img_id] = create_image()
+        #     messages.append({"role": "assistant", "content": "Here is an image with some text."})
+        #     save_chat(chat_id, messages)
+        #     return jsonify({
+        #         "chat_id": chat_id,
+        #         "type": "mixed",
+        #         "text": "Here is an image with some text.",
+        #         "image": f"/image/{img_id}"
+        #     })
+
+        # elif "graph and text" in user_input:
+        #     messages.append({"role": "assistant", "content": "This is a graph with some explanation."})
+        #     save_chat(chat_id, messages)
+        #     return jsonify({
+        #         "chat_id": chat_id,
+        #         "type": "mixed",
+        #         "text": "This is a graph with some explanation.",
+        #         "plot": {
+        #             "data": [{"x": [1, 2, 3], "y": [3, 1, 6], "type": "scatter"}],
+        #             "layout": {"title": "Example Graph", "width": 600, "height": 400}
+        #         }
+        #     })
+
+        # elif "image" in user_input:
+        #     img_id = str(uuid.uuid4())
+        #     generated_images[img_id] = create_image()
+        #     return jsonify({
+        #         "chat_id": chat_id,
+        #         "type": "image",
+        #         "content": f"/image/{img_id}"
+        #     })
+
+        # elif "graph" in user_input:
+        #     messages.append({"role": "assistant", "content": "Here is a graph."})
+        #     save_chat(chat_id, messages)
+        #     return jsonify({
+        #         "chat_id": chat_id,
+        #         "type": "plot",
+        #         "data": [{"x": [1, 2, 3], "y": [3, 1, 6], "type": "scatter"}],
+        #         "layout": {"title": "Example Graph", "width": 600, "height": 400}
+        #     })
+
+        # else:
+        #     fallback = f"Auf die Frage oder Eingabe: {user_input}, kann ich dir leider momentan noch keine Antwort geben."
+        #     messages.append({"role": "assistant", "content": fallback})
+        #     save_chat(chat_id, messages)
+        #     return jsonify({
+        #         "chat_id": chat_id,
+        #         "type": "text",
+        #         "content": fallback
+        #     })
 
     except Exception as e:
-        print("Error in /chat:", str(e))
+        print("Error in /chat endpoint:", str(e))
         traceback.print_exc()
         return jsonify({
-            "type": "error",
+            "status": "error",
+            "chat_id": chat_id,
             "message": "An error occurred. Please try again."
         }), 500
 
@@ -116,24 +228,19 @@ def set_model():
 # returns all chats that are in chat storage
 @app.route('/chats', methods=['GET'])
 def get_chats():
-    return jsonify(list_chats())
+    return jsonify(list_chats(to_dict=True))
+
 
 # returns a chat as json
 @app.route('/chats/<chat_id>', methods=['GET'])
 def get_single_chat(chat_id):
-    chat = Chat.load(chat_id)
+    chat = ChatData.load(chat_id)
     if chat:
-        return jsonify({
-            "chat_id": chat.chat_id,
-            "title": chat.title,
-            "created_at": chat.created_at,
-            "last_updated": chat.last_updated,
-            "messages": chat.messages
-        })
-    return jsonify({'error': 'Not found'}), 404
+        return jsonify(chat.to_dict())
+    return jsonify({'status': 'Chat not found'}), 404
 
 
-# Renames a chat
+# renames a chat
 @app.route('/chats/<chat_id>/rename', methods=['POST'])
 def rename_chat_route(chat_id):
     data = request.get_json()
@@ -141,59 +248,39 @@ def rename_chat_route(chat_id):
     if not new_title:
         return jsonify({"error": "Title cannot be empty"}), 400
 
-    chat = Chat.load(chat_id)
+    chat = ChatData.load(chat_id)
     if not chat:
-        return jsonify({"status": "not found"}), 404
+        return jsonify({"status": "Chat not found"}), 404
 
-    chat.rename(new_title)
-    return jsonify({"status": "renamed"}), 200
+    # rename the chat
+    try:
+        chat.rename_chat(new_title)
+        return jsonify({"status": "renamed"}), 200
+    except Exception as e:
+        return jsonify({"status": "error"}), 500
 
 
-# Deletes a chat by ID
+# deletes a chat by ID
 @app.route('/chats/delete/<chat_id>', methods=['DELETE'])
 def delete_chat_route(chat_id):
-    chat = Chat.load(chat_id)
-    if chat and chat.delete():
+    chat = ChatData.load(chat_id)
+    if not chat:
+        return jsonify({"status": "Chat not found"}), 404
+
+    # delete the chat
+    try:
+        chat.delete()
         return jsonify({"status": "deleted"}), 200
-    return jsonify({"status": "not found"}), 404
+    except Exception as e:
+        return jsonify({"status": "error"}), 500
 
 
-# Creates a new empty chat
+# creates a new chat
 @app.route('/chats/new', methods=['POST'])
 def create_new_chat():
-    new_id = str(uuid.uuid4())
-    chat = Chat(chat_id=new_id, title="Neuer Chat")
-    chat.save()
-    return jsonify({"chat_id": new_id, "title": chat.title})
-
-
-
-def test_query(user_input, data=None, model=None, START_STEP=1):
-    return {
-        "role": "assistant",
-        "content": "Hier ist dein Testplot!",
-        "status": "done",
-        "data": {
-            "plotly": {
-                "data": [
-                    {
-                        "x": ["2024-01-01", "2024-01-02", "2024-01-03"],
-                        "y": [0.85, 0.91, 0.76],
-                        "type": "scatter",
-                        "mode": "lines+markers",
-                        "name": "Testdaten"
-                    }
-                ],
-                "layout": {
-                    "title": "Testplot",
-                    "xaxis": {"title": "Datum"},
-                    "yaxis": {"title": "Auslastung"}
-                }
-            },
-            "type": "mixed"
-        }
-    }
-
+    new_chat = ChatData()
+    new_chat.save()
+    return jsonify({"chat_id": new_chat.chat_id, "title": new_chat.title})
 
 
 if __name__ == '__main__':

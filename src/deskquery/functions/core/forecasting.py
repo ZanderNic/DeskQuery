@@ -188,7 +188,7 @@ def estimate_necessary_desks(
     return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
     
 
-### Helper functions
+### Helper functions ###################################################################################################
 def load_active_worker_timeseries(
         data: Dataset,
         time_window: int = 90

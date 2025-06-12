@@ -12,3 +12,4 @@ scikit-learn
 openpyxl
 scikit-learn
 statsmodels
+nbformat
