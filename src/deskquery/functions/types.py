@@ -36,10 +36,16 @@ class FunctionData(Dict):
 
 
 class FunctionRegistryExpectedFormat(MutableMapping):
-    def __init__(self, data: FunctionData = FunctionData(), plot: PlotForFunction = PlotForFunction()):
+    def __init__(
+        self, 
+        data: FunctionData = FunctionData(), 
+        plot: PlotForFunction = PlotForFunction(),
+        plotted: bool = False,
+    ):
         self.data = data
         self.plot = plot
         self.plotable = True if plot.available_plots else False
+        self.plotted = plotted
 
     def __getitem__(self, key: str) -> Any:
         if key == "plot":
@@ -48,6 +54,8 @@ class FunctionRegistryExpectedFormat(MutableMapping):
             return self.data
         elif key == "plotable":
             return self.plotable
+        elif key == "plotted":
+            return self.plotted
         else:
             raise KeyError(f"{key} not defined.")
 
@@ -77,4 +85,5 @@ class FunctionRegistryExpectedFormat(MutableMapping):
             "data": self.data,
             "plot": self.plot.to_json(),
             "plotable": self.plotable,
+            "plotted": self.plotted
         })

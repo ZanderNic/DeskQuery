@@ -387,8 +387,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const content = m.content || '';
     const data = m.data || null;
     const type = data?.type || null;
+    const to_plot = data?.plotted || null;
 
-    if (type === 'mixed' && data.plotly) {
+    if (type === 'mixed' && to_plot && data.plotly) {
       appendMessage(content, 'bot', null, m.id);
       appendMessage('', 'bot', { type: 'plot', plotly: data.plotly }, m.id + '-plot');
     } else {

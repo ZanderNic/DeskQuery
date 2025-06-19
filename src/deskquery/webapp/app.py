@@ -86,6 +86,7 @@ def chat():
                 message_data["data"] = {
                     "function_data": response["data"].data,
                     "plotable": response["data"].plotable,
+                    "plotted": response["data"].plotted,
                     "plotly": response["data"].plot.default_plot.to_json(),
                     "available_plots": [plot.__name__ for plot in response["data"].plot.available_plots[:-1]],
                     "type": "mixed"

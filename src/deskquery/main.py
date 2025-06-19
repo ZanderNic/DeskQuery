@@ -181,6 +181,8 @@ def clean_llm_output(
     # if json is specified explicitly
     if resp_data.startswith('json'):
         resp_data = resp_data[4:]
+    elif resp_data.startswith('python'):
+        resp_data = resp_data[6:]
     return resp_data.strip('` \n')
 
 
@@ -219,9 +221,9 @@ def main(
             The result of the evaluation. This is either a question to the user
             to refine the input information or the answer to a user query.
     """
-    function_summaries_path = Path(__file__).resolve().parent / 'functions' / 'function_summaries_export.txt'
-    with open(function_summaries_path, 'r') as f:
-        function_summaries = f.read()
+    # function_summaries_path = Path(__file__).resolve().parent / 'functions' / 'function_summaries_export.txt'
+    # with open(function_summaries_path, 'r') as f:
+    #     function_summaries = f.read()
 
     example_querys = "" # TODO generate some example queries with the correct format for the answer
 
@@ -790,24 +792,22 @@ Also use the given default values for the parameters if applicable. If default v
 - If information is missing, mark it clearly with a placeholder and add a `missing_fields` list. Set "status" to "pending" in this case and provide an "explanation" field for the user.
 - If the chat history can not be used to infer the parameters, set "status" to "abort" and leave the rest. Use this only as a last resort.
 
-The python datetime module is available as `datetime` for timestamps if needed.
+The python datetime module is available as `datetime` for e.g. timestamps if needed.
 
-Answer in a strict JSON format as shown below.
+Answer in a strict python dict format as shown below.
 
-### STRICT JSON response format [Do not specify it explicitly as JSON but provide valid JSON]:
+### STRICT PYTHON DICT response format [Do not specify it explicitly as python code but provide valid python syntax]:
 {{
 "status": "abort | pending | success",
 "function": "{function_name}",
-# for parameter definitions, put strings in extra quotes, e.g. "param1": "\'<str_value>\'" and everything else in one quotes, e.g. "param2": "<int_value>".
-# Write values in Python syntax if applicable, e.g. "param3": "<list_value>".
-# Do not make any comments in the JSON response.
+# DO NOT make any comments in the dict response.
 "parameters": {{
 {params}}},
 # optional: ONLY if parameter information can not be inferred
-"missing_fields": [param1, param2, ...],
+"missing_fields": ["param1", "param2", ...],
 # If there are missing fields, explain what they are and what you need from the user.
 "explanation": "..."
-# optional: ONLY if "status" is "success" and default values are used, describe the assumptions to the user.
+# optional: ONLY if "status" is "success" and default values are used, describe the assumptions to the user as you were speaking to them directly.
 "assumptions": "..."
 }}
 
@@ -821,7 +821,7 @@ Answer in a strict JSON format as shown below.
     params = get_function_parameters(function_name)
     params_str = ""
     for param in params[1:]:  # skip the first parameter (by definition 'data')
-        params_str += f'  {param}: "<value>",\n'
+        params_str += f'  "{param}": <value>,\n'
     
     prompt = prompt_template.format(
         function_docstring=function_docstring,
@@ -829,6 +829,8 @@ Answer in a strict JSON format as shown below.
         params=params_str,
         conv_hist=conv_hist
     )
+
+    print("LLM prompt:", prompt, sep="\n")  # FIXME: DEBUG
 
     response = current_client.chat_completion(
         input_str=prompt,
@@ -859,10 +861,55 @@ def validate_function_parameter_extraction(
                 function_name=function_name
             )
             # parse the response as JSON
+            json_data = eval(response)
+            print("300) Python eval() LLM Response:", json_data, sep="\n")  # FIXME: DEBUG
+            error = False
+        except Exception as e:
+            print("Error while parsing the LLM response:", e)
+            traceback.print_exc()  # Print the stack trace to the console
+            print("Raw response was:", response, sep="\n")
+            error = True
+            generate_counter += 1
+            continue
+        
+        # if json loaded fine, check if the usability is specified
+        if json_data.get("status", "") in ["abort", "pending", "success"]:
+            # if the function is specified, return it
+            return json_data
+        else:
+            # if the usability is not correctly specified, provoke an error
+            generate_counter += 1
+            error = True
+
+    # abort after 5 insufficient generations
+    if error and generate_counter >= 5:
+        return {
+            "status": "error",
+            "message": "I couldn't understand your request. Please try again or describe it in a different way."
+        }
+
+def validate_function_parameter_extraction_ALT(
+    conv_hist: List[dict],
+    function_docstring: str,
+    function_name: str,
+):
+    # try to generate a valid json response
+    error = True
+    generate_counter = 0
+    while error and generate_counter < 5:
+        try:
+            # generate the response from the LLM
+            response = infer_function_parameters(
+                conv_hist=conv_hist,
+                function_docstring=function_docstring,
+                function_name=function_name
+            )
+            # parse the response as JSON
             json_data = json.loads(response)
             error = False
         except json.JSONDecodeError as e:
             print("Error while parsing the LLM response:", e)
+            traceback.print_exc()  # Print the stack trace to the console
             print("Raw response was:", response, sep="\n")
             error = True
             generate_counter += 1
@@ -901,6 +948,84 @@ def validate_function_parameter_extraction(
             "status": "error",
             "message": "I couldn't understand your request. Please try again or describe it in a different way."
         }
+
+def infer_function_parameters_ALT(
+    conv_hist: List[dict],
+    function_docstring: str,
+    function_name: str,
+) -> dict:
+    prompt_template = """
+You are a smart assistant for a desk booking analytics system.
+You are given a conversation history with a user including a query.
+You get the docstring of a function to solve the request.
+There is also access to a dataset which you can assume to be available. DO NOT specify it in the parameters.
+If there are referenced messages, use them predominantly to infer the parameters.
+
+### Function Docstring:
+
+{function_docstring}
+
+### Task:
+
+Infer the parameters for the given function based on the initial user query and potential additional information of the chat history.
+Also use the given default values for the parameters if applicable. If default values are used, explain them to the user in the "assumptions" field of the response.
+- If all the function parameters can be inferred, specify them in your answer. Set "status" to "success" in this case.
+- If information is missing, mark it clearly with a placeholder and add a `missing_fields` list. Set "status" to "pending" in this case and provide an "explanation" field for the user.
+- If the chat history can not be used to infer the parameters, set "status" to "abort" and leave the rest. Use this only as a last resort.
+
+The python datetime module is available as `datetime` for timestamps if needed.
+
+Answer in a strict JSON format as shown below.
+
+### STRICT JSON response format [Do not specify it explicitly as JSON but provide valid JSON]:
+{{
+"status": "abort | pending | success",
+"function": "{function_name}",
+# for parameter definitions, put strings in extra quotes, e.g. "param1": "\'<str_value>\'" and everything else in one quotes, e.g. "param2": "<int_value>".
+# Write values in Python syntax if applicable, e.g. "param3": "<list_value>".
+# DO NOT make any comments in the JSON response.
+"parameters": {{
+{params}}},
+# optional: ONLY if parameter information can not be inferred
+"missing_fields": ["param1", "param2", ...],
+# If there are missing fields, explain what they are and what you need from the user.
+"explanation": "..."
+# optional: ONLY if "status" is "success" and default values are used, describe the assumptions to the user as you were speaking to them directly.
+"assumptions": "..."
+}}
+
+### Conversation History:
+
+{conv_hist}
+"""
+    global current_client
+
+    # extract the parameters from the function docstring
+    params = get_function_parameters(function_name)
+    params_str = ""
+    for param in params[1:]:  # skip the first parameter (by definition 'data')
+        params_str += f'  "{param}": "<value>",\n'
+    
+    prompt = prompt_template.format(
+        function_docstring=function_docstring,
+        function_name=function_name,
+        params=params_str,
+        conv_hist=conv_hist
+    )
+
+    print("LLM prompt:", prompt, sep="\n")  # FIXME: DEBUG
+
+    response = current_client.chat_completion(
+        input_str=prompt,
+        role='system',
+        response_json=True
+    )
+
+    resp_data = clean_llm_output(response)    
+    
+    print("300) LLM Parameter Inferation:", resp_data, sep="\n")  # FIXME: DEBUG
+
+    return resp_data
 
 
 ###############################################################################

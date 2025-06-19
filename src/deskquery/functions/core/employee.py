@@ -89,11 +89,15 @@ def get_avg_employee_bookings(
         avg_bookings = avg_bookings.mean_bookings()
     
     avg_bookings = avg_bookings.to_dict()
-    plot = PlotForFunction(default_plot=generate_barchart(data=avg_bookings,
-                                                          title=column_name,
-                                                          xaxis_title="user_name" if return_user_names else "user_id",
-                                                          yaxis_title=column_name),
-                           available_plots=[generate_barchart, generate_heatmap])
+    plot = PlotForFunction(
+        default_plot=generate_barchart(
+            data=avg_bookings,
+            title=column_name,
+            xaxis_title="user_name" if return_user_names else "user_id",
+            yaxis_title=column_name
+        ),
+        available_plots=[generate_barchart, generate_heatmap]
+    )
 
     return FunctionRegistryExpectedFormat(data=avg_bookings, plot=plot)
 
@@ -110,15 +114,15 @@ def get_booking_repeat_pattern(
     """
     Identifies users who book the same desks or same days repeatedly.
     
-    Args
-    dataset (Dataset): The booking dataset to analyze.
-    user_names (Optional[list[str]]): Filter by specific user names.
-    user_ids (Optional[list[int]]): Filter by specific user IDs.
-    most_used_desk (int): Number of top booked desks to consider per user.
-    weekdays (List[str]): List of weekdays to include.
-    start_date (Optional[datetime]): Start of the analysis period.
-    end_date (Optional[datetime]): End of the analysis period.
-    include_fixed (bool): Whether to include fixed desk bookings.
+    Args:
+        dataset (Dataset): The booking dataset to analyze.
+        user_names (Optional[list[str]]): Filter by specific user names.
+        user_ids (Optional[list[int]]): Filter by specific user IDs.
+        most_used_desk (int): Number of top booked desks to consider per user.
+        weekdays (List[str]): List of weekdays to include.
+        start_date (Optional[datetime]): Start of the analysis period.
+        end_date (Optional[datetime]): End of the analysis period.
+        include_fixed (bool): Whether to include fixed desk bookings.
 
     Returns:
         FunctionRegistryExpectedFormat: Contains the data and plots of booking repeat patterns.
@@ -153,11 +157,15 @@ def get_booking_repeat_pattern(
         return result
 
     plot_data = df_to_function_data(result, weekdays)
-    plot = PlotForFunction(default_plot=generate_barchart(data=plot_data,
-                                                          title="Booking Repeat Pattern",
-                                                          xaxis_title="User",
-                                                          yaxis_title="Booking Percentage"),
-                           available_plots=[generate_barchart, generate_heatmap])
+    plot = PlotForFunction(
+        default_plot=generate_barchart(
+            data=plot_data,
+            title="Booking Repeat Pattern",
+            xaxis_title="User",
+            yaxis_title="Booking Percentage"
+        ),
+        available_plots=[generate_barchart, generate_heatmap]
+    )
     return FunctionRegistryExpectedFormat(data=plot_data, plot=plot)
 
 def get_booking_clusters(
@@ -184,7 +192,8 @@ def get_booking_clusters(
         end_date (Optional[datetime]): end date.
 
     Returns:
-        dict: Information about the found booking clusters.
+        FunctionRegistryExpectedFormat: 
+            Information about the found booking clusters.
     """
     if not include_fixed:
         dataset = dataset.drop_fixed()
@@ -211,7 +220,7 @@ def get_booking_clusters(
     # yaxis_title="User ID 1",
 
     # Todo: None is not currently being treated
-    return FunctionRegistryExpectedFormat(data=result, plot=None)
+    return FunctionRegistryExpectedFormat(data=result, plot=PlotForFunction())
 
 def get_co_booking_frequencies(
     dataset: Dataset,
@@ -257,24 +266,38 @@ def get_co_booking_frequencies(
     if min_shared_days:
         pairs_df = pairs_df[pairs_df["count"] >= min_shared_days]
 
-    merged = merge_dataframes(df_1=pairs_df,
-                              df_2=booking_counter,
-                              left_column="userId_1",
-                              right_column="userId",
-                              how="left",
-                              rename={"total_bookings": "total_bookings_user1"},
-                              drop_columns=["userId"])
-    merged = calc_percent(merged, "count", "total_bookings_user1", "share_1")
+    merged = merge_dataframes(
+        df_1=pairs_df,
+        df_2=booking_counter,
+        left_column="userId_1",
+        right_column="userId",
+        how="left",
+        rename={"total_bookings": "total_bookings_user1"},
+        drop_columns=["userId"]
+    )
+    merged = calc_percent(
+        merged, 
+        "count", 
+        "total_bookings_user1", 
+        "share_1"
+    )
 
  
-    merged = merge_dataframes(df_1=merged,
-                              df_2=booking_counter,
-                              left_column="userId_2",
-                              right_column="userId",
-                              how="left",
-                              rename={"total_bookings": "total_bookings_user2"},
-                              drop_columns=["userId"])
-    merged = calc_percent(merged, "count", "total_bookings_user2", "share_2")
+    merged = merge_dataframes(
+        df_1=merged,
+        df_2=booking_counter,
+        left_column="userId_2",
+        right_column="userId",
+        how="left",
+        rename={"total_bookings": "total_bookings_user2"},
+        drop_columns=["userId"]
+    )
+    merged = calc_percent(
+        merged, 
+        "count", 
+        "total_bookings_user2",
+        "share_2"
+    )
 
     # Heatmap (Data)
     # heatmap_df = merged.pivot(index="userId_1", columns="userId_2", values="count").fillna(0)
@@ -288,16 +311,20 @@ def get_co_booking_frequencies(
 
     # Barchart (Data)
     plot_dict_barchart = (
-    merged.sort_values(["userId_1", "share_1"], ascending=False)
-    .groupby("userId_1")
-    .apply(lambda df: dict(zip(df["userId_2"], df["share_1"])))
-    .to_dict()
+        merged.sort_values(["userId_1", "share_1"], ascending=False)
+        .groupby("userId_1")
+        .apply(lambda df: dict(zip(df["userId_2"], df["share_1"])))
+        .to_dict()
     )
-    plot = PlotForFunction(default_plot=generate_barchart(plot_dict_barchart,
-                                                          title="Co-Booking Share per User",
-                                                          xaxis_title="UserId2",
-                                                          yaxis_title="Share (%)"),
-                            available_plots=[generate_barchart, generate_heatmap])
+    plot = PlotForFunction(
+        default_plot=generate_barchart(
+            plot_dict_barchart,
+            title="Co-Booking Share per User",
+            xaxis_title="UserId2",
+            yaxis_title="Share (%)"
+        ),
+        available_plots=[generate_barchart, generate_heatmap]
+    )
     return FunctionRegistryExpectedFormat(data=plot_dict_barchart, plot=plot)
 
 

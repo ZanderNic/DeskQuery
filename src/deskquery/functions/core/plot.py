@@ -64,6 +64,8 @@ def generate_plot_for_function(
         use_default_plot = False
 
     if use_default_plot:
+        # enable plotting in the frontend
+        func_result.plotted = True
         return func_result
     else:
         # plot_to_generate has to be a function from the plot function filled with arguments
@@ -71,9 +73,14 @@ def generate_plot_for_function(
             return FunctionRegistryExpectedFormat(
                 data=data,
                 plot=PlotForFunction(
-                    default_plot=plot_to_generate(data, **additional_plot_args),
+                    default_plot=plot_to_generate(
+                        data, 
+                        title=plot.default_plot['layout']['title']['text'], 
+                        xaxis_title=plot.default_plot['layout']['xaxis']['title']['text'],
+                        yaxis_title=plot.default_plot['layout']['yaxis']['title']['text']),
                     available_plots=plot.available_plots
-                )
+                ),
+                plotted=True
             )
         else:
             raise ValueError(

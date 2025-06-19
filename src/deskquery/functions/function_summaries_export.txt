@@ -106,6 +106,20 @@ which are included in the policy, exceptions (if given) and random_assignments (
 
 ---
 
+def get_booking_repeat_pattern(
+    dataset: Dataset,
+    user_names: Optional[str | Sequence[str]] = None,
+    user_ids: Optional[int | Sequence[int]] = None,
+    most_used_desk: int = 1,
+    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
+    start_date: Optional[datetime] = None, 
+    end_date: Optional[datetime] = None,
+    include_fixed: bool = True,
+) -> FunctionRegistryExpectedFormat:
+Identifies users who book the same desks or same days repeatedly.
+
+---
+
 def get_booking_clusters(
     dataset: Dataset,
     co_booking_count_min: int = 3, 
