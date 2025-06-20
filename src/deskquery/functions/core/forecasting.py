@@ -159,7 +159,7 @@ def estimate_necessary_desks(
         random_assignments=random_assignments,
         num_weeks=100,
         plotable=False
-    )
+    ).data
 
     scaling_factor = np.max(simulation) / current_worker_count
     desk_forecast = worker_forecast * scaling_factor / target_utilization
@@ -187,7 +187,8 @@ def estimate_necessary_desks(
     return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
     
 
-### Helper functions
+####### Helpers ###########################################################################################################################################################################
+
 def load_active_worker_timeseries(
         data: Dataset,
         time_window: int = 90

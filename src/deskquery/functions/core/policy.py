@@ -92,7 +92,7 @@ def simulate_policy(
 
         return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
 
-    return total_attendance
+    return FunctionRegistryExpectedFormat(data=total_attendance, plot=PlotForFunction(default_plot=None, available_plots=[]))
 
 
 def detect_policy_violations(
