@@ -90,8 +90,9 @@ def add_img_to_fig(fig, img, img_width, img_height):
         margin=dict(l=0, r=0, t=0, b=0)
     )
 
+
 def generate_heatmap(
-    data: FunctionData,
+    data: FunctionData = None,
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None,
@@ -100,7 +101,7 @@ def generate_heatmap(
     """ 
     Generate a heatmap from structured input data of correct format.
 
-    Parameters:
+    Args:
         data (FunctionData): A dictionary in the format 
             {trace_name: {"x": x_values, "y": y_values, "z": z_values}}.
         title (str, optional): Title of the heatmap.
@@ -110,7 +111,6 @@ def generate_heatmap(
 
     Returns:
         Plot: A Plotly heatmap figure.
-        str: Error message if input data format is incorrect.
     """
     traces = list()
     for trace_name, trace_data in data.items():
@@ -142,7 +142,7 @@ def generate_heatmap(
 
 
 def generate_barchart(
-    data: FunctionData, 
+    data: FunctionData = None, 
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None
@@ -150,7 +150,7 @@ def generate_barchart(
     """
     Generate a bar chart/bar plot from structured input data of correct format.
 
-    Parameters:
+    Args:
         data (FunctionData): A dictionary in the format 
             {trace_name: {category: value}}.
         title (str, optional): Title of the bar chart.
@@ -159,7 +159,6 @@ def generate_barchart(
 
     Returns:
         Plot: A Plotly bar chart figure.
-        str: Error message if input data format is incorrect.
     """
     traces = list()
     for trace_name, trace_data in data.items():
@@ -191,7 +190,7 @@ def generate_barchart(
 
 
 def generate_scatterplot(
-    data: FunctionData, 
+    data: FunctionData = None, 
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None
@@ -199,7 +198,7 @@ def generate_scatterplot(
     """
     Generate a scatter plot from structured input data of correct format.
 
-    Parameters:
+    Args:
         data (FunctionData): A dictionary in the format 
             {trace_name: {x_value: y_value}}.
         title (str, optional): Title of the scatter plot.
@@ -230,7 +229,7 @@ def generate_scatterplot(
 
 
 def generate_lineplot(
-    data: FunctionData, 
+    data: FunctionData = None, 
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None
@@ -238,7 +237,7 @@ def generate_lineplot(
     """
     Generate a line plot from structured input data of correct format.
 
-    Parameters:
+    Args:
         data (FunctionData): A dictionary in the format 
             {trace_name: {x_value: y_value}}.
         title (str, optional): Title of the line plot.
@@ -247,7 +246,6 @@ def generate_lineplot(
 
     Returns:
         Plot: A Plotly line plot figure.
-        str: Error message if input data format is incorrect.
     """
     traces = list()
     for trace_name, trace_data in data.items():
@@ -278,7 +276,7 @@ def generate_lineplot(
 
 
 def generate_hist(
-    data: FunctionRegistryExpectedFormat,
+    data: FunctionData = None,
     nbinsx: Optional[int] = None,
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
@@ -287,8 +285,8 @@ def generate_hist(
     """
     Generate a histogram from structured input data of correct format.
 
-    Parameters:
-        data (FunctionRegistryExpectedFormat): A dictionary in the format 
+    Args:
+        data (FunctionData): A dictionary in the format 
             {trace_name: {"x": x_values}}.
         nbinsx (int, optional): Number of bins along the x-axis. If not specified, defaults to the length of x_values.
         title (str, optional): Title of the histogram.
@@ -297,7 +295,6 @@ def generate_hist(
 
     Returns:
         Plot: A Plotly histogram figure.
-        str: Error message if input data format is incorrect.
     """
     traces = list()
     for trace_name, trace_data in data.items():
@@ -332,7 +329,7 @@ def generate_map(
     """
     Generate a visual map of an office layout with optional desk and room highlights.
 
-    Parameters:
+    Args:
         room_ids (Iterable[int], optional): List of room IDs to highlight.
         room_names (Iterable[str], optional): List of room names to highlight. Converted to IDs internally.
         desk_ids (Iterable[int], optional): List of desk IDs to highlight.
@@ -456,20 +453,20 @@ def generate_map(
 
     return fig
 
+
 def generate_table(
-    data: FunctionData, 
+    data: FunctionData = None, 
     title: Optional[str] = None
-) -> Plot | str:
+) -> Plot:
     """
     Generate a formatted table using Plotly.
 
-    Parameters:
+    Args:
         data (FunctionData): A dictionary where each key is a column name and the value is a list of column values.
         title (str, optional): Title for the table.
 
     Returns:
         Plot: A Plotly table figure.
-        str: Error message if input data format is incorrect.
     """
 
     traces = list()
@@ -478,15 +475,21 @@ def generate_table(
             headers = list(trace_data.keys())
             columns = list(trace_data.values())
         except AttributeError:
-            return "Data for table have to be in following format: {trace1_name: {col_header1: col_data1}}"
+            raise ValueError(
+                "Data for table have to be in following format: {trace1_name: {col_header1: col_data1}}"
+            )
 
         trace = go.Table(
-            header=dict(values=headers,
-                        fill_color='lightgrey',
-                        align='left'),
-            cells=dict(values=columns,
-                    fill_color='white',
-                    align='left')
+            header=dict(
+                values=headers,
+                fill_color='lightgrey',
+                align='left'
+            ),
+            cells=dict(
+                values=columns,
+                fill_color='white',
+                align='left'
+            )
         )
         traces.append(trace)
 
@@ -496,6 +499,7 @@ def generate_table(
     )
 
     return fig
+
 
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset

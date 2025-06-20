@@ -260,7 +260,7 @@ def utilization_stats(
             "var": float(round(values["sumsq"] / max_possible - mean ** 2, 6)),
         }
 
-    return FunctionRegistryExpectedFormat(data=result_data_dict, plot=None)
+    return FunctionRegistryExpectedFormat(data=result_data_dict)
 
 
 def detect_utilization_anomalies(

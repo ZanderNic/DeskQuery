@@ -311,11 +311,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
       thinkingMsg.remove();
 
-      data.messages.forEach(m => {
-        if (m.role === 'assistant') {
-          renderAssistantMessage(m)
+      if (data.messages && data.messages.length > 0) {
+        const lastAssistantMsg = [...data.messages].reverse().find(m => m.role === 'assistant');
+        if (lastAssistantMsg) {
+          renderAssistantMessage(lastAssistantMsg);
         }
-      });
+      }
+      // data.messages.forEach(m => {
+      //   if (m.role === 'assistant') {
+      //     renderAssistantMessage(m)
+      //   }
+      // });
 
       loadChatList();
 
@@ -366,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const now = new Date();
     chats.forEach(c => {
-      const date = new Date(c.last_updated);
+      const date = new Date(c.last_timestamp);
       const diffTime = now - date;
       const diffDays = diffTime / (1000 * 60 * 60 * 24);
 

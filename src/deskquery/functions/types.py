@@ -2,8 +2,8 @@ from __future__ import annotations
 from typing import Any, MutableMapping, Iterator, Dict, Optional, List
 import plotly.graph_objects as go
 from abc import ABC, abstractmethod
-from deskquery.data.dataset import Dataset
 
+from deskquery.data.dataset import Dataset
 
 class Plot(go.Figure):
     def __init__(self, *args, **kwargs):
@@ -19,13 +19,10 @@ class PlotFunction(ABC):
 class PlotForFunction:
     def __init__(self, default_plot: Optional[Plot] = Plot(), available_plots: List[PlotFunction] = []):
         self.default_plot = default_plot
-        # FIXME: The following if is always true since the default plot is of type Plot and not PlotFunction
-        if default_plot not in available_plots and default_plot: 
-            available_plots.append(default_plot)
         self.available_plots = available_plots
     
     def to_json(self) -> str:
-        return f"{{default_plot: {self.default_plot.to_json()}, available_plots: {[plot.__name__ for plot in self.available_plots[:-1]]}}}"
+        return f"{{default_plot: {self.default_plot.to_json()}, available_plots: {[plot.__name__ for plot in self.available_plots if isinstance(plot, PlotFunction)]}}}"
 
     def __str__(self) -> str:
         return self.to_json()

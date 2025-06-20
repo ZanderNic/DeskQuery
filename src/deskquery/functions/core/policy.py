@@ -248,11 +248,7 @@ def detect_policy_violations(
         )
 
     return FunctionRegistryExpectedFormat(
-        data=weekly_stats,
-        plot=PlotForFunction(
-            default_plot=None,
-            available_plots=[]
-        )
+        data=weekly_stats
     )
 
 

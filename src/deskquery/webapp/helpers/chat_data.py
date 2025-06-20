@@ -2,8 +2,15 @@
 import os, json
 from pathlib import Path
 import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import uuid
+
+# third party imports
+import plotly.io as pio
+
+# project imports
+from deskquery.functions.function_registry import plot_function_registry
+from deskquery.functions.types import *
 
 # set base_path to chat history storage
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -309,6 +316,7 @@ class ChatData:
         include_status: Optional[List[str]] = None,
         include_ids: Optional[List[int]] = None,
         include_data: bool = False,
+        sort: Optional[str] = 'asc'
     ):
         """
         Filters the messages in the chat based on the provided criteria and
@@ -341,6 +349,11 @@ class ChatData:
             include_data (bool, optional):
                 If `True`, includes messages with data. If `False`, inserts
                 placeholders for the data in the messages. Defaults to `False`.
+            sort (str, optional):
+                The sorting order of the filtered messages. Can be either
+                'asc' for ascending or 'desc' for descending order based on
+                the message ID. Defaults to 'asc'. If some other value is
+                provided, the messages will not be sorted.
         
         Returns:
             List[dict]: 
@@ -383,13 +396,22 @@ class ChatData:
                             "status": message["status"],
                             "role": message["role"],
                             "content": message["content"],
-                            "data": True,
-                            "data_plotable": message["data"]["plotable"] if "data" in message else False
+                            "data": {
+                                "plotable": message["data"]["plotable"],
+                                "plotted": message["data"]["plotted"],
+                                "available_plots": message["data"]["available_plots"],
+                            }
                         }
                     filtered_messages.append(message_to_add)
 
                 else:
                     filtered_messages.append(message)
+
+        # sort the filtered messages by id
+        if sort == 'asc':
+            filtered_messages.sort(key=lambda m: m["id"])
+        elif sort == 'desc':
+            filtered_messages.sort(key=lambda m: m["id"], reverse=True)
 
         return filtered_messages
 
@@ -398,6 +420,71 @@ class ChatData:
     ):
         return f"<ChatData chat_id={self.chat_id} title={self.title} messages={len(self.messages)} created_at={self.created_at.isoformat()}>"
 
+
+def FREF_from_dict(
+    data: Dict[str, Any],
+) -> FunctionRegistryExpectedFormat:
+    """
+    Converts a dictionary, primarily originating from the `ChatData` class, to 
+    a FunctionRegistryExpectedFormat object.
+    
+    Args:
+        data (Dict[str, Any]):
+            The data to use for the creation. This should feature the 
+            `FunctionData` as a dictionary, the `PlotForFunction` seperated in
+            the default plots JSON string und the `plotly` field and the 
+            available plots as a list of `PlotFunction` function names and the 
+            `plotted` boolean indicating whether the data has already been
+            plotted.
+
+            Minimal Expected keys and structure:
+
+            ```
+            data = {
+                # FunctionData as dict
+                "function_data": {...},
+                # JSON string of the default plot
+                "plotly": "{...}",
+                # List of available plot function names from functions.helper.plot_helper
+                "available_plots": ["PlotFunction1", "PlotFunction2", ...],
+                # Boolean indicating if the data has been plotted before
+                "plotted": False
+            }
+            ```
+
+    Returns:
+        FunctionRegistryExpectedFormat:
+            The converted object.
+
+    Raises:
+        ValueError: 
+            If the data does not match the expected format.
+    """
+    if not (
+        isinstance(data, dict) and 
+        "function_data" in data and 
+        isinstance(data["function_data"], dict) and
+        "plotly" in data and 
+        isinstance(data["plotly"], str) and
+        "available_plots" in data and 
+        isinstance(data["available_plots"], list) and
+        "plotted" in data and 
+        isinstance(data["plotted"], bool)
+    ):
+        raise ValueError(
+            "Invalid data format for FunctionRegistryExpectedFormat."
+        )
+
+    return FunctionRegistryExpectedFormat(
+        data=FunctionData(data["function_data"]),
+        plot=PlotForFunction(
+            default_plot=Plot(pio.from_json(data["plotly"])),
+            available_plots=[
+                plot_function_registry[func] for func in data["available_plots"]
+            ]
+        ),
+        plotted=data["plotted"]
+    )
 
 def list_chats(
     to_dict: Optional[bool] = False

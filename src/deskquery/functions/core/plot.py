@@ -3,28 +3,10 @@ from typing import Optional, Dict
 from deskquery.functions.types import FunctionRegistryExpectedFormat, Plot, PlotFunction, PlotForFunction
 from deskquery.functions.core.helper.plot_helper import (
     generate_heatmap,
-    generate_hist,
-    generate_barchart,
-    generate_scatterplot,
-    generate_lineplot,
-    generate_map,
-    generate_table
 )
 
-# TODO: Think of a smart way to add them to generate_plot_for_function since that's
-# TODO: the only summary the llm sees to pick the correct plot
-helper_docstrings = {
-    "generate_heatmap": generate_heatmap.__doc__,
-    "generate_hist": generate_hist.__doc__,
-    "generate_barchart": generate_barchart.__doc__,
-    "generate_scatterplot": generate_scatterplot.__doc__,
-    "generate_lineplot": generate_lineplot.__doc__,
-    "generate_map": generate_map.__doc__,
-    "generate_table": generate_table.__doc__
-}
-
 def generate_plot_for_function(
-    func_result: FunctionRegistryExpectedFormat,
+    function_result: FunctionRegistryExpectedFormat,
     additional_plot_args: Dict[str, str] = {},
     plot_to_generate: Optional[PlotFunction] = None,
     use_default_plot: bool = True
@@ -34,7 +16,7 @@ def generate_plot_for_function(
     Therefore, a specific plot function or the function results default plot may be used.
 
     Args:
-        func_result (FunctionRegistryExpectedFormat):
+        function_result (FunctionRegistryExpectedFormat):
             Function result object containing a FunctionData and PlotForFunction object.
         additional_plot_args (Dict[str, str]):
             A dict with keyword arguments for the plot creation usually containing the keys "title"
@@ -48,12 +30,15 @@ def generate_plot_for_function(
             result in an error.
 
     Returns:
-        dict:
-            A json like message with a "status" field indicating the success of the plot creation
-            and either a "message" filed with the error message or a "plot" field with the plot data.
+        FunctionRegistryExpectedFormat:
+            A FunctionRegistryExpectedFormat object containing the given data and the specified plot.
+
+    Raises:
+        ValueError: If no plot is available and `use_default_plot` is `False`.
+        ValueError: If the specified `plot_to_generate` is not available for the function result.
     """
-    data = func_result.data
-    plot = func_result.plot
+    data = function_result.data
+    plot = function_result.plot
 
     if not plot.available_plots and not use_default_plot:
         raise ValueError(
@@ -65,8 +50,8 @@ def generate_plot_for_function(
 
     if use_default_plot:
         # enable plotting in the frontend
-        func_result.plotted = True
-        return func_result
+        function_result.plotted = True
+        return function_result
     else:
         # plot_to_generate has to be a function from the plot function filled with arguments
         if plot_to_generate in plot.available_plots:
@@ -74,10 +59,8 @@ def generate_plot_for_function(
                 data=data,
                 plot=PlotForFunction(
                     default_plot=plot_to_generate(
-                        data, 
-                        title=plot.default_plot['layout']['title']['text'], 
-                        xaxis_title=plot.default_plot['layout']['xaxis']['title']['text'],
-                        yaxis_title=plot.default_plot['layout']['yaxis']['title']['text']),
+                        data, **additional_plot_args
+                    ),
                     available_plots=plot.available_plots
                 ),
                 plotted=True
