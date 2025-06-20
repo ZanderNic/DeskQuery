@@ -296,9 +296,9 @@ html, body {
 
 #empty-chat-overlay {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  flex-direction: column;
   text-align: center;
   color: #aaa;
   font-size: 22px;
@@ -367,7 +367,6 @@ html, body {
   background-color: #424242;
   align-self: flex-start;
 }
-
 
 .plot-container {
   width: 100%;

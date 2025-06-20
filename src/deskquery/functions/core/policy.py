@@ -19,7 +19,7 @@ def simulate_policy(
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
     num_weeks: int = 100,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"],
+    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"],  # FIXME: Change to English
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
     """
@@ -84,11 +84,15 @@ def simulate_policy(
             "total_attendance": dict(zip(weekdays, total_attendance))
         }
 
-        plot = PlotForFunction(default_plot=generate_barchart(data=final_data,
-                                                            title=f"Attendance per weekday",
-                                                            xaxis_title="Weekday",
-                                                            yaxis_title="Attendance"),
-                            available_plots=[generate_barchart])
+        plot = PlotForFunction(
+            default_plot=generate_barchart(
+                data=final_data,
+                title=f"Attendance per weekday",
+                xaxis_title="Weekday",
+                yaxis_title="Attendance"
+            ),
+            available_plots=[generate_barchart]
+        )
 
         return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
 
@@ -100,7 +104,7 @@ def detect_policy_violations(
     policy: Dict,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"], 
+    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"], # FIXME: Change to English
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
     only_stats: bool = False
@@ -229,21 +233,33 @@ def detect_policy_violations(
         current += one_week
 
     if only_stats:
-        plot = PlotForFunction(default_plot=generate_lineplot(data=weekly_stats,
-                                                            title=f"Weekly policy violations",
-                                                            xaxis_title="Date",
-                                                            yaxis_title="Violations"),
-                            available_plots=[generate_lineplot])
+        plot = PlotForFunction(
+            default_plot=generate_lineplot(
+                data=weekly_stats,
+                title=f"Weekly policy violations",
+                xaxis_title="Date",
+                yaxis_title="Violations"),
+            available_plots=[generate_lineplot]
+        )
 
-        return FunctionRegistryExpectedFormat(data=weekly_stats, plot=plot)
-    
-    return FunctionRegistryExpectedFormat(data=weekly_stats, plot=PlotForFunction(default_plot=None, available_plots=[]))
+        return FunctionRegistryExpectedFormat(
+            data=weekly_stats,
+            plot=plot
+        )
+
+    return FunctionRegistryExpectedFormat(
+        data=weekly_stats,
+        plot=PlotForFunction(
+            default_plot=None,
+            available_plots=[]
+        )
+    )
 
 
-####### Helpers ###########################################################################################################################################################################
+####### Helpers ########################################################################################################
 
 def expand_fixed_bookings(
-        fixed: Dataset
+    fixed: Dataset
 ) -> Dataset:
     """
     Creates daily entries for the fixed bookings
@@ -264,9 +280,9 @@ def expand_fixed_bookings(
 
 
 def create_attendance_dataframe(
-        data: Dataset,
-        start_date: datetime.date,
-        end_date: datetime.date
+    data: Dataset,
+    start_date: datetime.date,
+    end_date: datetime.date
 ) -> pd.DataFrame:
     """
     Create a dataframe that contains all attendances
@@ -294,9 +310,9 @@ def create_attendance_dataframe(
 
 
 def load_attendance_profiles(
-        data: Dataset,
-        lag: int = 90,
-        weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"]
+    data: Dataset,
+    lag: int = 90,
+    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"]
 ) -> List[Dict[float, List[float]]]:
     """
     Creates attendance profiles for all workers. An attendance profile is the average attendance for all the weekdays. 
@@ -309,7 +325,7 @@ def load_attendance_profiles(
     Returns:
         List of dictionaries of the form: {worker_id: [average attendance monday, ..., average attendance sunday]}
     """
-    weekday_map = {"Mo": 0, "Di": 1, "Mi": 2, "Do": 3, "Fr": 4, "Sa": 5, "So": 6}
+    weekday_map = {"Mo": 0, "Di": 1, "Mi": 2, "Do": 3, "Fr": 4, "Sa": 5, "So": 6}  # FIXME: Change to English
     selected_weekdays = [weekday_map[day] for day in weekdays]
 
     data["blockedFrom"] = pd.to_datetime(data["blockedFrom"], errors="coerce")
@@ -400,8 +416,8 @@ def load_attendances(
 
 
 def average_simulated_weeks(
-        weeks: List[List[str]],
-        weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"]
+    weeks: List[List[str]],
+    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"] # FIXME: Change to English
 ) -> List[float]:
     """
     Calculates the average attendance percentage for each weekday based on simulated weeks.
@@ -430,7 +446,7 @@ def draw_days(
     number_choseable_days: Optional[int] = None,
     number_days: Optional[int] = None,
     more_days_allowed: bool = True,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"]
+    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"] # FIXME: Change to English
 ) -> List[str]:
     """
     Generates a simulated week of attendance days based on the given policy configuration.
@@ -548,6 +564,7 @@ if __name__ == "__main__":
 
     ########## Test suggest_balanced_utilization_policy ################################################
     print("=== Suggest balanced utilization policy ===")
+    # FIXME: This function is not defined!
     return_dict = suggest_balanced_utilization_policy(
         data=dataset,
         target_utilization=0.8

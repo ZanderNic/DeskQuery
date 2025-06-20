@@ -72,7 +72,7 @@ def create_function_summaries(
                 function_summaries += docstring + "\n"
                 function_summaries += "\n---\n\n"
             else:
-                # if the function doesn´t exist or the docstring misses
+                # if the function doesn't exist or the docstring misses
                 # its deleted from the function_registry
                 to_remove.append(name)
 
@@ -88,7 +88,7 @@ def create_function_summaries(
 def get_function_docstring(
     function_name: str,
     function_registry: dict = function_registry,
-) -> str:
+) -> str | None:
     function = function_registry.get(function_name, None)
     if function:
         docstring = inspect.getdoc(function)

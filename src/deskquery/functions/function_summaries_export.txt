@@ -1,43 +1,43 @@
-def analyze_utilization(
+def mean_utilization(
     data: Dataset,
     include_fixed: bool = False,
-    
     by_desks: bool = False,
     by_room: bool = False,
     by_day: bool = False,
-    
     desk_id: Optional[List[int]] = None,
     room_name: Optional[List[str]] = None,
-    
-    weekday: Optional[List[str]] = None,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
+    weekday: Optional[List[str]] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+    start_date: Optional[datetime.datetime] = None,
+    end_date: Optional[datetime.datetime] = None,
     threshold: Optional[float] = None,
-    count_below: bool = False,
-) -> dict[str, object]:
-Computes statistical measures of workspace utilization over time, grouped by desk, room, or weekday.
+    top_or_bottom_n: Optional[int] = None,
+    from_bottom: Optional[bool] = False,
+) -> FunctionRegistryExpectedFormat:
+Computes mean utilization of workspace utilization over a given timeframe, grouped by either desk, room, or weekday.
+Should only be used to group by one of those attributes.
 
-Utilization is calculated by dividing the number of actual bookings by the number of possible bookings 
-per group (based on date range, included weekdays, and number of desks). Daily booking counts are used 
-to compute variability (min, max, variance) per group key.
+Utilization is defined as the number of actual bookings divided by the number of possible bookings per group.
+The possible bookings depend on the time window, included weekdays, selected desk_ids or selected room_names.
+
+Optionally, the result can be filtered by a threshold or by selecting only the top or bottom N utilization values by 
+providing a threshold and selecting with from_bottom = True all entities where utilization <= threshold or with
+False utilization >= threshold. The same goes with the top_or_bottom_n where from_bottom = False means the top N
+utilizations and with from_bottom = True the bottom N utilizations.
 
 ---
 
 def utilization_stats(
     data: Dataset,
     include_fixed: bool = False,
-    
     by_desks: bool = False,
     by_room: bool = False,
     by_day: bool = False,
-    
     desk_id: Optional[List[int]] = None,
     room_name: Optional[List[str]] = None,
     weekday: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
-    
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
-) -> dict[str, object]:
+    start_date: Optional[datetime.datetime] = None,
+    end_date: Optional[datetime.datetime] = None,
+) -> FunctionRegistryExpectedFormat:
 Identifies utilization outliers based on deviation from the global mean.
 
 This function detects keys (desks, rooms, or weekdays) whose average utilization deviates significantly 
@@ -49,170 +49,144 @@ from the global mean (by at least the given threshold). It uses the same aggrega
 def detect_utilization_anomalies(
     data: Dataset,
     include_fixed: bool = False,
-    
-    threshold: float = 0.2, 
-    
+    threshold: float = 0.2,
     by_desks: bool = False,
     by_room: bool = False,
     by_day: bool = False,
-    
     desk_id: Optional[List[int]] = None,
     room_name: Optional[List[str]] = None,
     weekday: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
-    
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
-) -> dict[str, object]:
-Detects rooms or weekdays with anomalously high or low utilization values.
+    start_date: Optional[datetime.datetime] = None,
+    end_date: Optional[datetime.datetime] = None,
+) -> FunctionRegistryExpectedFormat:
+Detects desks, rooms or weekdays with abnormally high or low mean utilization values.
 
 ---
 
 def simulate_policy(
-    policy_type: str, 
-    mandatory_day: Optional[str] = None, 
-    min_days_per_week: Optional[int] = None, 
-    employee_count: Optional[int] = None, 
-    simulation_weeks: int = 4
-) -> None:
-Simulates the impact of a given policy on desk utilization.
+    data: Dataset,
+    policy: Dict,
+    exceptions: Optional[Dict[int, Dict]] = None,
+    random_assignments: Optional[List[Tuple[int, Dict]]] = None,
+    num_weeks: int = 100,
+    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"],  # FIXME: Change to English
+    plotable: bool = True
+) -> FunctionRegistryExpectedFormat:
+Assigns policies and simulates the weekly attendance of all employees based on them. A policy is a dict of the following parameters 
+which are included in the policy, exceptions (if given) and random_assignments (if given):
+
+    timeframe (str): Policy timeframe (currently only "week" is supported).
+    fixed_days (Optional[List[str]]): Days that are always selected.
+    choseable_days (Optional[List[str]]): Days from which a fixed number is chosen.
+    number_choseable_days (Optional[int]): Number of days to pick from `choseable_days`.
+    number_days (Optional[int]): Target total number of days.
+    more_days_allowed (bool): If True, adds additional days based on attendance.
 
 ---
 
 def detect_policy_violations(
-    policy_type: str, 
-    min_days_per_week: Optional[int] = None, 
-    mandatory_day: Optional[str] = None, 
-    weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
-Identifies employees who do not comply with a given policy.
-
----
-
-def suggest_balanced_utilization_policy(
-    target_utilization: float, 
-    max_mandatory_days: int = 2
-) -> None:
-Suggests an attendance policy to achieve a more balanced desk utilization.
-
-This function analyzes historical booking patterns and simulates different attendance 
-strategies to recommend a policy that helps distribute occupancy more evenly 
-across weekdays and rooms.
-
----
-
-def get_booking_repeat_pattern(
-    dataset: Dataset,
-    most_used_desk: int = 1, # TO DO: Still needs to be implemented 
-    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
+    data: Dataset,
+    policy: Dict,
+    exceptions: Optional[Dict[int, Dict]] = None,
+    random_assignments: Optional[List[Tuple[int, Dict]]] = None,
+    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"], # FIXME: Change to English
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
-    include_fixed: bool = True,
+    only_stats: bool = False
 ) -> FunctionRegistryExpectedFormat:
-Identifies users who book the same desks or same days repeatedly.
+Takes a policy and searches the data for violations. A policy is a dict of the following parameters 
+which are included in the policy, exceptions (if given) and random_assignments (if given):
+
+    timeframe (str): Policy timeframe (currently only "week" is supported).
+    fixed_days (Optional[List[str]]): Days that are always selected.
+    choseable_days (Optional[List[str]]): Days from which a fixed number is chosen.
+    number_choseable_days (Optional[int]): Number of days to pick from `choseable_days`.
+    number_days (Optional[int]): Target total number of days.
+    more_days_allowed (bool): If True, adds additional days based on attendance.
 
 ---
 
 def get_booking_clusters(
     dataset: Dataset,
-    distance_threshold: float = 3, 
     co_booking_count_min: int = 3, 
+    user_ids: Optional[list[int]] = None,
+    include_fixed: bool = False,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
-Finds booking clusters, i.e., groups of users who often book nearby desks.
+    end_date: Optional[datetime] = None,
+) -> FunctionRegistryExpectedFormat:
+Finds groups of users who frequently book desks close to each other.
+Filters data by users, dates, and weekdays, then identifies clusters based 
+on a minimum number of shared bookings.
 
 ---
 
 def get_co_booking_frequencies(
     dataset: Dataset,
-    min_shared_days: int, 
-    same_room_only: bool, 
+    min_shared_days: int = 5, 
+    same_room_only: Optional[bool] = None, 
+    include_fixed: bool = True,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-)-> None:
-Detects employee pairs who frequently book on the same days.
+    end_date: Optional[datetime] = None,
+)-> FunctionRegistryExpectedFormat:
+Identifies pairs of users who frequently book on the same days and calculates co-booking statistics.
+
+This function analyzes booking behavior over a specified timeframe and set of weekdays,
+identifying user pairs who have booked on the same day at least `min_shared_days` times.
+Optionally, it can restrict analysis to bookings in the same room.
 
 ---
 
-def generate_heatmap(
-    by_room: bool, 
-    resolution: str, 
-    weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
-ö
-Generates a heatmap showing desk bookings over time.
+def generate_plot_for_function(
+    func_result: FunctionRegistryExpectedFormat,
+    additional_plot_args: Dict[str, str] = {},
+    plot_to_generate: Optional[PlotFunction] = None,
+    use_default_plot: bool = True
+) -> dict:
+Takes a function result and creates a visualization of the data.
+Therefore, a specific plot function or the function results default plot may be used.
 
 ---
 
-def generate_plot_interactive(
-    by_room: bool, 
-    resolution: str, weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
-Produces an interactive plot of desk booking data.
+def forecast_employees(
+    data: Dataset,
+    lag: int = 90,
+    booking_type: str = "all",
+    weekly_growth_rate: float = None,
+    weekly_absolute_growth: float = None,
+    forecast_model = "linear",
+    weeks_ahead: int = 52,
+    plotable: bool = True
+) -> FunctionRegistryExpectedFormat:
+Forecasts the number of employees.
 
 ---
 
-def generate_plot(
-    by_room: bool, 
-    resolution: str, 
-    desk: int, 
-    weekdays: List[str] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None
-) -> None:
-Creates a plot of desk utilization over time.
+def estimate_necessary_desks(
+    data: Dataset,
+    lag: int = 90,
+    booking_type: str = "all",
+    weekly_growth_rate: Optional[float] = None,
+    weekly_absolute_growth: Optional[float] = None,
+    forecast_model = "linear",
+    target_utilization: float = 1.0,
+    weeks_ahead: int = 52,
+    policy: Optional[Dict] = None,
+    exceptions: Optional[Dict[int, Dict]] = None,
+    random_assignments: Optional[List[Tuple[int, Dict]]] = None,
+) -> FunctionRegistryExpectedFormat:
+Estimates required number of desks to meet a target utilization. It can handle policies. If no policy
+is given it uses the attendance profile and a standard policy (no requirements). Either time series forecast is used or 
+the weekly growth rate / absolute growth. A policy is a dict of the following parameters 
+which are included in the policy, exceptions (if given) and random_assignments (if given):
 
----
-
-def estimate_table_needs(
-    target_utilization: float, 
-    attendance_days: int, 
-    employee_count: int, 
-    existing_desks: Optional[int] = None, 
-    data_for_forcast_start_date: Optional[datetime] = None, 
-    data_for_forcast_end_date: Optional[datetime] = None
-) -> None:
-Estimates required number of desks to meet a target utilization.
-
----
-
-def forecast_desk_demand(
-    current_employee_count: int, 
-    weekly_growth_rate: float,
-    available_desks: int, 
-    target_utilization: float, 
-    data_for_forcast_start_date: Optional[datetime] = None, 
-    data_for_forcast_end_date: Optional[datetime] = None
-) -> None:
-Forecasts desk demand based on employee growth.
-
----
-
-def simulate_room_closure(
-    room_id: str, 
-    reassign_strategy: str, 
-    time_closed: Optional[str] = None, 
-    data_for_forcast_start_date: Optional[datetime] = None, 
-    data_for_forcast_end_date: Optional[datetime] = None
-) -> None:
-Simulates what happens if a room is closed.
-
----
-
-def estimate_max_employees_per_room(
-    room_id: str, 
-    target_utilization: float, 
-    average_attendance_days: int
-) -> None:
-Estimates maximum employees for a room given a target utilization.
+    timeframe (str): Policy timeframe (currently only "week" is supported).
+    fixed_days (Optional[List[str]]): Days that are always selected.
+    choseable_days (Optional[List[str]]): Days from which a fixed number is chosen.
+    number_choseable_days (Optional[int]): Number of days to pick from `choseable_days`.
+    number_days (Optional[int]): Target total number of days.
+    more_days_allowed (bool): If True, adds additional days based on attendance.
 
 ---
 

@@ -38,6 +38,9 @@ A Flask-based frontend allows users to ask questions like:
 ---
 
 ## 🚀 Quickstart
+
+### Python requirements
+
 To use the package, you need to install it along with its dependencies:
 
 ```bash
@@ -45,9 +48,26 @@ To use the package, you need to install it along with its dependencies:
 pip install .
 ```
 
-# TODO how to add the API KEY
+### LLM API keys
 
-After the API key has been added, you can start the web frontend and begin chatting
+To enable language model access, create an `.env` file for the LLM API to use.
+The file should be located in [`/src/deskquery/llm`](/src/deskquery/llm) and feature
+a [Groq Cloud](https://console.groq.com/home) API key $\tiny{(inclusive)}$ or a 
+[Google AI Studio](https://aistudio.google.com/) API key.
+
+The Groq API is used to connect to Llama models while the Google API offers access to
+multiple Gemini models.
+
+The `.env` file should contain the following keys:
+
+```
+GROQ_API_KEY = <Your Groq Cloud API key here>
+GOOGLE_AIS_API_KEY = <Your Google AI Studio API key here>
+```
+
+### App startup
+
+After the API keys have been added, you can start the web frontend and begin chatting
 
 ```bash
 # Start the Flask web app

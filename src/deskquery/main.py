@@ -22,6 +22,8 @@ from deskquery.functions.function_registry import (
 )
 from deskquery.data.dataset import Dataset
 from deskquery.llm.llm_api import LLM_Client, get_model_client, get_model_providers
+from deskquery.webapp.helpers.chat_data import ChatData
+from deskquery.functions.core.helper.plot_helper import *
 
 global current_model
 current_model = None
@@ -29,17 +31,12 @@ global current_client
 current_client = None
 global function_data
 function_data = {
-    'function_registry': copy.deepcopy(function_registry),
-    'user_question': None,
-    'selected_function': None,
-    'function_docstring': None,
-    'function_parameters': None,
-    'function_parameter_assumptions': None
+    'function_registry': copy.deepcopy(function_registry)
 }
-global STEP_3_PARAM_EXTRACTION_chat_history
-STEP_3_PARAM_EXTRACTION_chat_history = []
+global PARAM_EXTRACTION_chat_history
+PARAM_EXTRACTION_chat_history = []
 
-
+# DEPRECATED
 def call_llm_and_execute(
     question: str, 
     function_summaries: str, 
@@ -114,7 +111,7 @@ Note: Avoid any conversational language!
 
     return code
 
-
+# NOT IN USE
 def handle_llm_response(response: dict):
     
     if response.get("function") is None:
@@ -158,18 +155,70 @@ def handle_llm_response(response: dict):
             "message": f"Error while calling {response['function']}: {e}"
         }
 
-
+# NOT IN USE
 def response_into_text(response_as_json):
     # FIXME: Adjust if needed
     return response_as_json.get("message")
 
+def clean_llm_output(
+    llm_output: str
+) -> str:
+    """
+    Cleans the LLM's output from `client.chat_completion()` by removing 
+    unwanted content.
+    
+    Args:
+        response (str): The LLM's raw output.
+    
+    Returns:
+        str: The cleaned output.
+    """
+    # clean potentially unwanted content from the response string
+    cleaned_response = re.sub(
+        r'<think>.*?</think>', '', llm_output, flags=re.DOTALL
+    )
+    resp_data = cleaned_response.strip('` \n')
+    # if json is specified explicitly
+    if resp_data.startswith('json'):
+        resp_data = resp_data[4:]
+    return resp_data.strip('` \n')
+
 
 def main(
-    question: str,
+    user_input: str,
+    chat_data: ChatData,
     data: Dataset,
     model: dict = {'provider': 'google', 'model': 'gemini-2.0-flash-001'},
     START_STEP: int = 1,  # start with step 1
 ):
+    """
+    Takes a user input and evaluates it with the currently selected LLM client.
+    The evaluation is handled in a stepwise approach using the function
+    ``handleMessage``, which returns the current evaluation result. This is 
+    either a question to the user to refine the input information or the answer
+    to a user query.
+    
+    Args:
+        user_input (str):
+            The user input to evaluate.
+        chat_data (ChatData):
+            The chat data object containing the chat data including the message
+            history.
+        data (Dataset):
+            The dataset to use for the evaluation.
+        model (dict, optional): 
+            The model to use for the evaluation. Defaults to 
+            {'provider': 'google', 'model': 'gemini-2.0-flash-001'}.
+        START_STEP (int, optional):
+            The step to start the evaluation with. Defaults to 1. If the user 
+            has to refine the input the start step has to be set to 30 to
+            directly reach the parameter extraction step.
+
+    Returns:
+        dict:
+            The result of the evaluation. This is either a question to the user
+            to refine the input information or the answer to a user query.
+    """
     function_summaries_path = Path(__file__).resolve().parent / 'functions' / 'function_summaries_export.txt'
     with open(function_summaries_path, 'r') as f:
         function_summaries = f.read()
@@ -199,43 +248,7 @@ def main(
 
     print("Using model:", current_client.model)  # FIXME: DEBUG
 
-    ### Request Handling test
-    result = handleMessage(question, data, model, START_STEP)
-    ###
-
-    # execution_params = {
-    #     "question": question,
-    #     "function_summaries": function_summaries,
-    #     "example_querys": example_querys,
-    #     "client": current_client
-    # }
-
-    # # try to generate a valid json response
-    # error = True
-    # generate_counter = 0
-    # while error and generate_counter < 5:
-    #     try:
-    #         llm_response_str = call_llm_and_execute(
-    #             **execution_params
-    #         )
-    #         llm_response = json.loads(llm_response_str)
-    #         error = False
-    #     except json.JSONDecodeError as e:
-    #         print("Error while parsing the LLM response:", e)
-    #         print("Raw response was:", llm_response_str, sep="\n")
-    #         error = True
-    #         generate_counter += 1
-
-    # # abort after 5 insufficient generations
-    # if error and generate_counter >= 5:
-    #     return {
-    #         "status": "error",
-    #         "message": "I couldn't understand your request. Please try describing it in a different way."
-    #     }
-
-    # result_as_json = handle_llm_response(llm_response)
-
-    # result_as_text = response_into_text(result_as_json)
+    result = handleMessage(user_input, chat_data, data, model, START_STEP)
 
     return result
 
@@ -243,14 +256,330 @@ def main(
 # USER REQUEST HANDLING
 ###############################################################################
 
-# STEP 1: Call LLM to select a function to solve the problem
+# STEP 1: Call LLM to decide for the next task
 
-def selectFunction(
+def decide_next_task(
+    question: str,
+    chat_history: List[dict] = [],
+):
+    prompt_template = """
+You are a smart assistant for a desk booking analytics system.
+To fulfill your task, you get:
+- a current user query
+- a chat history with the user
+- a set of available functions that would be used to answer the user query.
+
+### Task:
+
+Decide which task to perform next based on the user query and the chat history.
+The available tasks (names) and their meanings are:
+- "execute_function": Execute a SINGLE function to answer the user query.
+- "explain_former_result": Explain the result of a previously executed function.
+- "execute_function_on_former_result": Execute a function on the result of a previously executed function.
+- "execute_function_plan": Execute a sequence of functions to answer the user query.
+Answer in a strict JSON format as shown below.
+
+### STRICT JSON response format [Do not specify it explicitly as JSON]:
+{{
+"task": "task_name",
+}}
+
+### Available Functions (Summarized):
+
+{function_summaries}
+
+### User Query:
+
+{question}
+
+### Chat History:
+
+{chat_history}
+
+### Your Response:
+"""
+    global function_data
+    global current_client
+
+    function_summaries = create_function_summaries(function_registry=function_data['function_registry'])
+
+    prompt = prompt_template.format(
+        function_summaries=function_summaries,
+        question=question,
+        chat_history=chat_history
+    )
+
+    response = current_client.chat_completion(
+        input_str=prompt,
+        role='system',
+        response_json=True
+    )
+
+    resp_data = clean_llm_output(response)
+    
+    print("1) Decide next task:", resp_data, sep="\n")  # FIXME: DEBUG
+
+    return resp_data
+
+def validate_next_task(
+    question: str,
+    chat_history: List[dict] = [],
+):
+    # try to generate a valid json response
+    error = True
+    generate_counter = 0
+    while error and generate_counter < 5:
+        try:
+            # generate the response from the LLM
+            response = decide_next_task(question, chat_history)
+            # parse the response as JSON
+            json_data = json.loads(response)
+            error = False
+        except json.JSONDecodeError as e:
+            print("Error while parsing the LLM response:", e)
+            print("Raw response was:", response, sep="\n")
+            error = True
+            generate_counter += 1
+            continue
+        
+        # if json loaded fine, check if the task is specified
+        possible_tasks = [
+            "execute_function",
+            "explain_former_result",
+            "execute_function_on_former_result",
+            "execute_function_plan"
+        ]
+        if json_data.get("task", None) is not None and json_data["task"] in possible_tasks:
+            # if the task is specified, return it
+            return {
+                "status": "success",
+                "task": json_data["task"],
+            }
+        else:
+            # if the task is not correctly specified, provoke an error
+            generate_counter += 1
+            error = True
+
+    # abort after 5 insufficient generations
+    if error and generate_counter >= 5:
+        return {
+            "status": "error",
+            "message": "I couldn't understand your request. Please try again or describe it in a different way."
+        }
+
+
+###############################################################################
+
+# STEP 10: Decide on the message to use next referenced by the user query
+
+def select_referenced_messages(
+    question: str,
+    chat_history: List[dict],
+):
+    prompt_template = """
+You are a smart assistant for a desk booking analytics system.
+You are given a user query and a chat history with the user to fulfill your task.
+
+### Task:
+
+The user query refers to ONE or MULTIPLE messages in the chat history to perform the future actions on.
+For the moment, infer the list of messages that are referenced by the user query and list their IDs in your response.
+Answer in a strict JSON format as shown below.
+
+### STRICT JSON response format [Do not specify it explicitly as JSON]:
+{{
+"message_ids": "[<message_id1>, (optionally:) <message_id2>, ...]",
+}}
+
+### User Query:
+
+{question}
+
+### Chat History:
+
+{chat_history}
+
+### Your Response:
+"""
+    global current_client
+
+    prompt = prompt_template.format(
+        question=question,
+        chat_history=chat_history
+    )
+
+    response = current_client.chat_completion(
+        input_str=prompt,
+        role='system',
+        response_json=True
+    )
+
+    resp_data = clean_llm_output(response)
+    
+    print("10) LLM Referenced Message Selection:", resp_data, sep="\n")  # FIXME: DEBUG
+
+    return resp_data
+
+
+def validate_referenced_messages(
+    question: str,
+    chat_data: ChatData,
+):
+    # try to generate a valid json response
+    error = True
+    generate_counter = 0
+    while error and generate_counter < 5:
+        try:
+            # generate the response from the LLM
+            response = select_referenced_messages(question, chat_data.filter_messages(
+                exclude_status=["error", "no_match"],
+                include_data=False,
+            ))
+            # parse the response as JSON
+            json_data = json.loads(response)
+            error = False
+        except json.JSONDecodeError as e:
+            print("Error while parsing the LLM response:", e)
+            print("Raw response was:", response, sep="\n")
+            error = True
+            generate_counter += 1
+            continue
+        
+        # if json loaded fine, check if the message ID is specified
+        if json_data.get("message_ids", None) is not None:
+            # try to parse the response to a python list
+            try:
+                if not isinstance(json_data["message_ids"], str):
+                    json_data["message_ids"] = str(json_data["message_ids"])
+                json_data["message_ids"] = eval(json_data["message_ids"])
+            except Exception as e:
+                print(f"Error while parsing message_ids:", e)
+                traceback.print_exc()
+                generate_counter += 1
+                error = True
+                continue
+            # if the message ID is specified, return it
+            return {
+                "status": "success",
+                "message_ids": json_data["message_ids"],
+            }
+        else:
+            # if the message ID is not correctly specified, provoke an error
+            generate_counter += 1
+            error = True
+
+    # abort after 5 insufficient generations
+    if error and generate_counter >= 5:
+        return {
+            "status": "error",
+            "message": "I couldn't infer the message referenced in your request. Please try again or describe it in a different way."
+        }
+
+
+###############################################################################
+
+# STEP 30: Call LLM to further explain the specified messages to the user 
+
+def explain_referenced_messages(
+    question: str,
+    referenced_messages: List[dict],
+):
+    prompt_template = """
+You are a smart assistant for a desk booking analytics system.
+You are given a user query and a selection of the chat history with the user.
+The user is asking about an explanation of previous messages in the chat history.
+
+### Task:
+
+Answer the user query with respect to the given messages of the chat history.
+Answer in a strict JSON format as shown below.
+
+### STRICT JSON response format [Do not specify it explicitly as JSON]:
+{{
+"message": "<Your answer to the user query>",
+}}
+
+### User Query:
+
+{question}
+
+### Given Messages of the Chat History:
+
+{referenced_messages}
+
+### Your Response:
+"""
+    global current_client
+
+    prompt = prompt_template.format(
+        question=question,
+        referenced_messages=referenced_messages
+    )
+
+    response = current_client.chat_completion(
+        input_str=prompt,
+        role='system',
+        response_json=True
+    )
+
+    resp_data = clean_llm_output(response)
+
+    print("30) LLM Referenced Message Explanation:", resp_data, sep="\n")  # FIXME: DEBUG
+
+    return resp_data
+
+def validate_referenced_message_explanation(
+    question: str,
+    referenced_messages: List[dict],
+):
+    # try to generate a valid json response
+    error = True
+    generate_counter = 0
+    while error and generate_counter < 5:
+        try:
+            # generate the response from the LLM
+            response = explain_referenced_messages(question, referenced_messages)
+            # parse the response as JSON
+            json_data = json.loads(response)
+            error = False
+        except json.JSONDecodeError as e:
+            print("Error while parsing the LLM response:", e)
+            print("Raw response was:", response, sep="\n")
+            error = True
+            generate_counter += 1
+            continue
+        
+        # if json loaded fine, check if the message is specified
+        if json_data.get("message", None) is not None:
+            # if the message is specified, return it
+            return {
+                "status": "success",
+                "message": json_data["message"],
+            }
+        else:
+            # if the message is not correctly specified, provoke an error
+            generate_counter += 1
+            error = True
+
+    # abort after 5 insufficient generations
+    if error and generate_counter >= 5:
+        return {
+            "status": "error",
+            "message": "I couldn't understand your request. Please try again or describe it in a different way."
+        }
+
+
+###############################################################################
+
+# STEP 100: Call LLM to select a function to solve the problem
+
+def select_function(
     question: str,
 ):
     prompt_template = """
 You are a smart assistant for a desk booking analytics system.
-You have access to a predefined set of Python functions (see below) to answer user querries.
+You have access to a predefined set of Python functions (see below) to answer user queries.
+If there are referenced messages, use them to find the most appropriate function to solve the user query.
 
 ### ONLY Available Functions (Summarized):
 
@@ -268,7 +597,7 @@ Answer in a strict JSON format as shown below.
 "explanation": "..."
 }}
 
-### User Query:
+### Query:
 
 {question}
 
@@ -290,11 +619,9 @@ Answer in a strict JSON format as shown below.
         response_json=True
     )
 
-    # clean potentially unwanted content from the response string
-    cleaned_response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
-    resp_data = cleaned_response.strip('` \n')
+    resp_data = clean_llm_output(response)
     
-    print("1) LLM function selection:", resp_data, sep="\n")  # FIXME: DEBUG
+    print("100) LLM function selection:", resp_data, sep="\n")  # FIXME: DEBUG
 
     return resp_data
 
@@ -308,7 +635,7 @@ def validate_selected_function(
     while error and generate_counter < 5:
         try:
             # generate the response from the LLM
-            response = selectFunction(question)
+            response = select_function(question)
             # parse the response as JSON
             json_data = json.loads(response)
             error = False
@@ -341,7 +668,7 @@ def validate_selected_function(
 
 ###############################################################################
 
-# STEP 2: Check the selected function and extract the needed parameters
+# STEP 200: Check the selected function and extract the needed parameters
 
 def assess_function_usability(
     question: str,
@@ -351,6 +678,7 @@ def assess_function_usability(
 You are a smart assistant for a desk booking analytics system.
 You are given a user query and the docstring of function to possibly solve the request.
 There is also access to a dataset called `data` which you can assume to be available if needed.
+If there are referenced messages, use them predominantly to assess the usability of the function.
 
 ### Function Docstring:
 
@@ -369,7 +697,7 @@ Decide if the given function can be used to process the user request. Answer in 
 
 Note: Avoid any conversational language!
 
-### User Query:
+### Query:
 
 {question}
 
@@ -388,11 +716,9 @@ Note: Avoid any conversational language!
         response_json=True
     )
 
-    # clean potentially unwanted content from the response string
-    cleaned_response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
-    resp_data = cleaned_response.strip('` \n')
-    
-    print("2) LLM Function Assessment:", resp_data, sep="\n")  # FIXME: DEBUG
+    resp_data = clean_llm_output(response)
+
+    print("200) LLM Function Assessment:", resp_data, sep="\n")  # FIXME: DEBUG
 
     return resp_data
     
@@ -419,7 +745,7 @@ def validate_function_usability(
             continue
         
         # if json loaded fine, check if the usability is specified
-        if json_data.get("status", None) == "abort" or json_data.get("status", None) == "success":
+        if json_data.get("status", "") == "abort" or json_data.get("status", "") == "success":
             # if the function is specified, return it
             return {
                 "status": json_data["status"]
@@ -438,7 +764,7 @@ def validate_function_usability(
 
 ###############################################################################
 
-# STEP 3: Infer the parameters for the selected usable function
+# STEP 300: Infer the parameters for the selected usable function
 
 def infer_function_parameters(
     conv_hist: List[dict],
@@ -450,6 +776,7 @@ You are a smart assistant for a desk booking analytics system.
 You are given a conversation history with a user including a query.
 You get the docstring of a function to solve the request.
 There is also access to a dataset which you can assume to be available. DO NOT specify it in the parameters.
+If there are referenced messages, use them predominantly to infer the parameters.
 
 ### Function Docstring:
 
@@ -463,7 +790,7 @@ Also use the given default values for the parameters if applicable. If default v
 - If information is missing, mark it clearly with a placeholder and add a `missing_fields` list. Set "status" to "pending" in this case and provide an "explanation" field for the user.
 - If the chat history can not be used to infer the parameters, set "status" to "abort" and leave the rest. Use this only as a last resort.
 
-The python datetime module is available as `datetime` for time timestamps if needed.
+The python datetime module is available as `datetime` for timestamps if needed.
 
 Answer in a strict JSON format as shown below.
 
@@ -471,7 +798,7 @@ Answer in a strict JSON format as shown below.
 {{
 "status": "abort | pending | success",
 "function": "{function_name}",
-# for paramter definitions, put strings in extra quotes, e.g. "param1": "\'<str_value>\'" and everything else in one quotes, e.g. "param2": "<int_value>".
+# for parameter definitions, put strings in extra quotes, e.g. "param1": "\'<str_value>\'" and everything else in one quotes, e.g. "param2": "<int_value>".
 # Write values in Python syntax if applicable, e.g. "param3": "<list_value>".
 # Do not make any comments in the JSON response.
 "parameters": {{
@@ -485,6 +812,7 @@ Answer in a strict JSON format as shown below.
 }}
 
 ### Conversation History:
+
 {conv_hist}
 """
     global current_client
@@ -508,11 +836,9 @@ Answer in a strict JSON format as shown below.
         response_json=True
     )
 
-    # clean potentially unwanted content from the response string
-    cleaned_response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
-    resp_data = cleaned_response.strip('` \n')
+    resp_data = clean_llm_output(response)    
     
-    print("3) LLM Parameter Inferation:", resp_data, sep="\n")  # FIXME: DEBUG
+    print("300) LLM Parameter Inferation:", resp_data, sep="\n")  # FIXME: DEBUG
 
     return resp_data
 
@@ -543,10 +869,10 @@ def validate_function_parameter_extraction(
             continue
         
         # if json loaded fine, check if the usability is specified
-        if json_data.get("status", None) in ["abort", "pending", "success"]:
+        if json_data.get("status", "") in ["abort", "pending", "success"]:
             # if the function is specified, return it
             if json_data["status"] == "success" and json_data.get("parameters", None):
-                print("3) Parsing parameters to python objects...")  # FIXME: DEBUG
+                print("300) Parsing parameters to python objects...")  # FIXME: DEBUG
                 for param in json_data["parameters"]:
                     # imply the parameter type by python evaluation
                     try:
@@ -579,7 +905,7 @@ def validate_function_parameter_extraction(
 
 ###############################################################################
 
-# STEP 4: Execute the selected function with the extracted parameters
+# STEP 400: Execute the selected function with the extracted parameters
 
 def validate_function_execution(
     data: Dataset = None,
@@ -592,7 +918,7 @@ def validate_function_execution(
     func = function_registry[function_data["selected_function"]]
 
     # FIXME: DEBUG
-    print("4) Executing function:", function_data["selected_function"], "with params:", function_data["function_parameters"], sep="\n")
+    print("400) Executing function:", function_data["selected_function"], "with params:", function_data["function_parameters"], sep="\n")
 
     while error and generate_counter < 5:
         try:
@@ -601,24 +927,21 @@ def validate_function_execution(
                 data=data,
                 **function_data["function_parameters"]
             )
-            print("4) Function Execution Result:", response, sep="\n")  # FIXME: DEBUG
+            print("400) Function Execution Result:", response, sep="\n")  # FIXME: DEBUG
             error = False
         except Exception as e:
-            print(f"Error while executing function '{function_data["selected_function"]}':", e)
+            print(f"Error while executing function {function_data['selected_function']}:", e)
             traceback.print_exc()  # Print the stack trace to the console
             print("Raw response was:", response, sep="\n")
             error = True
             generate_counter += 1
             continue
         
-        # check if there is a function internal error
-        if not response.get("error", 0):
-            # if the function executed successfully, return the response
-            return response
-        else:
-            # if there is an error, provoke an error for the loop
-            generate_counter += 1
-            error = True
+        # if the response is valid
+        return {
+            "status": "success",
+            "function_result": response,
+        }
 
     # abort after 5 insufficient tries
     if error and generate_counter >= 5:
@@ -630,7 +953,7 @@ def validate_function_execution(
 
 ###############################################################################
 
-# STEP 5: Describe the result of the function execution
+# STEP 500: Describe the result of the function execution
 
 def describe_function_result():
     global function_data
@@ -660,15 +983,16 @@ To provide an answer to the query, you have to describe the function results in 
 
 ### Task:
 
-Answer the user query by describing the function results.
-If there were any assumptions made about the function parameters, explain them to the user.
-If the function result contains the field "plotable" set to true, ask the user if they want to see a plot of the result.
+Answer the user query by describing the function results. 
+Do not use the underlying function name or parameter names to describe the results but their semantic.
+If there were any assumptions made about the function parameters, explain them to the user without using variable names.
+If the function result's field "plotable" is set to "True", ask the user if they want to see a plot of the result.
 
 Answer in a strict JSON format as shown below.
 
 ### STRICT JSON response format [Do not specify it explicitly as JSON]:
 {{
-"message": "Your Answer to the user query",
+"message": "<Your Answer to the user query>",
 }}
 
 ### Your Response:
@@ -679,10 +1003,13 @@ Answer in a strict JSON format as shown below.
     prompt = prompt_template.format(
         question=function_data["user_question"],
         function_name=function_data["selected_function"],
-        function_parameters=json.dumps(function_data["function_parameters"], indent=2),
+        function_parameters=json.dumps(function_data["function_parameters"], indent=2, default=str),
         function_parameter_assumptions=json.dumps(function_data["function_parameter_assumptions"], indent=2) if (
             function_data["function_parameter_assumptions"]) else "None",
-        function_result=json.dumps(function_data["function_execution_result"], indent=2)
+        function_result={
+            "data": function_data["function_execution_result"].data,
+            "plotable": function_data["function_execution_result"].plotable
+        }
     )
 
     response = current_client.chat_completion(
@@ -691,10 +1018,9 @@ Answer in a strict JSON format as shown below.
         response_json=True
     )
 
-    # clean potentially unwanted content from the response string
-    cleaned_response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
-    resp_data = cleaned_response.strip('` \n')
-    print("5) LLM Function Result Description:", resp_data, sep="\n")  # FIXME: DEBUG
+    resp_data = clean_llm_output(response)
+    
+    print("500) LLM Function Result Description:", resp_data, sep="\n")  # FIXME: DEBUG
 
     return resp_data
 
@@ -742,6 +1068,7 @@ def validate_function_result_description():
 
 def handleMessage(
     user_message: str,
+    chat_data: ChatData,
     data: Dataset,
     model: dict = {'provider': 'google', 'model': 'gemini-2.0-flash-001'},
     START_STEP: int = 1,  # start with step 1
@@ -772,61 +1099,178 @@ def handleMessage(
     FUNCTIONS_DISCARDED = 0
 
     global function_data
-    global STEP_3_PARAM_EXTRACTION_chat_history
+    global PARAM_EXTRACTION_chat_history
 
     while STEP != 0:
         if STEP == 1:
-            # STEP 1: Call LLM to select a function to solve the problem 
-            function_selection_response = validate_selected_function(user_message)
+            # STEP 1: Call LLM to select the correct next task
+            function_data['user_question'] = user_message
+            
+            task_selection_response = validate_next_task(
+                user_message, 
+                chat_data.filter_messages(
+                    exclude_status=["error", "no_match"],
+                    include_data=False,
+                )[:-1] # use limited chat messages without the user query
+            )
 
-            if function_selection_response.get("status") == "error":
+            if task_selection_response.get("status", "") == "error":
+                return {
+                    "status": "error",
+                    "message": task_selection_response.get("message", "I couldn't infer a task to solve your request. Please try again or describe it in a different way.")
+                }
+            elif task_selection_response.get("status", "") == "success":
+                # save task type
+                function_data['task'] = task_selection_response["task"]
+                # continue with the next step based on the task
+                if function_data['task'] == "execute_function":
+                    STEP = 100  # continue with function selection
+                elif function_data['task'] == "explain_former_result":
+                    STEP = 10  # continue with the referenced message selection
+                elif function_data['task'] == "execute_function_on_former_result":
+                    STEP = 10
+                elif function_data['task'] == "execute_function_plan":
+                    pass
+
+        if STEP == 10:
+            # STEP 10: Decide on the message to explain referenced by the user query
+            referenced_messages_response = validate_referenced_messages(
+                user_message, 
+                chat_data.filter_messages(
+                    exclude_status=["error", "no_match"],
+                    include_data=False,
+                )[:-1]
+            )
+
+            if referenced_messages_response.get("status", "") == "error":
+                return {
+                    "status": "error",
+                    "message": referenced_messages_response.get(
+                        "message", 
+                        "I couldn't infer the message referenced in your request. Please try again or describe it in a different way."
+                    )
+                }
+            elif referenced_messages_response.get("status", "") == "success":
+                # save the message ID for the next step
+                function_data['referenced_message_ids'] = referenced_messages_response["message_ids"]
+                function_data['referenced_messages'] = chat_data.filter_messages(
+                    include_ids=function_data['referenced_message_ids'],
+                    include_data=True,
+                )
+                
+                if function_data['task'] == "explain_former_result":
+                    # continue with the next step to explain the referenced message
+                    STEP = 30
+                elif function_data['task'] == "execute_function_on_former_result":
+                    # continue with the next step to execute a function on the referenced message
+                    STEP = 100 
+
+        if STEP == 30:
+            # STEP 30: Call LLM to further explain the specified messages to the user
+            explanation_response = validate_referenced_message_explanation(
+                user_message, 
+                function_data["referenced_messages"]
+            )
+
+            if explanation_response.get("status", "") == "error":
+                return {
+                    "status": "error",
+                    "message": explanation_response.get(
+                        "message", 
+                        "I could not understand your request. Please try again or describe it in a different way."
+                    )
+                }
+            else:
+                # reset local variables for the next request
+                function_data = {}
+                function_data['function_registry'] = copy.deepcopy(function_registry)
+                PARAM_EXTRACTION_chat_history = []
+                STEP = 0
+
+                return explanation_response
+
+        if STEP == 100:
+            # STEP 100: Call LLM to select a function to solve the problem
+
+            # prepare system message
+            if function_data["task"] == "execute_function_on_former_result":
+                message = [
+                    {
+                        "role": "system",
+                        "user_query": function_data['user_question']
+                    },
+                    {
+                        "role": "system",
+                        "referenced_messages": function_data['referenced_messages']
+                    }
+                ]
+            else:
+                message = function_data['user_question']
+
+            function_selection_response = validate_selected_function(message)
+
+            if function_selection_response.get("status", "") == "error":
+                message = function_selection_response.get("message")
+                if function_selection_response.get("explanation", None):
+                    message += " " + function_selection_response["explanation"]
                 return {
                     "status": "no_match",
-                    "message": function_selection_response.get("message"),
-                    "explanation": function_selection_response.get("explanation", None)
+                    "message": message
                 }
 
             # save the selected function for the next step
             function_data['selected_function'] = function_selection_response.get("function", None)
-            function_data['user_question'] = user_message
-            STEP = 2
+            STEP = 200
 
-        if STEP == 2:
-            # STEP 2: Check the selected function and extract the needed parameters
+        if STEP == 200:
+            # STEP 200: Check the selected function and extract the needed parameters
             function_docstring = get_function_docstring(
                 function_data["selected_function"], function_data["function_registry"]
             )
             
             # this case should not occur since the invalid functions have already
-            # been removed from the function registry in STEP 1
+            # been removed from the function registry in STEP 100
             if not function_docstring:
                 return {
                     "status": "error",
-                    "message": f"The function '{function_data["selected_function"]}' does not exist or has no documentation."
+                    "message": f"The function {function_data['selected_function']} does not exist or has no documentation."
                 }
             else:
                 # save the function docstring for the next step
                 function_data['function_docstring'] = function_docstring
             
             # assess the usability of the selected function
+            if function_data['task'] == "execute_function_on_former_result":
+                message = [
+                    {
+                        "role": "system",
+                        "user_query": function_data['user_question']
+                    },
+                    {
+                        "role": "system",
+                        "referenced_messages": function_data['referenced_messages']
+                    }
+                ]
+            else:
+                message = function_data['user_question']
             response = validate_function_usability(
-                question=user_message,
+                question=message,
                 function_docstring=function_docstring,
             )
 
             # if the response could not be parsed
-            if response.get("status") == "error":
+            if response.get("status", "") == "error":
                 # FIXME: DEBUG
                 print("Function usability assessment failed. Aborting.")
                 del function_data["function_registry"][function_data["selected_function"]]
                 FUNCTIONS_DISCARDED += 1
-                STEP = 1
+                STEP = 100
                 continue
             # if the function is not usable, discard it and try to find another one
-            elif response.get("status") == "abort":
+            elif response.get("status", "") == "abort":
                 del function_data["function_registry"][function_data["selected_function"]]
                 FUNCTIONS_DISCARDED += 1
-                STEP = 1
+                STEP = 100
 
                 if FUNCTIONS_DISCARDED >= 5:
                     return {
@@ -835,30 +1279,43 @@ def handleMessage(
                     }
                 continue
             # if the function is usable, continue to the next step
-            elif response.get("status") == "success":
-                STEP = 3
+            elif response.get("status", "") == "success":
+                STEP = 300
 
-        if STEP == 3:
-            # STEP 3: Infer the parameters for the selected usable function
-            STEP_3_PARAM_EXTRACTION_chat_history.append({
-                "role": "user",
-                "message": user_message
-            })
+        if STEP == 300:
+            # STEP 300: Infer the parameters for the selected usable function
+
+            # prepare the chat history for the parameter extraction
+            # if the task is to execute a function on referenced messages and previous data, the messages are appended 
+            if not PARAM_EXTRACTION_chat_history and function_data['task'] == "execute_function_on_former_result":
+                PARAM_EXTRACTION_chat_history.append({
+                    "role": "system",
+                    "user_query": user_message
+                })
+                PARAM_EXTRACTION_chat_history.append({
+                    "role": "system",
+                    "referenced_messages": function_data['referenced_messages']
+                })
+            else:  # conversation history is not empty, i.e the user is responding to a previous message
+                PARAM_EXTRACTION_chat_history.append({
+                    "role": "user",
+                    "message": user_message
+                })
             
             response = validate_function_parameter_extraction(
-                conv_hist=STEP_3_PARAM_EXTRACTION_chat_history,
+                conv_hist=PARAM_EXTRACTION_chat_history,
                 function_docstring=function_data['function_docstring'],
                 function_name=function_data["selected_function"]
             )
 
             # if the response could not be parsed
-            if response.get("status") == "error":
+            if response.get("status", "") == "error":
                 return response
             # if the function is not usable, discard it and try to find another one
-            elif response.get("status") == "abort":
+            elif response.get("status", "") == "abort":
                 del function_data["function_registry"][function_data["selected_function"]]
                 FUNCTIONS_DISCARDED += 1
-                STEP = 1
+                STEP = 100
 
                 if FUNCTIONS_DISCARDED >= 5:
                     return {
@@ -866,7 +1323,7 @@ def handleMessage(
                         "message": "I couldn't find a suitable function to solve your request. Please try again or describe it in a different way."
                     }
             # if the function parameters could not be extracted entirely
-            elif response.get("status") == "pending":
+            elif response.get("status", "") == "pending":
                 # if the function is pending, ask the user for the missing fields
                 message = ""
                 if response.get("explanation", None):
@@ -876,7 +1333,7 @@ def handleMessage(
                     message = f"Please provide the following missing information: {missing}."
 
                 # update the chat history with the assistant message:
-                STEP_3_PARAM_EXTRACTION_chat_history.append({
+                PARAM_EXTRACTION_chat_history.append({
                     "role": "assistant",
                     "message": message
                 })
@@ -885,42 +1342,48 @@ def handleMessage(
                     "status": "ask_user",
                     "missing_fields": response.get("missing_fields", []),
                     "message": message,
-                    "NEXT_STEP": 3,  # continue with STEP 3 on the next user message
+                    "NEXT_STEP": 300,  # continue with STEP 300 on the next user message
                 }
-            elif response.get("status") == "success":
+            elif response.get("status", "") == "success":
                 # if the function is valid, execute it in the next step
                 function_data["function_parameters"] = response["parameters"]
                 function_data["function_parameter_assumptions"] = response.get("assumptions", None)
-                STEP = 4
+                STEP = 400
 
-        if STEP == 4:
-            # STEP 4: Execute the selected function with the extracted parameters
+        if STEP == 400:
+            # STEP 400: Execute the selected function with the extracted parameters
             response = validate_function_execution(data=data)
 
             # if the function execution failed
-            if not response.get("error", 1):
+            if response.get("status", "error") == "error":
                 return {
                     "status": "error",
-                    "message": response["message"]
+                    "message": response.get("error_msg", "I could not process your request. Please try again or describe it in a different way.")
                 }
             else:
-                function_data["function_execution_result"] = response
-                STEP = 5
+                function_data["function_execution_result"] = response["function_result"]
+                STEP = 500
         
-        if STEP == 5:
-            # STEP 5: Return the result of the function execution
+        if STEP == 500:
+            # STEP 500: Return the result of the function execution
             response = validate_function_result_description()
-                
+            
+            # if the function result description failed
+            if response.get("status", "error") == "error":
+                return {
+                    "status": "error",
+                    "message": response.get(
+                        "message", 
+                        "I could not process your request. Please try again or describe it in a different way."
+                    )
+                }
+            elif response.get("status", "") == "success":
+                response["data"] = function_data["function_execution_result"]
+
             # reset local variables for the next request
-            function_data = {
-                'function_registry': copy.deepcopy(function_registry),
-                'user_question': None,
-                'selected_function': None,
-                'function_docstring': None,
-                'function_parameters': None,
-                'function_parameter_assumptions': None
-            }
-            STEP_3_PARAM_EXTRACTION_chat_history = []
+            function_data = {}
+            function_data['function_registry'] = copy.deepcopy(function_registry)
+            PARAM_EXTRACTION_chat_history = []
             STEP = 0
 
             return response
@@ -934,7 +1397,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # TODO: add model decision logic[?]
     result = main(args.question)
     
     print(result)
