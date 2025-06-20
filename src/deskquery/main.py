@@ -27,7 +27,6 @@ from deskquery.webapp.helpers.chat_data import ChatData, FREF_from_dict
 from deskquery.functions.core.helper.plot_helper import *
 from deskquery.functions.core.plot import generate_plot_for_function
 
-print("plot function registry:", plot_function_registry)  # FIXME: DEBUG
 
 global current_model
 current_model = None
@@ -564,17 +563,18 @@ def validate_plot_function_execution():
             "status": "error",
             "message": "I could not identify a valid message with data to plot. Please try again or describe it in a different way."
         }
+    else:
+        last_FREF = FREF_from_dict(last_data_message["data"])
 
     # FIXME: DEBUG
     print("80) Executing function:", function_data["selected_function"], "with params:", function_data["function_parameters"], sep="\n")
     print("80) last_data_message:", last_data_message, sep="\n")
-    print("80) Last data message available plots:", last_data_message["plot"].available_plots, sep="\n")
+    print("80) Last data message available plots:", last_FREF.plot.available_plots, sep="\n")
 
     while error and generate_counter < 5:
         try:
             # generate the response from the selected function
-            last_FREF = FREF_from_dict(last_data_message["data"])
-            print("80) Last FREF:", last_FREF, sep="\n")  # FIXME: DEBUG
+            # print("80) Last FREF:", last_FREF, sep="\n")  # FIXME: DEBUG
             response = generate_plot_for_function(
                 function_result=last_FREF,
                 additional_plot_args=function_data["function_parameters"],
@@ -848,7 +848,7 @@ Answer in a strict PYTHON DICT format as shown below.
 {params}}},
 # optional: ONLY if parameter information can not be inferred
 "missing_fields": ["param1", "param2", ...],
-# If there are missing fields, explain what they are and what you need from the user.
+# If there are missing fields, directly address the user and explain what you need.
 "explanation": "..."
 # optional: ONLY if "status" is "success" and default values are used, describe the assumptions to the user as you were speaking to them directly.
 "assumptions": "..."
@@ -1018,7 +1018,7 @@ Answer the user query by describing the function results.
 Do not use the underlying function name or parameter names to describe the results but their semantic.
 If there were any assumptions made about the function parameters, explain them to the user without using variable names.
 If the function result's field "plotted" is set to "True", a visualization of the result data will be provided to the user.
-If the function result's field "plotable" is set to "True" and there is no plot yet, ask the user if they want to see a plot of the result.
+If the function result's field "plotable" is set to "True" AND "plotted" IS FALSE, ask the user if they want to see a plot of the result.
 
 Answer in a strict PYTHON DICT format as shown below.
 
@@ -1417,7 +1417,7 @@ def handleMessage(
             elif response.get("status", "") == "success":
                 # clean the response from a potentially existing data field, since
                 # the data is inherited from the last data message in the reference 
-                if response.get("parameters", False) and response["parameters"].get("data", False):
+                if "data" in response.get("parameters", {}):
                     del response["parameters"]["data"]
 
                 # save the extracted parameters and assumptions for the next step
@@ -1428,9 +1428,9 @@ def handleMessage(
 
         if STEP == 80:
             # STEP 80: Execute the selected function with the extracted parameters
-            function_data["function_execution_result"] = validate_plot_function_execution()
+            response = validate_plot_function_execution()
 
-            if function_data["function_execution_result"].get("status", "") == "error":
+            if response.get("status", "") == "error":
                 # reset local variables for the next request
                 function_data = {}
                 function_data['function_registry'] = copy.deepcopy(function_registry)
@@ -1439,10 +1439,11 @@ def handleMessage(
 
                 return {
                     "status": "error",
-                    "message": function_data["function_execution_result"].get("message", "I could not process your request. Please try again or describe it in a different way.")
+                    "message": response.get("message", "I could not process your request. Please try again or describe it in a different way.")
                 }
             else:
                 # continue to the next step to describe the result
+                function_data['function_execution_result'] = response["function_result"]
                 STEP = 500
 
         if STEP == 100:
@@ -1629,6 +1630,9 @@ def handleMessage(
                 }
             elif response.get("status", "") == "success":
                 # if the function is valid, execute it in the next step
+                # clear any unwanted data
+                if "data" in response.get("parameters", {}):
+                    del response["parameters"]["data"]
                 function_data["function_parameters"] = response["parameters"]
                 function_data["function_parameter_assumptions"] = response.get("assumptions", None)
                 STEP = 400

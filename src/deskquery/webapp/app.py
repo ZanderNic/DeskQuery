@@ -73,6 +73,11 @@ def chat():
         )
         print("main.py response:\n", response)
        
+        # return jsonify({
+        #     "chat_id": chat_id,
+        #     "messages": [response],
+        # })
+
         if isinstance(response, dict) and response.get("message", False):
             message_data = {
                 "status": response["status"], 
@@ -80,12 +85,13 @@ def chat():
                 "content": response["message"]
             }
             if response.get("data", False):
+                print("app.py response parsing AP:", response["data"].plot.available_plots, sep="\n")
                 message_data["data"] = {
                     "function_data": response["data"].data,
                     "plotable": response["data"].plotable,
                     "plotted": response["data"].plotted,
-                    "plotly": response["data"].plot.default_plot.to_json(),
-                    "available_plots": [plot.__name__ for plot in response["data"].plot.available_plots if isinstance(plot, PlotFunction)],
+                    "plotly": response["data"].plot.default_plot.to_dict(),
+                    "available_plots": [plot.__name__ for plot in response["data"].plot.available_plots],
                     "type": "mixed"
                 }
 
@@ -201,6 +207,41 @@ def create_new_chat():
     new_chat = ChatData()
     new_chat.save()
     return jsonify({"chat_id": new_chat.chat_id, "title": new_chat.title})
+
+
+def test_query(
+    user_input=None,
+    chat_data=None,
+    data=None, 
+    model=None, 
+    START_STEP=1
+):
+    return {
+        "id": 15,
+        "role": "assistant",
+        "content": "Here is your test plot!",
+        "status": "success",
+        "data": {
+            "type": "mixed",
+            "plotted": True,
+            "plotly": {
+                "data": [
+                    {
+                        "x": ["2024-01-01", "2024-01-02", "2024-01-03"],
+                        "y": [0.85, 0.91, 0.76],
+                        "type": "scatter",
+                        "mode": "lines+markers",
+                        "name": "Test Data"
+                    }
+                ],
+                "layout": {
+                    "title": "Test Plot",
+                    "xaxis": { "title": "Date" },
+                    "yaxis": { "title": "Utilization" }
+                }
+            }
+        }
+    }
 
 
 if __name__ == '__main__':

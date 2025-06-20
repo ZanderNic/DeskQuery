@@ -18,10 +18,10 @@ def create_plotly_figure(
         fig.add_trace(trace)
 
     fig.update_layout(
-        title=title,
-        xaxis_title=xaxis_title,
-        yaxis_title=yaxis_title,
-        template="plotly_white",
+        title=title if title else "",
+        xaxis_title=xaxis_title if xaxis_title else "",
+        yaxis_title=yaxis_title if yaxis_title else "",
+        template="ggplot2",
         bargap=0.15,
         font=dict(size=14),
         margin=dict(l=40, r=40, t=60, b=40)
@@ -103,7 +103,8 @@ def generate_heatmap(
 
     Args:
         data (FunctionData): A dictionary in the format 
-            {trace_name: {"x": x_values, "y": y_values, "z": z_values}}.
+            {trace_name: {"x": x_values, "y": y_values, "z": z_values}}. 
+            Defaults to `None`.
         title (str, optional): Title of the heatmap.
         xaxis_title (str, optional): Label for the x-axis.
         yaxis_title (str, optional): Label for the y-axis.
@@ -152,7 +153,7 @@ def generate_barchart(
 
     Args:
         data (FunctionData): A dictionary in the format 
-            {trace_name: {category: value}}.
+            {trace_name: {category: value}}. Defaults to `None`.
         title (str, optional): Title of the bar chart.
         xaxis_title (str, optional): Label for the x-axis.
         yaxis_title (str, optional): Label for the y-axis.
@@ -200,7 +201,7 @@ def generate_scatterplot(
 
     Args:
         data (FunctionData): A dictionary in the format 
-            {trace_name: {x_value: y_value}}.
+            {trace_name: {x_value: y_value}}. Defaults to `None`.
         title (str, optional): Title of the scatter plot.
         xaxis_title (str, optional): Label for the x-axis.
         yaxis_title (str, optional): Label for the y-axis.
@@ -239,7 +240,7 @@ def generate_lineplot(
 
     Args:
         data (FunctionData): A dictionary in the format 
-            {trace_name: {x_value: y_value}}.
+            {trace_name: {x_value: y_value}}. Defaults to `None`.
         title (str, optional): Title of the line plot.
         xaxis_title (str, optional): Label for the x-axis.
         yaxis_title (str, optional): Label for the y-axis.
@@ -287,8 +288,9 @@ def generate_hist(
 
     Args:
         data (FunctionData): A dictionary in the format 
-            {trace_name: {"x": x_values}}.
-        nbinsx (int, optional): Number of bins along the x-axis. If not specified, defaults to the length of x_values.
+            {trace_name: {"x": x_values}}. Defaults to `None`.
+        nbinsx (int, optional): Number of bins along the x-axis. 
+            If not specified, defaults to the length of x_values.
         title (str, optional): Title of the histogram.
         xaxis_title (str, optional): Label for the x-axis.
         yaxis_title (str, optional): Label for the y-axis.
@@ -330,9 +332,12 @@ def generate_map(
     Generate a visual map of an office layout with optional desk and room highlights.
 
     Args:
-        room_ids (Iterable[int], optional): List of room IDs to highlight.
-        room_names (Iterable[str], optional): List of room names to highlight. Converted to IDs internally.
-        desk_ids (Iterable[int], optional): List of desk IDs to highlight.
+        room_ids (Iterable[int], optional): 
+            List of room IDs to highlight.
+        room_names (Iterable[str], optional):
+            List of room names to highlight. Converted to IDs internally.
+        desk_ids (Iterable[int], optional): 
+            List of desk IDs to highlight.
 
     Returns:
         Plot: A Plotly-based image with overlaid highlights for specified desks and rooms.
@@ -462,8 +467,11 @@ def generate_table(
     Generate a formatted table using Plotly.
 
     Args:
-        data (FunctionData): A dictionary where each key is a column name and the value is a list of column values.
-        title (str, optional): Title for the table.
+        data (FunctionData): 
+            A dictionary where each key is a column name and the value is a 
+            list of column values. Defaults to `None`.
+        title (str, optional): 
+            Title for the table.
 
     Returns:
         Plot: A Plotly table figure.

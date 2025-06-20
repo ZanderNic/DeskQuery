@@ -5,9 +5,6 @@ import datetime
 from typing import Dict, List, Optional, Any
 import uuid
 
-# third party imports
-import plotly.io as pio
-
 # project imports
 from deskquery.functions.function_registry import plot_function_registry
 from deskquery.functions.types import *
@@ -391,12 +388,34 @@ class ChatData:
                     message_to_add = message
                     if not include_data:
                         # if data is not included, create a filtered message
+                        plot_args = {}
+                        if message["data"].get("plotly", False):
+                            default_plot = Plot(message["data"]["plotly"])
+                            plot_layout = default_plot["layout"]
+                            try:
+                                plot_args["title"] = plot_layout["title"]["text"]
+                            except Exception as e:
+                                pass
+                            try:
+                                plot_args["xaxis_title"] = plot_layout["xaxis"]["title"]["text"]
+                            except Exception as e:
+                                pass
+                            try:
+                                plot_args["yaxis_title"] = plot_layout["yaxis"]["title"]["text"]
+                            except Exception as e:
+                                pass
+                            try:
+                                plot_args["zaxis_title"] = plot_layout["zaxis"]["title"]["text"]
+                            except Exception as e:
+                                pass
+
                         message_to_add = {
                             "id": message["id"],
                             "status": message["status"],
                             "role": message["role"],
                             "content": message["content"],
                             "data": {
+                                "plot_args": plot_args,
                                 "plotable": message["data"]["plotable"],
                                 "plotted": message["data"]["plotted"],
                                 "available_plots": message["data"]["available_plots"],
@@ -443,7 +462,7 @@ def FREF_from_dict(
             data = {
                 # FunctionData as dict
                 "function_data": {...},
-                # JSON string of the default plot
+                # Plotly dictionary of the default plot
                 "plotly": "{...}",
                 # List of available plot function names from functions.helper.plot_helper
                 "available_plots": ["PlotFunction1", "PlotFunction2", ...],
@@ -465,7 +484,7 @@ def FREF_from_dict(
         "function_data" in data and 
         isinstance(data["function_data"], dict) and
         "plotly" in data and 
-        isinstance(data["plotly"], str) and
+        isinstance(data["plotly"], dict) and
         "available_plots" in data and 
         isinstance(data["available_plots"], list) and
         "plotted" in data and 
@@ -478,7 +497,7 @@ def FREF_from_dict(
     return FunctionRegistryExpectedFormat(
         data=FunctionData(data["function_data"]),
         plot=PlotForFunction(
-            default_plot=Plot(pio.from_json(data["plotly"])),
+            default_plot=Plot(data["plotly"]),
             available_plots=[
                 plot_function_registry[func] for func in data["available_plots"]
             ]
@@ -506,7 +525,6 @@ def list_chats(
     chats = []
 
     for file in HISTORY_DIR.glob("*.json"):
-        print("found file: ", file, "with stem: ", file.stem)
         chat = ChatData.load(file.stem)
         if chat:
             if to_dict:

@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="../static/styles.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <title>Desk Query</title>
     <!-- {{ url_for('static', filename='image.svg') }} -->
-    <link rel="icon" href="{{ url_for('static', filename='image.svg') }}" type="image/svg+xml" />
+    <link rel="icon" href="{{ url_for('static', filename='icons/chair_favicon.svg') }}" type="image/svg+xml">
     <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   </head>
   <body>
-    <script src="../static/script.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
 
     <div id="app">
       
@@ -39,7 +39,7 @@
 
         <div id="chat-container">
           <div id="empty-chat-overlay">
-            <h2>How can I help you today with your desk analytics?</h2>
+            <h2>How can I help you with your desk analytics today?</h2>
             <p>Ask me anything about occupancy, bookings, or workspace trends.</p>
           </div>
         </div>

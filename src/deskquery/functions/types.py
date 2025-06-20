@@ -22,7 +22,7 @@ class PlotForFunction:
         self.available_plots = available_plots
     
     def to_json(self) -> str:
-        return f"{{default_plot: {self.default_plot.to_json()}, available_plots: {[plot.__name__ for plot in self.available_plots if isinstance(plot, PlotFunction)]}}}"
+        return f"{{default_plot: {self.default_plot.to_dict()}, available_plots: {[plot.__name__ for plot in self.available_plots]}}}"
 
     def __str__(self) -> str:
         return self.to_json()

@@ -20,11 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================
 
   function appendMessage(content, sender, data = null, messageId = null) {
-     
     console.log("DEBUG appendMessage()", { sender, content, data });  
-
+    
     const wrapper = document.createElement('div');
-    wrapper.className = `message ${sender}`;
 
     // Append text content if present
     if (content) {
@@ -36,10 +34,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     switch (data?.type) {
       case 'plot':
+        wrapper.className = 'message plot';
         wrapper.appendChild(renderPlot(data.plotly, messageId));
         break;
       case 'table':
+        wrapper.className = 'message table';
         wrapper.appendChild(renderTable(data.df));
+        break;
+      default:
+        wrapper.className = `message ${sender}`;
         break;
     }
 
@@ -188,13 +191,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let isEditing = false;
 
         const editBtn = document.createElement('button');
-        editBtn.textContent = '🖉';
+        // set edit button to pencil icon
+        editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" stroke="currentColor" stroke-width="0" viewBox="0 0 576 512"><path stroke="none" d="m402.3 344.9 32-32c5-5 13.7-1.5 13.7 5.7V464c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V112c0-26.5 21.5-48 48-48h273.5c7.1 0 10.7 8.6 5.7 13.7l-32 32c-1.5 1.5-3.5 2.3-5.7 2.3H48v352h352V350.5c0-2.1.8-4.1 2.3-5.6zm156.6-201.8L296.3 405.7l-90.4 10c-26.2 2.9-48.5-19.2-45.6-45.6l10-90.4L432.9 17.1c22.9-22.9 59.9-22.9 82.7 0l43.2 43.2c22.9 22.9 22.9 60 .1 82.8zM460.1 174 402 115.9 216.2 301.8l-7.3 65.3 65.3-7.3L460.1 174zm64.8-79.7-43.2-43.2c-4.1-4.1-10.8-4.1-14.8 0L436 82l58.1 58.1 30.9-30.9c4-4.2 4-10.8-.1-14.9z"/></svg>';
         editBtn.onclick = (e) => {
           e.stopPropagation();
           if (isEditing) return;
           isEditing = true;
 
-          editBtn.textContent = '✔';
+          // change edit button to checkmark icon
+          editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" stroke="currentColor" stroke-width="0" viewBox="0 0 448 512"><path stroke="none" d="M64 80c-8.8 0-16 7.2-16 16v320c0 8.8 7.2 16 16 16h320c8.8 0 16-7.2 16-16V96c0-8.8-7.2-16-16-16H64zM0 96c0-35.3 28.7-64 64-64h320c35.3 0 64 28.7 64 64v320c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zm337 113L209 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L303 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg>';
 
           const original = title.textContent;
           title.contentEditable = true;
@@ -216,7 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
               title.textContent = original;
             }
-            editBtn.textContent = '🖉';
+            // reset edit button to pencil icon
+            editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" stroke="currentColor" stroke-width="0" viewBox="0 0 576 512"><path stroke="none" d="m402.3 344.9 32-32c5-5 13.7-1.5 13.7 5.7V464c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V112c0-26.5 21.5-48 48-48h273.5c7.1 0 10.7 8.6 5.7 13.7l-32 32c-1.5 1.5-3.5 2.3-5.7 2.3H48v352h352V350.5c0-2.1.8-4.1 2.3-5.6zm156.6-201.8L296.3 405.7l-90.4 10c-26.2 2.9-48.5-19.2-45.6-45.6l10-90.4L432.9 17.1c22.9-22.9 59.9-22.9 82.7 0l43.2 43.2c22.9 22.9 22.9 60 .1 82.8zM460.1 174 402 115.9 216.2 301.8l-7.3 65.3 65.3-7.3L460.1 174zm64.8-79.7-43.2-43.2c-4.1-4.1-10.8-4.1-14.8 0L436 82l58.1 58.1 30.9-30.9c4-4.2 4-10.8-.1-14.9z"/></svg>';
             loadChatList();
           };
 
@@ -237,7 +243,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const delBtn = document.createElement('button');
-        delBtn.textContent = '🗑';
+        // set delete button to trash icon
+        delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/></svg>';
         delBtn.onclick = async (e) => {
           e.stopPropagation();
           if (confirm('Delete this chat?')) {
@@ -314,20 +321,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.messages && data.messages.length > 0) {
         const lastAssistantMsg = [...data.messages].reverse().find(m => m.role === 'assistant');
         if (lastAssistantMsg) {
+          renderAssistantDescriptor();
           renderAssistantMessage(lastAssistantMsg);
         }
       }
-      // data.messages.forEach(m => {
-      //   if (m.role === 'assistant') {
-      //     renderAssistantMessage(m)
-      //   }
-      // });
 
       loadChatList();
 
     } catch (error) {
       thinkingMsg.remove();
-      showError("Error while sending message.", error);
+      showError("Error while sending message. Please try again.", error);
     } finally {
       sendBtn.disabled = false;                   // Re-enable the send button
       sendBtn.style.backgroundColor = "";         // reset send button color
@@ -340,10 +343,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const chat = await res.json();
     chatContainer.innerHTML = '';
     currentChatId = chat.chat_id;
+    let consecutive_assistant_msgs = 0;
     chat.messages.forEach(m => {
       if (m.role === 'assistant') {
-        renderAssistantMessage(m);  
-      
+        if (consecutive_assistant_msgs === 0) {
+          renderAssistantDescriptor();
+        }
+        consecutive_assistant_msgs++;
+        renderAssistantMessage(m);
       } else {
         let parsedData = null;
         try {
@@ -351,6 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
           console.warn('Error while parsing:', m.data, e);
         }
+        consecutive_assistant_msgs = 0;
         appendMessage(m.content, 'user', parsedData, m.id);
       }
     });
@@ -389,6 +397,26 @@ document.addEventListener('DOMContentLoaded', () => {
     return groups;
   }
 
+  function renderAssistantDescriptor() {
+    const descriptor = document.createElement('div');
+    descriptor.className = 'assistant';
+
+    // assistant icon
+    const icon = document.createElement('div');
+    icon.className = 'assistant-icon';
+    icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-5l-5 3v-3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h12zM9.5 9h.01M14.5 9h.01"/><path d="M9.5 13a3.5 3.5 0 0 0 5 0"/></svg>';
+    descriptor.appendChild(icon);
+
+    // assistant name
+    const name = document.createElement('div');
+    name.className = 'assistant-name';
+    name.textContent = 'DeskQuery Assistant';
+    descriptor.appendChild(name);
+
+    chatContainer.appendChild(descriptor);
+    chatContainer.scrollTop = chatContainer.scrollHeight;  // scroll to bottom
+  }
+
   function renderAssistantMessage(m) {
     const content = m.content || '';
     const data = m.data || null;
@@ -422,8 +450,8 @@ document.addEventListener('DOMContentLoaded', () => {
           plotData.data,
           {
             ...plotData.layout,
-             autosize: true,
-            height: 450,
+            autosize: true,
+            width: parentWidth,
             margin: { l: 30, r: 30, t: 30, b: 30 }
           },
           { responsive: true }

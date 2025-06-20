@@ -1,5 +1,5 @@
 html, body {
-  background-color: #121212;
+  background-color: #111111;
   color: #ffffff;
   font-family: Arial, sans-serif;
   margin: 0;
@@ -115,6 +115,10 @@ html, body {
   box-sizing: border-box;
 }
 
+.chat-entry:hover {
+  background-color: #252525;
+}
+
 .chat-title {
   flex: 1;
   overflow-x: auto;
@@ -158,16 +162,22 @@ html, body {
 }
 
 .chat-entry button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  margin-left: 6px;
+
   background: none;
   border: none;
   color: #aaa;
+  
   cursor: pointer;
-  font-size: 16px;
-  margin-left: 6px;
 }
 
 .chat-entry button:hover {
-  color: #666666;
+  color: #ffffff;
 }
 
 .chat-entry.active {
@@ -278,7 +288,7 @@ html, body {
   max-width: 1000px;
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: #666 #121212;
+  scrollbar-color: #666 #111111;
 }
 
 #chat-container::-webkit-scrollbar {
@@ -286,12 +296,12 @@ html, body {
 }
 
 #chat-container::-webkit-scrollbar-thumb {
-  background-color: #666;
+  background-color: #2f2fa2;
   border-radius: 4px;
 }
 
 #chat-container::-webkit-scrollbar-track {
-  background-color: #121212;
+  background-color: #111111;
 }
 
 #empty-chat-overlay {
@@ -328,7 +338,7 @@ html, body {
   font-size: 13px;
   font-weight: bold;
   color: #999;
-  background-color: #1a1a1a;
+  background-color: #111111;
   border-top: 1px solid #333;
   box-sizing: border-box;
   text-transform: uppercase;
@@ -364,14 +374,67 @@ html, body {
 }
 
 .bot {
+  margin: 5px 0 10px 0;
   background-color: #424242;
   align-self: flex-start;
+}
+
+.message.plot {
+  width: 70%;
+  margin: 5px 0;
+  padding: 0 14px;
+  background-color: transparent !important;
+  align-self: flex-start;
+}
+
+.message.table {
+  margin: 5px 0;
+  padding: 0;
+  background-color: transparent !important;
+  align-self: flex-start;
+}
+
+.assistant {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  align-self: flex-start;
+  
+  max-width: 70%;
+  margin: 10px 0 0 0;
+  gap: 5px;
+  
+  color: #696969;
+}
+
+.assistant-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  
+  height: 22px;
+  width: 22px;
+}
+
+.assistant-name {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.0;
+  word-wrap: break-word;
 }
 
 .plot-container {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
+  border-radius: 8px;
 }
 
 
@@ -404,7 +467,7 @@ html, body {
   align-items: center;
   width: 100%;
   border-top: 1px solid #333;
-  background-color: #1a1a1a;
+  background-color: #1e1e1e;
   box-sizing: border-box;
 }
 
@@ -426,7 +489,7 @@ html, body {
   border-radius: 16px;
   font-size: 18px;
   outline: none;
-  background-color: #2a2a2a;
+  background-color: #404040;
   color: white;
   resize: none;
   overflow-y: auto;
@@ -464,7 +527,7 @@ html, body {
   box-sizing: border-box;
   font-size: 12px;
   color: #aaa;
-  padding: 0 10px 5px;
+  padding: 5px 10px;
 }
 
 #selected-model-wrapper {
@@ -499,5 +562,5 @@ html, body {
   box-sizing: border-box;
   font-size: 12px;
   color: #aaa;
-  padding: 0 10px 5px;
+  padding: 5px 10px;
 }
