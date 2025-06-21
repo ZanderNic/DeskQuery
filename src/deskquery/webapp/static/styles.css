@@ -362,7 +362,6 @@ html, body {
   padding: 14px;
   border-radius: 8px;
   max-width: 70%;
-  display: flex;
   font-size: 18px;
   line-height: 1.6;
   word-wrap: break-word;
@@ -388,10 +387,68 @@ html, body {
 }
 
 .message.table {
-  margin: 5px 0;
-  padding: 0;
-  background-color: transparent !important;
+  margin: 0;
+  width: 70%;
+  max-width: 70%;
+  /* height: 100%; */
+  min-height: 450px;
+  max-height: 450px;
+  overflow: auto;
+  background-color: #424242;
   align-self: flex-start;
+}
+
+.table-header {
+  text-align: center;
+
+  padding: 3px;
+  margin-bottom: 5px;
+
+  font-size: 15px;
+  font-weight: 700;
+  background-color: #3b3b3b;
+  color: #ffffff;
+  border-radius: 8px;
+}
+
+.dataframe {
+  table-layout: auto;
+  width: 100%;
+  border-radius: 8px;
+}
+
+.dataframe thead {
+  width: 100%;
+  background-color: #313131;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-bottom: 3px solid #747474;
+}
+
+.dataframe tr {
+  width: 100%;
+  gap: 0;
+  border-bottom: 1px solid #747474;
+}
+
+.dataframe th {
+  padding: 3px;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.dataframe td {
+  padding: 2px;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 400;
+  color: #fff;
 }
 
 .assistant {

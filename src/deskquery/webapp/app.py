@@ -7,6 +7,7 @@ from pathlib import Path
 
 # 3 Party-import 
 from flask import Flask, request, jsonify, render_template, send_file
+import pandas as pd
 
 # import from project files
 from deskquery.main import main as desk_query
@@ -72,11 +73,6 @@ def chat():
             START_STEP=NEXT_STEP if NEXT_STEP else 1
         )
         print("main.py response:\n", response)
-       
-        # return jsonify({
-        #     "chat_id": chat_id,
-        #     "messages": [response],
-        # })
 
         if isinstance(response, dict) and response.get("message", False):
             message_data = {
@@ -85,12 +81,15 @@ def chat():
                 "content": response["message"]
             }
             if response.get("data", False):
-                print("app.py response parsing AP:", response["data"].plot.available_plots, sep="\n")
+                df = pd.DataFrame(response["data"].data, dtype=object)
+                df = df = df.where(pd.notnull(df), None)
+
                 message_data["data"] = {
                     "function_data": response["data"].data,
                     "plotable": response["data"].plotable,
                     "plotted": response["data"].plotted,
                     "plotly": response["data"].plot.default_plot.to_dict(),
+                    "df": df.to_dict('index'),
                     "available_plots": [plot.__name__ for plot in response["data"].plot.available_plots],
                     "type": "mixed"
                 }

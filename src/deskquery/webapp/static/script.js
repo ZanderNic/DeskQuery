@@ -39,7 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
       case 'table':
         wrapper.className = 'message table';
-        wrapper.appendChild(renderTable(data.df));
+        const tableHeader = document.createElement('div');
+        tableHeader.className = 'table-header';
+        tableHeader.textContent = data.data.plotly.layout?.title?.text || '';
+        wrapper.appendChild(tableHeader);
+        wrapper.appendChild(renderTable(
+          data.data,
+          data.data.plotly.layout?.xaxis?.title?.text || ''
+        ));
         break;
       default:
         wrapper.className = `message ${sender}`;
@@ -410,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // assistant name
     const name = document.createElement('div');
     name.className = 'assistant-name';
-    name.textContent = 'DeskQuery Assistant';
+    name.textContent = 'Desk Query Assistant';
     descriptor.appendChild(name);
 
     chatContainer.appendChild(descriptor);
@@ -426,6 +433,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (type === 'mixed' && to_plot && data.plotly) {
       appendMessage(content, 'bot', null, m.id);
       appendMessage('', 'bot', { type: 'plot', plotly: data.plotly }, m.id + '-plot');
+    } else if (type === 'mixed' && !to_plot && data) {
+      appendMessage(content, 'bot', null, m.id);
+      appendMessage('', 'bot', { type: 'table', data: data }, m.id + '-table');
     } else {
       appendMessage(content, 'bot', data, m.id);
     }
@@ -466,29 +476,72 @@ document.addEventListener('DOMContentLoaded', () => {
     return plotDiv;
   }
 
-  function renderTable(df) {
+  function renderTable(data, indexLabel = '') {
+    console.log("df in renderTable: ", data); // DEBUG: Log the DataFrame structure
+
     const table = document.createElement('table');
     table.className = 'dataframe';
+
     const thead = document.createElement('thead');
+
     const headerRow = document.createElement('tr');
-    df.columns.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = indexLabel;
+    headerRow.appendChild(th); // Empty header for row indices
+
+    for (const col in data['function_data']) {
       const th = document.createElement('th');
       th.textContent = col;
       headerRow.appendChild(th);
-    });
+    }
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    df.rows.forEach(row => {
+    
+    // const dfCols = Object.keys(df);
+    // console.log("dfCols: ", dfCols); // DEBUG: Log the DataFrame columns
+    // const rowIndices = Object.keys(df[dfCols[0]]);
+    // console.log("rowIndices: ", rowIndices); // DEBUG: Log the DataFrame row indices
+    
+    // dfEntries = {};
+    // for (const row_idx of rowIndices) {
+    //   dfEntries[row_idx] = {};
+    //   for (const col of dfCols) {
+    //     dfEntries[row_idx][col] = df[col][row_idx];
+    //   }
+    // }
+
+    // console.log("dfEntries: ", dfEntries); // DEBUG: Log the DataFrame entries
+
+    // for (const row in dfEntries) {
+    //   const tr = document.createElement('tr');
+    //   // Create the first cell for the row index
+    //   const td = document.createElement('td');
+    //   td.textContent = row;
+    //   tr.appendChild(td);
+    //   for (const col in dfEntries[row]) {
+    //     const td = document.createElement('td');
+    //     td.textContent = dfEntries[row][col] !== null ? dfEntries[row][col] : '';
+    //     tr.appendChild(td);
+    //   }
+    //   tbody.appendChild(tr);
+    // }
+
+    for (const row in data['df']) {
       const tr = document.createElement('tr');
-      row.forEach(cell => {
+      // Create the first cell for the row index
+      const td = document.createElement('td');
+      td.textContent = row;
+      tr.appendChild(td);
+      for (const col in data['df'][row]) {
         const td = document.createElement('td');
-        td.textContent = cell;
+        td.textContent = data['df'][row][col] !== null ? data['df'][row][col] : '';
         tr.appendChild(td);
-      });
+      }
       tbody.appendChild(tr);
-    });
+    }
+
     table.appendChild(tbody);
     return table;
   }

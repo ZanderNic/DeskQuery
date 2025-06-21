@@ -515,16 +515,16 @@ if __name__ == "__main__":
     dataset = create_dataset()
 
     policy = {
-        "fixed_days":["Di"],
-        "choseable_days":["Mi", "Do"],
+        "fixed_days":["tuesday"],
+        "choseable_days":["wednesday", "thursday"],
         "number_choseable_days":1,
         "number_days":3,
         "more_days_allowed":True
     }
 
     exceptions = {
-        4: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True},
-        14: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True}
+        4: {'fixed_days': ["friday"], 'number_days': 4, 'more_days_allowed': True},
+        14: {'fixed_days': ["friday"], 'number_days': 4, 'more_days_allowed': True}
     }
 
     random_assignments = [
