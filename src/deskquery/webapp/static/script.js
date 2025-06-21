@@ -311,7 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const thinkingMsg = createThinkingMessage();  // Add spinner + "Thinking..." message
     chatContainer.appendChild(thinkingMsg);
     chatContainer.scrollTop = chatContainer.scrollHeight;
+    let chatTitle;
 
+    // send user message to the backend and receive an answer
     try {
       const response = await fetch('/chat', {
         method: 'POST',
@@ -321,10 +323,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await response.json();
       console.log("response.data:", data);
-      currentChatId = data.chat_id;
+
+      // read an error response if applicable
+      if (data["status"] === "error") {
+        thinkingMsg.remove();
+        if (!data["model"]) {
+          renderAssistantDescriptor();
+          appendMessage("An error occured while sending the message. Please select a chat model and try again.", 'bot');
+
+          // unselect the current model option
+          const modelSelectorSelectedOption = document.getElementsByClassName(
+            'model-option selected')[0];
+          if (modelSelectorSelectedOption) {
+            modelSelectorSelectedOption.classList.remove('selected');
+          }
+          selectedModel = null;
+          selectedModelDisplay.textContent = "None";
+        } else {
+          renderAssistantDescriptor();
+          appendMessage("An error occured while sending the message. Please try again.", 'bot');
+        }
+        return;
+      }
+
+      currentChatId = data["chat_id"];
+      chatTitle = data["chat_title"];
 
       thinkingMsg.remove();
 
+      // render answer
       if (data.messages && data.messages.length > 0) {
         const lastAssistantMsg = [...data.messages].reverse().find(m => m.role === 'assistant');
         if (lastAssistantMsg) {
@@ -337,12 +364,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (error) {
       thinkingMsg.remove();
-      showError("Error while sending message. Please try again.", error);
+      renderAssistantDescriptor();
+      showError("An error occured while sending the message. Please try again.", error);
     } finally {
       sendBtn.disabled = false;                   // Re-enable the send button
       sendBtn.style.backgroundColor = "";         // reset send button color
       userInput.focus();                          // set cursor in text input field 
     }
+
+    // infer a chat title if applicable
+    try {
+      if (chatTitle === undefined || chatTitle === "New Chat") {
+        // send renaming request
+        const response = await fetch(`/chats/${currentChatId}/infer-name`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: currentChatId })
+        });
+        // we don't really care for the response, since in case of a success, 
+        // everything is fine and in case of an error, the renaming will be 
+        // tried in the next sendMessage() execution if the user does not 
+        // rename the chat themself
+      }
+    } catch(error) {
+      console.error(error);
+    }
+
+    loadChatList();
   }
 
   async function loadChat(chatId) {
@@ -477,8 +525,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderTable(data, indexLabel = '') {
-    console.log("df in renderTable: ", data); // DEBUG: Log the DataFrame structure
-
     const table = document.createElement('table');
     table.className = 'dataframe';
 
@@ -498,35 +544,6 @@ document.addEventListener('DOMContentLoaded', () => {
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    
-    // const dfCols = Object.keys(df);
-    // console.log("dfCols: ", dfCols); // DEBUG: Log the DataFrame columns
-    // const rowIndices = Object.keys(df[dfCols[0]]);
-    // console.log("rowIndices: ", rowIndices); // DEBUG: Log the DataFrame row indices
-    
-    // dfEntries = {};
-    // for (const row_idx of rowIndices) {
-    //   dfEntries[row_idx] = {};
-    //   for (const col of dfCols) {
-    //     dfEntries[row_idx][col] = df[col][row_idx];
-    //   }
-    // }
-
-    // console.log("dfEntries: ", dfEntries); // DEBUG: Log the DataFrame entries
-
-    // for (const row in dfEntries) {
-    //   const tr = document.createElement('tr');
-    //   // Create the first cell for the row index
-    //   const td = document.createElement('td');
-    //   td.textContent = row;
-    //   tr.appendChild(td);
-    //   for (const col in dfEntries[row]) {
-    //     const td = document.createElement('td');
-    //     td.textContent = dfEntries[row][col] !== null ? dfEntries[row][col] : '';
-    //     tr.appendChild(td);
-    //   }
-    //   tbody.appendChild(tr);
-    // }
 
     for (const row in data['df']) {
       const tr = document.createElement('tr');

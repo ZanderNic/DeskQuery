@@ -10,7 +10,7 @@ from flask import Flask, request, jsonify, render_template, send_file
 import pandas as pd
 
 # import from project files
-from deskquery.main import main as desk_query
+from deskquery.main import main as desk_query, infer_chat_renaming
 from deskquery.data.dataset import create_dataset
 from deskquery.functions.types import PlotFunction
 from deskquery.webapp.helpers.helper import *
@@ -19,8 +19,6 @@ from deskquery.llm.llm_api import models_to_json
 
 
 app = Flask(__name__)
-
-generated_images = {}   # TODO evaluate if we still need this: this is was used for a first start
 
 global current_model
 current_model = None
@@ -104,6 +102,7 @@ def chat():
                 
             return jsonify({
                 "chat_id": chat_id,
+                "chat_title": chat_data.title,
                 "messages": chat_data.messages
             })
         else:
@@ -115,6 +114,7 @@ def chat():
         return jsonify({
             "status": "error",
             "chat_id": chat_id,
+            "model": current_model,
             "message": "An error occurred. Please try again."
         }), 500
 
@@ -206,6 +206,22 @@ def create_new_chat():
     new_chat = ChatData()
     new_chat.save()
     return jsonify({"chat_id": new_chat.chat_id, "title": new_chat.title})
+
+
+# infers an automatic chat name from the first user chat message
+@app.route('/chats/<chat_id>/infer-name', methods=['POST'])
+def infer_chat_name(chat_id):
+    chat = ChatData.load(chat_id)
+    if not chat:
+        return jsonify({"status": "Chat not found"}), 404
+
+    # infer a name for the chat based on the messages
+    try:
+        infer_chat_renaming(chat)
+        return jsonify({"status": "success", "title": chat.title}), 200
+    except Exception as e:
+        print("Error inferring chat name:", str(e))
+        return jsonify({"status": "error", "message": "Failed to infer chat name"}), 500
 
 
 def test_query(
