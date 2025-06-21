@@ -1,10 +1,17 @@
 #!/usr/bin/env python 
-from typing import Optional, Sequence, Iterable
-import plotly.graph_objects as go
-from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot, FunctionData
-from pathlib import Path
-from deskquery.data.dataset import Dataset
+# std lib imports
+from typing import Optional, Sequence, Iterable, Dict
 import PIL
+from pathlib import Path
+
+# 3 party imports
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+
+# Projekt imports
+from deskquery.data.dataset import Dataset
+from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot, FunctionData
+
 
 def create_plotly_figure(
     traces: Sequence[go.Trace],
@@ -30,16 +37,24 @@ def create_plotly_figure(
     return fig
 
 
-def add_to_marks_to_fig(fig, mark_dict, mark_set_width, mark_set_height, img_width, img_height, shape_width, shape_height, color):
+def add_to_marks_to_fig(fig, mark_dict, mark_set_width, mark_set_height, img_width, img_height, shape_width, shape_height, default_color):
     if not mark_dict:
         return
 
-    marks_x_coords, marks_y_coords = list(zip(*[
-        (img_width * x / mark_set_width, img_height * y / mark_set_height)
-        for x, y in mark_dict.values()
-    ]))
+    marks_x_coords, marks_y_coords, colors, texts = [], [], [], []
 
-    for x, y in zip(marks_x_coords, marks_y_coords):
+    for text, entry in mark_dict.items():
+        coords = entry["coords"] if isinstance(entry, dict) else entry
+        color = entry.get("color", default_color) if isinstance(entry, dict) else default_color
+
+        x = img_width * coords[0] / mark_set_width
+        y = img_height * coords[1] / mark_set_height
+
+        marks_x_coords.append(x)
+        marks_y_coords.append(y)
+        colors.append(color)
+        texts.append(text)
+
         fig.layout.shapes += (dict(
             type='rect',
             xref='x',
@@ -50,18 +65,20 @@ def add_to_marks_to_fig(fig, mark_dict, mark_set_width, mark_set_height, img_wid
             y1=y + shape_height / 2,
             line=dict(color=color),
             fillcolor=color,
-            opacity=0.5
+            opacity=0.9
         ),)
 
     fig.add_trace(go.Scatter(
         x=marks_x_coords,
         y=marks_y_coords,
         mode='markers',
-        marker=dict(size=20, color='rgba(0,0,0,0)'),
+        marker=dict(size=20, color=colors),
         hoverinfo='text',
-        text=list(mark_dict.keys()),
-        showlegend=False
+        text=texts,
+        showlegend=False,
+        opacity=0
     ))
+
 
 
 def add_img_to_fig(fig, img, img_width, img_height):
@@ -90,6 +107,9 @@ def add_img_to_fig(fig, img, img_width, img_height):
         margin=dict(l=0, r=0, t=0, b=0)
     )
 
+def value_to_color(value: float) -> str:
+    rgba = plt.cm.RdYlGn(value)
+    return f'rgb({int(rgba[0]*255)}, {int(rgba[1]*255)}, {int(rgba[2]*255)})'
 
 def generate_heatmap(
     data: FunctionData = None,
@@ -324,9 +344,11 @@ def generate_hist(
 
 
 def generate_map(
-    room_ids: Optional[Iterable[int]] = None, 
-    room_names: Optional[Iterable[str]] = None, 
-    desk_ids: Optional[Iterable[int]] = None
+    room_ids: Optional[Dict[int, float]] = None,
+    room_names: Optional[Dict[int, float]] = None,
+    desk_ids: Optional[Dict[int, float]] = None,
+    label_markings: Optional[str] = None,
+    titel: Optional[str] = "Map",
 ) -> Plot:
     """
     Generate a visual map of an office layout with optional desk and room highlights.
@@ -351,16 +373,19 @@ def generate_map(
         - Background image is fixed and located in the project directory under `data/office_plan_optisch.png`.
     """
 
-    room_ids = set(room_ids) if room_ids is not None else set()
-    room_names = set(room_names) if room_names is not None else set()
-    desk_ids = set(desk_ids) if desk_ids is not None else set()
+    room_ids = room_ids if room_ids is not None else dict()
+    room_names = room_names if room_names is not None else dict()
+    desk_ids = desk_ids if desk_ids is not None else dict()
 
     room_name_id_mapping = Dataset._desk_room_mapping.set_index("roomId")["roomName"].to_dict()
     desk_id_number_mapping = Dataset._desk_room_mapping.set_index("deskId")["deskNumber"].to_dict()
+    room_name_to_id = Dataset._desk_room_mapping.drop_duplicates("roomName").set_index("roomName")["roomId"].to_dict()
 
-    room_ids.update(Dataset._desk_room_mapping.loc[
-        Dataset._desk_room_mapping["roomName"].isin(room_names), "roomId"
-    ])
+    room_ids.update({
+        room_name_to_id[name]: value
+        for name, value in room_names.items()
+        if name in room_name_to_id
+    })
 
     map_path = Path(__file__).resolve().parent.parent.parent.parent / "data" / "office_plan_optisch.png"
     map = PIL.Image.open(map_path)
@@ -440,22 +465,31 @@ def generate_map(
         12: (520, 440)}
 
     desks_to_mark = {
-        (f"Desk ID: {id} Desk Number: {desk_id_number_mapping[id]}"): coords
-        for id, coords in desk_coords.items()
-        if id in desk_ids
+        f"Desk ID: {id} Number: {desk_id_number_mapping[id]} {label_markings or 'label'}: {value}": {
+            "coords": desk_coords[id],
+            "color": value_to_color(value)
+        }
+        for id, value in desk_ids.items()
+        if id in desk_coords
     }
 
-    rooms_to_mark = {f"Room ID: {id} Room Name: {room_name_id_mapping[id]}": coords
-        for id, coords in room_coords.items()
-        if id in room_ids
+    rooms_to_mark = {
+        f"Room ID: {id} Name: {room_name_id_mapping[id]} {label_markings or "label"}: {value}": {
+            "color": value_to_color(value),
+            "coords": room_coords[id]
+        }
+        for id, value in room_ids.items()
+        if id in room_coords
     }
 
     fig = Plot()
 
     add_to_marks_to_fig(fig, desks_to_mark, mark_set_width, mark_set_height, map_width, map_height, 10, 10, 'red')
-    add_to_marks_to_fig(fig, rooms_to_mark, mark_set_width, mark_set_height, map_width, map_height, 20, 20, 'blue')
+    add_to_marks_to_fig(fig, rooms_to_mark, mark_set_width, mark_set_height, map_width, map_height, 20, 20, "blue")
     add_img_to_fig(fig, map, map_width, map_height)
 
+    fig.update_layout(title=titel)
+    
     return fig
 
 
