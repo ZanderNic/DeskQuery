@@ -19,7 +19,7 @@ def simulate_policy(
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
     num_weeks: int = 100,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"],  # FIXME: Change to English
+    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
     """
@@ -39,12 +39,14 @@ def simulate_policy(
         exceptions (Optional[Dict[int, Dict]]): Special policy rules for certain employee IDs.
         random_assignments (Optional[List[Tuple[int, Dict]]]): List of tuples (number_of_employees, policy_dict) for random policy assignment.
         num_weeks (int): Number of weeks over which the attendance is simulated.
-        weekdays (List[str]): List of weekdays used in the simulation, e.g., ["Mo", "Di", "Mi", "Do", "Fr"].
+        weekdays (List[str]): List of weekdays used in the simulation, e.g., ["monday", "tuesday", "wednesday", "thursday", "friday"].
         plotable (bool): If called from another function set to False
 
     Returns:
         dict[str, object]: Dictionary containing the average total attendance (Monday to Sunday) across all employees and potentially other metrics.
     """
+    weekdays = [day.lower() for day in weekdays]
+
     attendances = load_attendance_profiles(data=data, weekdays=weekdays)
     worker_ids = list(attendances.keys())
     policies: Dict[int, Dict] = {}
@@ -96,7 +98,7 @@ def simulate_policy(
 
         return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
 
-    return total_attendance
+    return FunctionRegistryExpectedFormat(data=total_attendance, plot=PlotForFunction(default_plot=None, available_plots=[]))
 
 
 def detect_policy_violations(
@@ -104,7 +106,7 @@ def detect_policy_violations(
     policy: Dict,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"], # FIXME: Change to English
+    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
     only_stats: bool = False
@@ -125,7 +127,7 @@ def detect_policy_violations(
         policy (Dict): Default policy parameters.
         exceptions (Optional[Dict[int, Dict]]): Targeted special rules for certain employee IDs.
         random_assignments (Optional[List[Tuple[int, Dict]]]): List of tuples (number_of_employees, policy dict) for random assignment.
-        weekdays (List[str]): Days of the week considered, e.g., ["Mo", "Di", "Mi", "Do", "Fr"].
+        weekdays (List[str]): Days of the week considered, e.g., ["monday", "tuesday", "wednesday", "thursday", "friday"].
         start_date (Optional[datetime]): Start date of the period to evaluate. Defaults to earliest date in data if None.
         end_date (Optional[datetime]): End date of the period to evaluate. Defaults to latest date in data if None.
         only_stats (bool): If True, returns only aggregated weekly violation counts instead of detailed per-user violations.
@@ -133,6 +135,7 @@ def detect_policy_violations(
     Returns:
         dict[str, object]: Dictionary containing either per-user violations or aggregated weekly violation statistics.
     """
+    weekdays = [day.lower() for day in weekdays]
 
     attendances = load_attendances(data=data)
 
@@ -312,7 +315,7 @@ def create_attendance_dataframe(
 def load_attendance_profiles(
     data: Dataset,
     lag: int = 90,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"]
+    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"]
 ) -> List[Dict[float, List[float]]]:
     """
     Creates attendance profiles for all workers. An attendance profile is the average attendance for all the weekdays. 
@@ -325,7 +328,7 @@ def load_attendance_profiles(
     Returns:
         List of dictionaries of the form: {worker_id: [average attendance monday, ..., average attendance sunday]}
     """
-    weekday_map = {"Mo": 0, "Di": 1, "Mi": 2, "Do": 3, "Fr": 4, "Sa": 5, "So": 6}  # FIXME: Change to English
+    weekday_map = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6}
     selected_weekdays = [weekday_map[day] for day in weekdays]
 
     data["blockedFrom"] = pd.to_datetime(data["blockedFrom"], errors="coerce")
@@ -417,7 +420,7 @@ def load_attendances(
 
 def average_simulated_weeks(
     weeks: List[List[str]],
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"] # FIXME: Change to English
+    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"]
 ) -> List[float]:
     """
     Calculates the average attendance percentage for each weekday based on simulated weeks.
@@ -428,7 +431,7 @@ def average_simulated_weeks(
 
     Returns:
         A list of attendance percentages (as floats) for each weekday from Monday to Sunday,
-        in the order ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].
+        in the order ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].
     """
     all_days = [day for sublist in weeks for day in sublist]
     counter = Counter(all_days)
@@ -446,7 +449,7 @@ def draw_days(
     number_choseable_days: Optional[int] = None,
     number_days: Optional[int] = None,
     more_days_allowed: bool = True,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"] # FIXME: Change to English
+    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"]
 ) -> List[str]:
     """
     Generates a simulated week of attendance days based on the given policy configuration.
@@ -513,16 +516,16 @@ if __name__ == "__main__":
 
     ########## Test simulate_policy ################################################
     policy = {
-        "fixed_days":["Di"],
-        "choseable_days":["Mi", "Do"],
+        "fixed_days":["tuesday"],
+        "choseable_days":["wednesday", "thursday"],
         "number_choseable_days":1,
         "number_days":3,
         "more_days_allowed":True
     }
 
     exceptions = {
-        4: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True},
-        14: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True}
+        4: {'fixed_days': ["friday"], 'number_days': 4, 'more_days_allowed': True},
+        14: {'fixed_days': ["friday"], 'number_days': 4, 'more_days_allowed': True}
     }
 
     random_assignments = [
@@ -558,16 +561,6 @@ if __name__ == "__main__":
         exceptions=exceptions,
         random_assignments=random_assignments,
         only_stats=True
-    )
-    pprint(return_dict["data"])
-    print()
-
-    ########## Test suggest_balanced_utilization_policy ################################################
-    print("=== Suggest balanced utilization policy ===")
-    # FIXME: This function is not defined!
-    return_dict = suggest_balanced_utilization_policy(
-        data=dataset,
-        target_utilization=0.8
     )
     pprint(return_dict["data"])
     print()
