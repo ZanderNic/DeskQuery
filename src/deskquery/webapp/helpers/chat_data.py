@@ -114,7 +114,7 @@ class ChatData:
         os.makedirs(HISTORY_DIR, exist_ok=True)
         path = HISTORY_DIR / f"{self.chat_id}.json"
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
+            json.dump(make_json_serializable(self.to_dict()), f, ensure_ascii=False, indent=2,  default=str)
 
     def delete(
         self,
@@ -534,3 +534,24 @@ def list_chats(
 
     chats.sort(key=lambda c: c['last_timestamp'], reverse=True)
     return chats
+
+
+
+def make_json_serializable(obj):
+    if isinstance(obj, dict):
+        return {
+            str(make_json_serializable(k)): make_json_serializable(v)
+            for k, v in obj.items()
+        }
+    elif isinstance(obj, list):
+        return [make_json_serializable(i) for i in obj]
+    elif isinstance(obj, tuple):
+        return tuple(make_json_serializable(i) for i in obj)
+    elif isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    elif isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    elif hasattr(obj, "__str__"):
+        return str(obj)
+    else:
+        return repr(obj)
