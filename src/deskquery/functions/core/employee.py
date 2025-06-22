@@ -6,7 +6,7 @@ from collections import Counter
 from itertools import combinations
 from deskquery.data.dataset import Dataset
 from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction
-from deskquery.functions.core.helper.plot_helper import generate_heatmap, generate_barchart, generate_hist, generate_map
+from deskquery.functions.core.helper.plot_helper import generate_barchart
 
 def get_avg_employee_bookings(
     data: Dataset,
@@ -98,7 +98,7 @@ def get_avg_employee_bookings(
             xaxis_title="user_name" if return_user_names else "user_id",
             yaxis_title=column_name
         ),
-        available_plots=[generate_barchart, generate_heatmap]
+        available_plots=[generate_barchart]
     )
 
     return FunctionRegistryExpectedFormat(data=avg_bookings, plot=plot)
@@ -166,7 +166,7 @@ def get_booking_repeat_pattern(
             xaxis_title="User",
             yaxis_title="Booking Percentage"
         ),
-        available_plots=[generate_barchart, generate_heatmap]
+        available_plots=[generate_barchart]
     )
     return FunctionRegistryExpectedFormat(data=plot_data, plot=plot)
 
@@ -327,7 +327,7 @@ def get_co_booking_frequencies(
             xaxis_title="UserId2",
             yaxis_title="Share (%)"
         ),
-        available_plots=[generate_barchart, generate_heatmap]
+        available_plots=[generate_barchart]
     )
     return FunctionRegistryExpectedFormat(data=plot_dict_barchart, plot=plot)
 
