@@ -358,159 +358,159 @@ def generate_hist(
     return fig
 
 
-def generate_map(
-    room_ids: Optional[Dict[int, float]] = None,
-    room_names: Optional[Dict[int, float]] = None,
-    desk_ids: Optional[Dict[int, float]] = None,
-    label_markings: Optional[str] = None,
-    title: Optional[str] = "Map",
-) -> Plot:
-    """
-    Generate an interactive office layout map with color-coded highlights for desks and rooms.
+# def generate_map(
+#     room_ids: Optional[Dict[int, float]] = None,
+#     room_names: Optional[Dict[int, float]] = None,
+#     desk_ids: Optional[Dict[int, float]] = None,
+#     label_markings: Optional[str] = None,
+#     title: Optional[str] = "Map",
+# ) -> Plot:
+#     """
+#     Generate an interactive office layout map with color-coded highlights for desks and rooms.
 
-    The function overlays a fixed background image of the office floor plan with colored rectangular
-    markers for desks and rooms based on their usage or custom values. Hover tooltips provide details 
-    like room/desk ID, name/number, and value. The color reflects the numeric value (e.g. utilization),
-    using a red-yellow-green colormap that is betwean 0 and 1.
+#     The function overlays a fixed background image of the office floor plan with colored rectangular
+#     markers for desks and rooms based on their usage or custom values. Hover tooltips provide details 
+#     like room/desk ID, name/number, and value. The color reflects the numeric value (e.g. utilization),
+#     using a red-yellow-green colormap that is betwean 0 and 1.
 
-    Args:
-        room_ids (dict[int, float], optional):
-            Mapping of room IDs to values (e.g. utilization). These will be marked in the image.
-        room_names (dict[str, float], optional):
-            Alternative to `room_ids`. Room names are internally mapped to IDs.
-        desk_ids (dict[int, float], optional):
-            Mapping of desk IDs to values. These will be shown as smaller colored boxes.
-        label_markings (str, optional):
-            Optional label description shown in the hover tooltip. Defaults to "label" if None.
-        title (str, optional):
-            Title of the map. Defaults to "Map".
+#     Args:
+#         room_ids (dict[int, float], optional):
+#             Mapping of room IDs to values (e.g. utilization). These will be marked in the image.
+#         room_names (dict[str, float], optional):
+#             Alternative to `room_ids`. Room names are internally mapped to IDs.
+#         desk_ids (dict[int, float], optional):
+#             Mapping of desk IDs to values. These will be shown as smaller colored boxes.
+#         label_markings (str, optional):
+#             Optional label description shown in the hover tooltip. Defaults to "label" if None.
+#         title (str, optional):
+#             Title of the map. Defaults to "Map".
 
-    Returns:
-        Plot: A Plotly figure with the office background and interactive overlays.
+#     Returns:
+#         Plot: A Plotly figure with the office background and interactive overlays.
 
-    Notes:
-        - Coordinates for desks and rooms are statically defined and tied to a 640x480 image.
-        - Desk/room positions are predefined and not inferred from layout data.
-        - The base image is located at: `data/office_plan_optisch.png`
-    """
-    room_ids = room_ids if room_ids is not None else dict()
-    room_names = room_names if room_names is not None else dict()
-    desk_ids = desk_ids if desk_ids is not None else dict()
+#     Notes:
+#         - Coordinates for desks and rooms are statically defined and tied to a 640x480 image.
+#         - Desk/room positions are predefined and not inferred from layout data.
+#         - The base image is located at: `data/office_plan_optisch.png`
+#     """
+#     room_ids = room_ids if room_ids is not None else dict()
+#     room_names = room_names if room_names is not None else dict()
+#     desk_ids = desk_ids if desk_ids is not None else dict()
 
-    room_name_id_mapping = Dataset._desk_room_mapping.set_index("roomId")["roomName"].to_dict()
-    desk_id_number_mapping = Dataset._desk_room_mapping.set_index("deskId")["deskNumber"].to_dict()
-    room_name_to_id = Dataset._desk_room_mapping.drop_duplicates("roomName").set_index("roomName")["roomId"].to_dict()
+#     room_name_id_mapping = Dataset._desk_room_mapping.set_index("roomId")["roomName"].to_dict()
+#     desk_id_number_mapping = Dataset._desk_room_mapping.set_index("deskId")["deskNumber"].to_dict()
+#     room_name_to_id = Dataset._desk_room_mapping.drop_duplicates("roomName").set_index("roomName")["roomId"].to_dict()
 
-    room_ids.update({
-        room_name_to_id[name]: value
-        for name, value in room_names.items()
-        if name in room_name_to_id
-    })
+#     room_ids.update({
+#         room_name_to_id[name]: value
+#         for name, value in room_names.items()
+#         if name in room_name_to_id
+#     })
 
-    map_path = Path(__file__).resolve().parent.parent.parent.parent / "data" / "office_plan_optisch.png"
-    map = PIL.Image.open(map_path)
-    map_width, map_height = (640, 480)
+#     map_path = Path(__file__).resolve().parent.parent.parent.parent / "data" / "office_plan_optisch.png"
+#     map = PIL.Image.open(map_path)
+#     map_width, map_height = (640, 480)
 
-    # the marks were set in the image when the image had that size
-    # to make sure they are still correct if image_sizes changes
-    # divide by them first
-    mark_set_width, mark_set_height = (640, 480)
-    # desk_id: (desk_x, desk_y)
-    desk_coords = {1: (620, 445),
-             2: (620, 430),
-             3: (567, 157),
-             4: (601, 157),
-             5: (567, 104),
-             6: (570, 84),
-             7: (607, 87),
-             8: (568, 37),
-             9: (610, 37),
-             10: (65, 90),
-             11: (28, 100), 
-             12: (28, 115), 
-             13: (28, 200),
-             14: (28, 213),
-             15: (28, 285),
-             16: (28, 295),
-             17: (75, 285),
-             18: (75, 295),
-             19: (58, 370),
-             20: (38, 368),
-             21: (40, 370),
-             22: (47, 392),
-             23: (95, 375),
-             24: (100, 394),
-             25: (102, 430),
-             26: (104, 450),
-             27: (82, 440),
-             28: (40, 428),
-             29: (42, 445),
-             30: (155, 385),
-             31: (170, 369),
-             32: (153, 385),
-             33: (165, 445),
-             34: (182, 430),
-             35: (188, 445),
-             36: (175, 384),
-             37: (235, 431),
-             38: (235, 445),
-             39: (291, 431),
-             40: (291, 445),
-             41: (321, 431),
-             42: (321, 445),
-             43: (377, 445),
-             44: (406, 430),
-             45: (406, 445),
-             46: (463, 430),
-             47: (463, 445),
-             48: (490, 430),
-             49: (490, 445),
-             50: (550, 433),
-             51: (548, 445),
-             52: (578, 430),
-             53: (578, 445),}
+#     # the marks were set in the image when the image had that size
+#     # to make sure they are still correct if image_sizes changes
+#     # divide by them first
+#     mark_set_width, mark_set_height = (640, 480)
+#     # desk_id: (desk_x, desk_y)
+#     desk_coords = {1: (620, 445),
+#              2: (620, 430),
+#              3: (567, 157),
+#              4: (601, 157),
+#              5: (567, 104),
+#              6: (570, 84),
+#              7: (607, 87),
+#              8: (568, 37),
+#              9: (610, 37),
+#              10: (65, 90),
+#              11: (28, 100), 
+#              12: (28, 115), 
+#              13: (28, 200),
+#              14: (28, 213),
+#              15: (28, 285),
+#              16: (28, 295),
+#              17: (75, 285),
+#              18: (75, 295),
+#              19: (58, 370),
+#              20: (38, 368),
+#              21: (40, 370),
+#              22: (47, 392),
+#              23: (95, 375),
+#              24: (100, 394),
+#              25: (102, 430),
+#              26: (104, 450),
+#              27: (82, 440),
+#              28: (40, 428),
+#              29: (42, 445),
+#              30: (155, 385),
+#              31: (170, 369),
+#              32: (153, 385),
+#              33: (165, 445),
+#              34: (182, 430),
+#              35: (188, 445),
+#              36: (175, 384),
+#              37: (235, 431),
+#              38: (235, 445),
+#              39: (291, 431),
+#              40: (291, 445),
+#              41: (321, 431),
+#              42: (321, 445),
+#              43: (377, 445),
+#              44: (406, 430),
+#              45: (406, 445),
+#              46: (463, 430),
+#              47: (463, 445),
+#              48: (490, 430),
+#              49: (490, 445),
+#              50: (550, 433),
+#              51: (548, 445),
+#              52: (578, 430),
+#              53: (578, 445),}
 
-    # room_id: (room_x, room_y)
-    room_coords = {1: (599, 440),
-        2: (588, 160),
-        3: (590, 65),
-        4: (51, 111),
-        5: (51, 209),
-        6: (52, 290),
-        7: (70, 408),
-        8: (171, 411),
-        9: (264, 437),
-        10: (352, 440),
-        11: (435, 440),
-        12: (520, 440)}
+#     # room_id: (room_x, room_y)
+#     room_coords = {1: (599, 440),
+#         2: (588, 160),
+#         3: (590, 65),
+#         4: (51, 111),
+#         5: (51, 209),
+#         6: (52, 290),
+#         7: (70, 408),
+#         8: (171, 411),
+#         9: (264, 437),
+#         10: (352, 440),
+#         11: (435, 440),
+#         12: (520, 440)}
 
-    desks_to_mark = {
-        f"Desk ID: {id} Number: {desk_id_number_mapping[id]} {label_markings or 'label'}: {value}": {
-            "coords": desk_coords[id],
-            "color": value_to_color(value)
-        }
-        for id, value in desk_ids.items()
-        if id in desk_coords
-    }
+#     desks_to_mark = {
+#         f"Desk ID: {id} Number: {desk_id_number_mapping[id]} {label_markings or 'label'}: {value}": {
+#             "coords": desk_coords[id],
+#             "color": value_to_color(value)
+#         }
+#         for id, value in desk_ids.items()
+#         if id in desk_coords
+#     }
 
-    rooms_to_mark = {
-        f"Room ID: {id} Name: {room_name_id_mapping[id]} {label_markings or "label"}: {value}": {
-            "color": value_to_color(value),
-            "coords": room_coords[id]
-        }
-        for id, value in room_ids.items()
-        if id in room_coords
-    }
+#     rooms_to_mark = {
+#         f"Room ID: {id} Name: {room_name_id_mapping[id]} {label_markings or "label"}: {value}": {
+#             "color": value_to_color(value),
+#             "coords": room_coords[id]
+#         }
+#         for id, value in room_ids.items()
+#         if id in room_coords
+#     }
 
-    fig = Plot()
+#     fig = Plot()
 
-    add_to_marks_to_fig(fig, desks_to_mark, mark_set_width, mark_set_height, map_width, map_height, 10, 10, 'red')
-    add_to_marks_to_fig(fig, rooms_to_mark, mark_set_width, mark_set_height, map_width, map_height, 20, 20, "blue")
-    add_img_to_fig(fig, map, map_width, map_height)
+#     add_to_marks_to_fig(fig, desks_to_mark, mark_set_width, mark_set_height, map_width, map_height, 10, 10, 'red')
+#     add_to_marks_to_fig(fig, rooms_to_mark, mark_set_width, mark_set_height, map_width, map_height, 20, 20, "blue")
+#     add_img_to_fig(fig, map, map_width, map_height)
 
-    fig.update_layout(title=title)
+#     fig.update_layout(title=title)
     
-    return fig
+#     return fig
 
 
 def generate_table(
@@ -570,8 +570,6 @@ if __name__ == "__main__":
     dataset = create_dataset()
 
     policy = {
-        "fixed_days":["tuesday"],
-        "choseable_days":["wednesday", "thursday"],
         "fixed_days":["tuesday"],
         "choseable_days":["wednesday", "thursday"],
         "number_choseable_days":1,

@@ -28,7 +28,8 @@ def forecast_employees(
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
     """
-    Forecasts the number of employees.
+    Forecasts the number of employees with different models such as linear or sarima. Furthermore this function can handle fixed weekly growth rates and
+    fixed weekly absolute growth. It gets the worker time series and then forecasts future employee numbers.
 
     Args:
         data (Dataset): 
@@ -61,7 +62,7 @@ def forecast_employees(
     """
     if not booking_type or booking_type not in ["all", "fixed", "variable"]:
         booking_type = 'all'
-    if not forecast_model or forecast_model not in ["linear", "ets"]:
+    if not forecast_model or forecast_model not in ["linear", "sarima"]:
         forecast_model = "linear"
 
     worker_history_series = load_active_worker_timeseries(data, lag)[booking_type]
