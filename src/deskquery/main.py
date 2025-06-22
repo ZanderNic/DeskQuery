@@ -40,6 +40,121 @@ global PARAM_EXTRACTION_chat_history
 PARAM_EXTRACTION_chat_history = []
 
 
+# Chat Naming Inferation Feature ##############################################
+
+def get_chat_name(
+    user_query: str,
+):
+    """
+    Takes a user query of a chat and lets the LLM infer a name to determine
+    a first automatically set name.
+
+    Args:
+        user_query (str):
+            The first user message in a new chat to infer the chat name from.
+    """
+    global current_client
+
+    prompt_template = """
+You are a smart assistant for a desk booking analytics system.
+You are given the first user message in a new chat.
+
+### Task:
+
+Use the user message to infer a fitting name for the chat.
+This name should only be at maximum 24 characters long.
+
+Answer in a strict PYTHON DICT format as shown below.
+
+### STRICT PYTHON DICT response format:
+{{
+"chat_title": "<chat_title>",
+}}
+
+### User Query:
+
+{user_query}
+
+### Your Response:
+"""
+    prompt = prompt_template.format(
+        user_query=user_query
+    )
+
+    response = current_client.chat_completion(
+        input_str=prompt,
+        role='system',
+        response_json=False
+    )
+
+    resp_data = clean_llm_output(response)
+
+    return resp_data
+
+
+def infer_chat_renaming(
+    chat_data: ChatData
+):
+    """
+    Takes the first user message from a chat data object and uses its content
+    to let an LLM infer a fitting title for automatic renaming.
+
+    The title is set to be at most 24 characters long.
+
+    Args:
+        chat_data (ChatData):
+            The chat data object of the chat to rename.
+
+    Raises:
+        RuntimeError:
+            If the LLM was not able to generate a fitting title in 10 tries. 
+    """
+    # fetch the chat's first user message content
+    for msg in chat_data.messages:
+        if msg.get("role", "") == "user":
+            user_msg = msg
+            break
+    user_query = user_msg['content']
+
+    # try to generate a valid json response
+    error = True
+    generate_counter = 0
+    while error and generate_counter < 10:
+        try:
+            # generate the response from the LLM
+            response = get_chat_name(user_query)
+            # parse the response as dict
+            json_data = eval(response)
+            if not isinstance(json_data, dict):
+                raise ValueError("Response is not a valid dictionary object.")
+            error = False
+        except Exception as e:
+            print("Error while parsing the LLM response:", e)
+            traceback.print_exc()  # Print the stack trace to the console
+            print("Raw response was:", response, sep="\n")
+            error = True
+            generate_counter += 1
+            continue
+        
+        # check the given response's validity
+        if (json_data.get("chat_title", False) and
+            isinstance(json_data["chat_title"], str) and 
+            len(json_data["chat_title"]) <= 24):
+            # update the chat name directly
+            chat_data.rename_chat(json_data["chat_title"])
+            return  # quit without an error
+        else:
+            # if the title is not correctly specified, go to the next iteration
+            generate_counter += 1
+            error = True
+
+    # abort after 10 insufficient generations
+    if error and generate_counter >= 10:
+        raise RuntimeError("Could not infer a chat title in 10 tries")
+
+
+###############################################################################
+
 def clean_llm_output(
     llm_output: str
 ) -> str:

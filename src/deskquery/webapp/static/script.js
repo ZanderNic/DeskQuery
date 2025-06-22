@@ -39,7 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
       case 'table':
         wrapper.className = 'message table';
-        wrapper.appendChild(renderTable(data.df));
+        const tableHeader = document.createElement('div');
+        tableHeader.className = 'table-header';
+        tableHeader.textContent = data.data.plotly.layout?.title?.text || '';
+        wrapper.appendChild(tableHeader);
+        wrapper.appendChild(renderTable(
+          data.data,
+          data.data.plotly.layout?.xaxis?.title?.text || ''
+        ));
         break;
       default:
         wrapper.className = `message ${sender}`;
@@ -304,7 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const thinkingMsg = createThinkingMessage();  // Add spinner + "Thinking..." message
     chatContainer.appendChild(thinkingMsg);
     chatContainer.scrollTop = chatContainer.scrollHeight;
+    let chatTitle;
 
+    // send user message to the backend and receive an answer
     try {
       const response = await fetch('/chat', {
         method: 'POST',
@@ -314,10 +323,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await response.json();
       console.log("response.data:", data);
-      currentChatId = data.chat_id;
+
+      // read an error response if applicable
+      if (data["status"] === "error") {
+        thinkingMsg.remove();
+        if (!data["model"]) {
+          renderAssistantDescriptor();
+          appendMessage("An error occured while sending the message. Please select a chat model and try again.", 'bot');
+
+          // unselect the current model option
+          const modelSelectorSelectedOption = document.getElementsByClassName(
+            'model-option selected')[0];
+          if (modelSelectorSelectedOption) {
+            modelSelectorSelectedOption.classList.remove('selected');
+          }
+          selectedModel = null;
+          selectedModelDisplay.textContent = "None";
+        } else {
+          renderAssistantDescriptor();
+          appendMessage("An error occured while sending the message. Please try again.", 'bot');
+        }
+        return;
+      }
+
+      currentChatId = data["chat_id"];
+      chatTitle = data["chat_title"];
 
       thinkingMsg.remove();
 
+      // render answer
       if (data.messages && data.messages.length > 0) {
         const lastAssistantMsg = [...data.messages].reverse().find(m => m.role === 'assistant');
         if (lastAssistantMsg) {
@@ -330,12 +364,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (error) {
       thinkingMsg.remove();
-      showError("Error while sending message. Please try again.", error);
+      renderAssistantDescriptor();
+      showError("An error occured while sending the message. Please try again.", error);
     } finally {
       sendBtn.disabled = false;                   // Re-enable the send button
       sendBtn.style.backgroundColor = "";         // reset send button color
       userInput.focus();                          // set cursor in text input field 
     }
+
+    // infer a chat title if applicable
+    try {
+      if (chatTitle === undefined || chatTitle === "New Chat") {
+        // send renaming request
+        const response = await fetch(`/chats/${currentChatId}/infer-name`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: currentChatId })
+        });
+        // we don't really care for the response, since in case of a success, 
+        // everything is fine and in case of an error, the renaming will be 
+        // tried in the next sendMessage() execution if the user does not 
+        // rename the chat themself
+      }
+    } catch(error) {
+      console.error(error);
+    }
+
+    loadChatList();
   }
 
   async function loadChat(chatId) {
@@ -410,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // assistant name
     const name = document.createElement('div');
     name.className = 'assistant-name';
-    name.textContent = 'DeskQuery Assistant';
+    name.textContent = 'Desk Query Assistant';
     descriptor.appendChild(name);
 
     chatContainer.appendChild(descriptor);
@@ -426,6 +481,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (type === 'mixed' && to_plot && data.plotly) {
       appendMessage(content, 'bot', null, m.id);
       appendMessage('', 'bot', { type: 'plot', plotly: data.plotly }, m.id + '-plot');
+    } else if (type === 'mixed' && !to_plot && data) {
+      appendMessage(content, 'bot', null, m.id);
+      appendMessage('', 'bot', { type: 'table', data: data }, m.id + '-table');
     } else {
       appendMessage(content, 'bot', data, m.id);
     }
@@ -466,29 +524,41 @@ document.addEventListener('DOMContentLoaded', () => {
     return plotDiv;
   }
 
-  function renderTable(df) {
+  function renderTable(data, indexLabel = '') {
     const table = document.createElement('table');
     table.className = 'dataframe';
+
     const thead = document.createElement('thead');
+
     const headerRow = document.createElement('tr');
-    df.columns.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = indexLabel;
+    headerRow.appendChild(th); // Empty header for row indices
+
+    for (const col in data['function_data']) {
       const th = document.createElement('th');
       th.textContent = col;
       headerRow.appendChild(th);
-    });
+    }
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
-    df.rows.forEach(row => {
+
+    for (const row in data['df']) {
       const tr = document.createElement('tr');
-      row.forEach(cell => {
+      // Create the first cell for the row index
+      const td = document.createElement('td');
+      td.textContent = row;
+      tr.appendChild(td);
+      for (const col in data['df'][row]) {
         const td = document.createElement('td');
-        td.textContent = cell;
+        td.textContent = data['df'][row][col] !== null ? data['df'][row][col] : '';
         tr.appendChild(td);
-      });
+      }
       tbody.appendChild(tr);
-    });
+    }
+
     table.appendChild(tbody);
     return table;
   }

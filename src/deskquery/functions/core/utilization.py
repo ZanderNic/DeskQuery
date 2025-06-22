@@ -12,6 +12,7 @@ from deskquery.data.dataset import Dataset
 from deskquery.functions.types import PlotForFunction, FunctionRegistryExpectedFormat
 from deskquery.functions.core.helper.plot_helper import *
 
+
 def mean_utilization(
     data: Dataset,
     include_fixed: bool = False,
@@ -97,7 +98,7 @@ def mean_utilization(
         total_possible = n_desks_per_room * count_matching_weekdays(start_date, end_date, weekday)       # here it should be num desks in room times time period
         actual_counts = key.value_counts()
         column_name = "room"
-    
+
         utilization = pd.Series({
             room: round(actual_counts.get(room, 0) / total_possible.get(room, 1), 3)
             for room in total_possible.keys()
@@ -125,14 +126,24 @@ def mean_utilization(
             if key in desk_key_to_id
         }
 
+        desk_key_to_id = df.drop_duplicates("composite_key").set_index("composite_key")["deskId"].to_dict()
+
+        desk_ids = {
+            desk_key_to_id[key]: utilization[key]
+            for key in utilization.index
+            if key in desk_key_to_id
+        }
+
     elif by_day:
         df["day"] = pd.to_datetime(df["blockedFrom"]).dt.day_name()
         key = df["day"]
 
         weekday_counts = count_weekday_occurrences(start_date, end_date, weekday)           # count the number of appearances of different days
         n_desks = data.get_desks_count()
-       
-        total_possible = {day: count * n_desks for day, count in weekday_counts.items()}         # here the number of possible bookings is the number of appearances of the different weekday * the total number of desks that are available (the same for every day)
+
+        # here the number of possible bookings is the number of appearances of the different
+        # weekday * the total number of desks that are available (the same for every day)
+        total_possible = {day: count * n_desks for day, count in weekday_counts.items()}
         actual_counts = key.value_counts()
         column_name = "day"
 

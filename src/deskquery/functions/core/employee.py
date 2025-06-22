@@ -76,9 +76,11 @@ def get_avg_employee_bookings(
     avg_bookings = data.group_bookings(by="userId", aggregation={column_name: (column_name, mean)}, agg_col_name=column_name)
     if include_non_booking_users:
         missing_user = set(Dataset._userid_username_mapping.keys()) - set(avg_bookings.index)
-        missing_user = pd.DataFrame.from_dict({user_id: 0 for user_id in missing_user}, 
-                                              orient="index", 
-                                              columns=avg_bookings.columns)
+        missing_user = pd.DataFrame.from_dict(
+            {user_id: 0 for user_id in missing_user}, 
+            orient="index", 
+            columns=avg_bookings.columns
+        )
         avg_bookings = pd.concat([avg_bookings, missing_user])
     if num_employees:
         avg_bookings = avg_bookings.sort_bookings(by=column_name, ascending=False).head(num_employees)
@@ -92,7 +94,7 @@ def get_avg_employee_bookings(
     plot = PlotForFunction(
         default_plot=generate_barchart(
             data=avg_bookings,
-            title=column_name,
+            title=f"Average bookings per {granularity}",
             xaxis_title="user_name" if return_user_names else "user_id",
             yaxis_title=column_name
         ),

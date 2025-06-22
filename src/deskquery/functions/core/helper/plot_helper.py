@@ -37,7 +37,17 @@ def create_plotly_figure(
     return fig
 
 
-def add_to_marks_to_fig(fig, mark_dict, mark_set_width, mark_set_height, img_width, img_height, shape_width, shape_height, default_color):
+def add_to_marks_to_fig(
+    fig,
+    mark_dict,
+    mark_set_width,
+    mark_set_height,
+    img_width,
+    img_height,
+    shape_width,
+    shape_height,
+    default_color
+):
     if not mark_dict:
         return
 
@@ -110,6 +120,11 @@ def add_img_to_fig(fig, img, img_width, img_height):
 def value_to_color(value: float) -> str:
     rgba = plt.cm.RdYlGn(value)
     return f'rgb({int(rgba[0]*255)}, {int(rgba[1]*255)}, {int(rgba[2]*255)})'
+
+def value_to_color(value: float) -> str:
+    rgba = plt.cm.RdYlGn(value)
+    return f'rgb({int(rgba[0]*255)}, {int(rgba[1]*255)}, {int(rgba[2]*255)})'
+
 
 def generate_heatmap(
     data: FunctionData = None,
@@ -348,7 +363,7 @@ def generate_map(
     room_names: Optional[Dict[int, float]] = None,
     desk_ids: Optional[Dict[int, float]] = None,
     label_markings: Optional[str] = None,
-    titel: Optional[str] = "Map",
+    title: Optional[str] = "Map",
 ) -> Plot:
     """
     Generate a visual map of an office layout with optional desk and room highlights.
@@ -360,6 +375,10 @@ def generate_map(
             List of room names to highlight. Converted to IDs internally.
         desk_ids (Iterable[int], optional): 
             List of desk IDs to highlight.
+        label_markings (str, optional):
+            An optional custom label string. If `None`, 'label' is used.
+        title (str, optional):
+            A title for the map plot. Defaults to 'Map'.
 
     Returns:
         Plot: A Plotly-based image with overlaid highlights for specified desks and rooms.
@@ -372,7 +391,6 @@ def generate_map(
             - Rooms: larger blue markers.
         - Background image is fixed and located in the project directory under `data/office_plan_optisch.png`.
     """
-
     room_ids = room_ids if room_ids is not None else dict()
     room_names = room_names if room_names is not None else dict()
     desk_ids = desk_ids if desk_ids is not None else dict()
@@ -488,7 +506,7 @@ def generate_map(
     add_to_marks_to_fig(fig, rooms_to_mark, mark_set_width, mark_set_height, map_width, map_height, 20, 20, "blue")
     add_img_to_fig(fig, map, map_width, map_height)
 
-    fig.update_layout(title=titel)
+    fig.update_layout(title=title)
     
     return fig
 
@@ -549,16 +567,16 @@ if __name__ == "__main__":
     dataset = create_dataset()
 
     policy = {
-        "fixed_days":["Di"],
-        "choseable_days":["Mi", "Do"],
+        "fixed_days":["tuesday"],
+        "choseable_days":["wednesday", "thursday"],
         "number_choseable_days":1,
         "number_days":3,
         "more_days_allowed":True
     }
 
     exceptions = {
-        4: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True},
-        14: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True}
+        4: {'fixed_days': ["friday"], 'number_days': 4, 'more_days_allowed': True},
+        14: {'fixed_days': ["friday"], 'number_days': 4, 'more_days_allowed': True}
     }
 
     random_assignments = [
