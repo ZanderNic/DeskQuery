@@ -784,6 +784,7 @@ def validate_selected_function(
     error = True
     generate_counter = 0
     while error and generate_counter < 5:
+        response = ""
         try:
             # generate the response from the LLM
             response = select_function(query)
@@ -795,7 +796,7 @@ def validate_selected_function(
         except Exception as e:
             print("Error while parsing the LLM response:", e)
             traceback.print_exc()  # Print the stack trace to the console
-            print("Raw response was:", response, sep="\n")
+            print("Raw response was:", response, sep="\n")                  
             error = True
             generate_counter += 1
             continue
