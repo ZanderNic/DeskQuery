@@ -173,7 +173,7 @@ def mean_utilization(
         plot = PlotForFunction(
             default_plot=generate_map(
                 room_names= data_return["utilization"],
-                titel="Utalization in the different rooms",
+                title="Utalization in the different rooms",
                 label_markings="utalization"
             ),
             available_plots=[generate_barchart, generate_map]
@@ -192,7 +192,7 @@ def mean_utilization(
         plot = PlotForFunction(
             default_plot=generate_map(
                 desk_ids= desk_ids,
-                titel="Utalization of the different desks",
+                title="Utalization of the different desks",
                 label_markings="utalization"
             ),
             available_plots=[generate_barchart, generate_map]
