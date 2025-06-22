@@ -232,17 +232,32 @@ def generate_scatterplot(
     yaxis_title: Optional[str] = None
 ) -> Plot:
     """
-    Generate a scatter plot from structured input data of correct format.
+    Generate an interactive office layout map with color-coded highlights for desks and rooms.
+
+    The function overlays a fixed background image of the office floor plan with colored rectangular
+    markers for desks and rooms based on their usage or custom values. Hover tooltips provide details 
+    like room/desk ID, name/number, and value. The color reflects the numeric value (e.g. utilization),
+    using a red-yellow-green colormap that is betwean 0 and 1.
 
     Args:
-        data (FunctionData): A dictionary in the format 
-            {trace_name: {x_value: y_value}}. Defaults to `None`.
-        title (str, optional): Title of the scatter plot.
-        xaxis_title (str, optional): Label for the x-axis.
-        yaxis_title (str, optional): Label for the y-axis.
+        room_ids (dict[int, float], optional):
+            Mapping of room IDs to values (e.g. utilization). These will be marked in the image.
+        room_names (dict[str, float], optional):
+            Alternative to `room_ids`. Room names are internally mapped to IDs.
+        desk_ids (dict[int, float], optional):
+            Mapping of desk IDs to values. These will be shown as smaller colored boxes.
+        label_markings (str, optional):
+            Optional label description shown in the hover tooltip. Defaults to "label" if None.
+        title (str, optional):
+            Title of the map. Defaults to "Map".
 
     Returns:
-        Plot: A Plotly scatter plot figure.
+        Plot: A Plotly figure with the office background and interactive overlays.
+
+    Notes:
+        - Coordinates for desks and rooms are statically defined and tied to a 640x480 image.
+        - Desk/room positions are predefined and not inferred from layout data.
+        - The base image is located at: `data/office_plan_optisch.png`
     """
     traces = list()
     for trace_name, trace_data in data.items():
