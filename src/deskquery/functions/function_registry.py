@@ -1,11 +1,23 @@
 from pathlib import Path
 from deskquery.functions.core.plot import *
+from deskquery.functions.core.helper.plot_helper import *
 from deskquery.functions.core.policy import *
 from deskquery.functions.core.utilization import * 
 from deskquery.functions.core.employee import *
 from deskquery.functions.core.forecasting import *
 import inspect
 import re
+
+
+plot_function_registry = {
+    # "generate_heatmap": generate_heatmap,  # currently disabled
+    "generate_hist": generate_hist,
+    "generate_barchart": generate_barchart,
+    "generate_scatterplot": generate_scatterplot,
+    "generate_lineplot": generate_lineplot,
+    "generate_map": generate_map,
+    "generate_table": generate_table
+}
 
 function_registry = {
     # Utilization
@@ -24,7 +36,7 @@ function_registry = {
     "get_co_booking_frequencies": get_co_booking_frequencies,
 
     # Plotting
-    "generate_plot_for_function": generate_plot_for_function,
+    # "generate_plot_for_function": generate_plot_for_function,
 
     # Capacity & Forecasting
     "forecast_employees": forecast_employees,

@@ -68,8 +68,8 @@ def simulate_policy(
     policy: Dict,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
-    num_weeks: int = 100,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"],  # FIXME: Change to English
+    num_weeks: Optional[int] = 100,
+    weekdays: Optional[List[str]] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
 Assigns policies and simulates the weekly attendance of all employees based on them. A policy is a dict of the following parameters 
@@ -89,7 +89,7 @@ def detect_policy_violations(
     policy: Dict,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"], # FIXME: Change to English
+    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
     only_stats: bool = False
@@ -106,8 +106,22 @@ which are included in the policy, exceptions (if given) and random_assignments (
 
 ---
 
+def get_booking_repeat_pattern(
+    data: Dataset,
+    user_names: Optional[str | Sequence[str]] = None,
+    user_ids: Optional[int | Sequence[int]] = None,
+    most_used_desk: int = 1,
+    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
+    start_date: Optional[datetime] = None, 
+    end_date: Optional[datetime] = None,
+    include_fixed: bool = True,
+) -> FunctionRegistryExpectedFormat:
+Identifies users who book the same desks or same days repeatedly.
+
+---
+
 def get_booking_clusters(
-    dataset: Dataset,
+    data: Dataset,
     co_booking_count_min: int = 3, 
     user_ids: Optional[list[int]] = None,
     include_fixed: bool = False,
@@ -122,7 +136,7 @@ on a minimum number of shared bookings.
 ---
 
 def get_co_booking_frequencies(
-    dataset: Dataset,
+    data: Dataset,
     min_shared_days: int = 5, 
     same_room_only: Optional[bool] = None, 
     include_fixed: bool = True,
@@ -135,17 +149,6 @@ Identifies pairs of users who frequently book on the same days and calculates co
 This function analyzes booking behavior over a specified timeframe and set of weekdays,
 identifying user pairs who have booked on the same day at least `min_shared_days` times.
 Optionally, it can restrict analysis to bookings in the same room.
-
----
-
-def generate_plot_for_function(
-    func_result: FunctionRegistryExpectedFormat,
-    additional_plot_args: Dict[str, str] = {},
-    plot_to_generate: Optional[PlotFunction] = None,
-    use_default_plot: bool = True
-) -> dict:
-Takes a function result and creates a visualization of the data.
-Therefore, a specific plot function or the function results default plot may be used.
 
 ---
 

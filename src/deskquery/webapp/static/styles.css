@@ -1,5 +1,5 @@
 html, body {
-  background-color: #121212;
+  background-color: #111111;
   color: #ffffff;
   font-family: Arial, sans-serif;
   margin: 0;
@@ -62,6 +62,25 @@ html, body {
   width: 100%;
   flex: 1;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #555 #1e1e1e;
+}
+
+#chat-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+#chat-container::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 4px;
+}
+
+#chat-container::-webkit-scrollbar-button {
+  display: none;
+}
+
+#chat-container::-webkit-scrollbar-track {
+  background-color: #1e1e1e;
 }
 
 
@@ -115,6 +134,10 @@ html, body {
   box-sizing: border-box;
 }
 
+.chat-entry:hover {
+  background-color: #252525;
+}
+
 .chat-title {
   flex: 1;
   overflow-x: auto;
@@ -123,17 +146,20 @@ html, body {
   user-select: none;
   padding-right: 5px;
   cursor: pointer;
+  scrollbar-width: thin;
+  scrollbar-color: #555 #1e1e1e;
 }
 
 .chat-title::-webkit-scrollbar {
-  height: 6px;
+  width: 3px;
 }
 .chat-title::-webkit-scrollbar-thumb {
   background-color: #555;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 .chat-title::-webkit-scrollbar-track {
-  background-color: #1e1e1e;
+  background-color: #111111;
+  border-radius: 2px;
 }
 
 .chat-title:focus {
@@ -158,16 +184,22 @@ html, body {
 }
 
 .chat-entry button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  margin-left: 6px;
+
   background: none;
   border: none;
   color: #aaa;
+  
   cursor: pointer;
-  font-size: 16px;
-  margin-left: 6px;
 }
 
 .chat-entry button:hover {
-  color: #666666;
+  color: #ffffff;
 }
 
 .chat-entry.active {
@@ -278,7 +310,7 @@ html, body {
   max-width: 1000px;
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: #666 #121212;
+  scrollbar-color: #666 #111111;
 }
 
 #chat-container::-webkit-scrollbar {
@@ -286,15 +318,15 @@ html, body {
 }
 
 #chat-container::-webkit-scrollbar-thumb {
-  background-color: #666;
+  background-color: #2f2fa2;
   border-radius: 4px;
 }
 
 #chat-container::-webkit-scrollbar-track {
-  background-color: #121212;
+  background-color: #111111;
 }
 
-#empty-chat-overlay {
+.empty-chat-overlay {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -310,15 +342,11 @@ html, body {
   box-sizing: border-box;
 }
 
-#empty-chat-overlay.hidden {
-  display: none;
-}
-
-#empty-chat-overlay h2 {
+.empty-chat-overlay h2 {
   margin-bottom: 8px;
 }
 
-#empty-chat-overlay p {
+.empty-chat-overlay p {
   margin-top: 0;
 }
 
@@ -328,7 +356,7 @@ html, body {
   font-size: 13px;
   font-weight: bold;
   color: #999;
-  background-color: #1a1a1a;
+  background-color: #111111;
   border-top: 1px solid #333;
   box-sizing: border-box;
   text-transform: uppercase;
@@ -352,7 +380,6 @@ html, body {
   padding: 14px;
   border-radius: 8px;
   max-width: 70%;
-  display: flex;
   font-size: 18px;
   line-height: 1.6;
   word-wrap: break-word;
@@ -364,14 +391,127 @@ html, body {
 }
 
 .bot {
+  margin: 5px 0 10px 0;
   background-color: #424242;
   align-self: flex-start;
+}
+
+.message.plot {
+  width: 70%;
+  margin: 5px 0;
+  padding: 0 14px;
+  background-color: transparent !important;
+  align-self: flex-start;
+}
+
+.message.table {
+  margin: 0 0 10px 0;
+  width: 70%;
+  max-width: 70%;
+  /* height: 100%; */
+  min-height: 450px;
+  max-height: 450px;
+  overflow: auto;
+  background-color: #424242;
+  align-self: flex-start;
+}
+
+.table-header {
+  text-align: center;
+
+  padding: 3px;
+  margin-bottom: 5px;
+
+  font-size: 15px;
+  font-weight: 700;
+  background-color: #3b3b3b;
+  color: #ffffff;
+  border-radius: 8px;
+}
+
+.dataframe {
+  table-layout: auto;
+  width: 100%;
+  border-radius: 8px;
+  border-collapse: separate;
+}
+
+.dataframe thead {
+  width: 100%;
+  background-color: #313131;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-color: red;
+  border-bottom: 3px solid red;
+}
+
+.dataframe tr {
+  width: 100%;
+  gap: 0;
+  border-bottom: 1px solid #747474;
+}
+
+.dataframe th {
+  padding: 3px;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.dataframe td {
+  padding: 2px;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 400;
+  color: #fff;
+}
+
+.assistant {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  align-self: flex-start;
+  
+  max-width: 70%;
+  margin: 10px 0 0 0;
+  gap: 5px;
+  
+  color: #696969;
+}
+
+.assistant-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  
+  height: 22px;
+  width: 22px;
+}
+
+.assistant-name {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.0;
+  word-wrap: break-word;
 }
 
 .plot-container {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
+  border-radius: 8px;
 }
 
 
@@ -404,7 +544,7 @@ html, body {
   align-items: center;
   width: 100%;
   border-top: 1px solid #333;
-  background-color: #1a1a1a;
+  background-color: #1e1e1e;
   box-sizing: border-box;
 }
 
@@ -425,8 +565,9 @@ html, body {
   border: none;
   border-radius: 16px;
   font-size: 18px;
+  font-family: Arial, sans-serif;
   outline: none;
-  background-color: #2a2a2a;
+  background-color: #404040;
   color: white;
   resize: none;
   overflow-y: auto;
@@ -435,15 +576,24 @@ html, body {
 }
 
 #send-btn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  height: 48px;
+
   margin-left: 10px;
-  padding: 12px 24px;
-  font-size: 18px;
+  padding: 12px 18px;
+  
+  /* font-size: 16px;
+  font-weight: 600; */
   background-color: #1e88e5;
   border: none;
   color: white;
-  border-radius: 8px;
+  border-radius: 16px;
+  
   cursor: pointer;
-  height: 48px;
 }
 
 #chat-info-wrapper {
@@ -464,7 +614,7 @@ html, body {
   box-sizing: border-box;
   font-size: 12px;
   color: #aaa;
-  padding: 0 10px 5px;
+  padding: 5px 10px;
 }
 
 #selected-model-wrapper {
@@ -499,5 +649,5 @@ html, body {
   box-sizing: border-box;
   font-size: 12px;
   color: #aaa;
-  padding: 0 10px 5px;
+  padding: 5px 10px;
 }

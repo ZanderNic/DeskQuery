@@ -19,31 +19,51 @@ from deskquery.functions.core.helper.plot_helper import generate_lineplot
 
 def forecast_employees(
     data: Dataset,
-    lag: int = 90,
-    booking_type: str = "all",
-    weekly_growth_rate: float = None,
-    weekly_absolute_growth: float = None,
-    forecast_model: str = "linear",
-    weeks_ahead: int = 52,
+    lag: Optional[int] = 90,
+    booking_type: Optional[str] = "all",
+    weekly_growth_rate: Optional[float] = None,
+    weekly_absolute_growth: Optional[float] = None,
+    forecast_model: Optional[str] = "linear",
+    weeks_ahead: Optional[int] = 52,
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
     """
     Forecasts the number of employees.
 
     Args:
-        data (Dataset): The dataset containing booking data.
-        lag (int): Number of days used to build the attendance profile (default: 90).
-        booking_type (str): Either all, fixed (only fixed bookings) or variable (only variable bookings)
-        weekly_growth_rate (float, optional): Expected weekly multiplicative growth rate (e.g., 1.02 for +2% per week).
-        weekly_absolute_growth (float, optional): Expected weekly absolute growth in employee count.
-        forecast_model (str): Model used to forecast time series if weekly_growth_rate and weekly_absolute_growth are not given.
-                              Now supports "linear", "sarima".
-        weeks_ahead (int): Number of weeks into the future to simulate.
-        plotable (bool): If called from another function set to False
+        data (Dataset): 
+            The dataset containing booking data.
+        lag (int, optional): 
+            Number of days used to build the attendance profile. Defaults to 90.
+        booking_type (str, optional): 
+            Either 'all', 'fixed' (only fixed bookings) or 'variable' (only variable bookings).
+            Defaults to all bookings being used if none is given.
+        weekly_growth_rate (float, optional): 
+            Expected weekly multiplicative growth rate (e.g., 1.02 for +2% per week).
+            Defaults to `None`, meaning no growth rate is applied.
+        weekly_absolute_growth (float, optional): 
+            Expected weekly absolute growth in employee count.
+            Defaults to `None`, meaning no absolute growth is applied.
+        forecast_model (str): 
+            Model used to forecast time series if weekly_growth_rate and 
+            weekly_absolute_growth are not given. This can be either "linear" for 
+            linear regression or "ets" for Exponential Smoothing.
+            Defaults to "linear".
+        weeks_ahead (int, optional): 
+            Number of weeks into the future to simulate. Defaults to 52 weeks.
+        plotable (bool): 
+            If called from another function, set to False. Defaults to True, meaning
+            the function will return a plotable result.
 
     Returns:
-        dict[str, object]: Contains the forecasted desk needs under key "data" and a "plotable" flag.
+        dict[str, object]: 
+            Contains the forecasted desk needs under key "data" and a "plotable" flag.
     """
+    if not booking_type or booking_type not in ["all", "fixed", "variable"]:
+        booking_type = 'all'
+    if not forecast_model or forecast_model not in ["linear", "ets"]:
+        forecast_model = "linear"
+
     worker_history_series = load_active_worker_timeseries(data, lag)[booking_type]
     current_worker_count = worker_history_series.iloc[-1]
 
