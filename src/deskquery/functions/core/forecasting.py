@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 # projekt imports
 from deskquery.data.dataset import Dataset
@@ -23,7 +23,7 @@ def forecast_employees(
     booking_type: str = "all",
     weekly_growth_rate: float = None,
     weekly_absolute_growth: float = None,
-    forecast_model = "linear",
+    forecast_model: str = "linear",
     weeks_ahead: int = 52,
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
@@ -37,6 +37,7 @@ def forecast_employees(
         weekly_growth_rate (float, optional): Expected weekly multiplicative growth rate (e.g., 1.02 for +2% per week).
         weekly_absolute_growth (float, optional): Expected weekly absolute growth in employee count.
         forecast_model (str): Model used to forecast time series if weekly_growth_rate and weekly_absolute_growth are not given.
+                              Now supports "linear", "sarima".
         weeks_ahead (int): Number of weeks into the future to simulate.
         plotable (bool): If called from another function set to False
 
@@ -44,18 +45,13 @@ def forecast_employees(
         dict[str, object]: Contains the forecasted desk needs under key "data" and a "plotable" flag.
     """
     worker_history_series = load_active_worker_timeseries(data, lag)[booking_type]
-
     current_worker_count = worker_history_series.iloc[-1]
 
     start_week = worker_history_series.index[-1] + pd.Timedelta(weeks=1)
-    forecast_index = pd.date_range(
-        start=start_week,
-        periods=weeks_ahead,
-        freq="W-MON"
-    )
+    forecast_index = pd.date_range(start=start_week, periods=weeks_ahead, freq="W-MON")
 
     if weekly_growth_rate and weekly_absolute_growth:
-        return ValueError("Either use weekly_growth_rate or weekly_absolute_growth. If None is given the forecast is done with the forecast_model")
+        raise ValueError("Either use weekly_growth_rate or weekly_absolute_growth. If None is given the forecast is done with the forecast_model")
 
     if weekly_growth_rate is not None:
         worker_forecast = np.array([
@@ -68,10 +64,17 @@ def forecast_employees(
             for i in range(weeks_ahead)
         ])
     else:
-        forecast = forecast_timeseries(worker_history_series, weeks_ahead, forecast_model)
-        if isinstance(forecast, pd.Series):
-            forecast = forecast.resample("W-MON").mean().iloc[:weeks_ahead].values
-        worker_forecast = forecast
+        if forecast_model == "sarima":
+            model = SARIMAX(worker_history_series, order=(1, 1, 1), seasonal_order=(1, 1, 1, 52), enforce_stationarity=False, enforce_invertibility=False)
+            results = model.fit(disp=False)
+            forecast = results.forecast(steps=weeks_ahead)
+            worker_forecast = forecast.values
+
+        else:
+            forecast = forecast_timeseries(worker_history_series, weeks_ahead, forecast_model)
+            if isinstance(forecast, pd.Series):
+                forecast = forecast.resample("W-MON").mean().iloc[:weeks_ahead].values
+            worker_forecast = forecast
 
     worker_forecast_series = pd.Series(worker_forecast, index=forecast_index, name="Worker forecast")
 
