@@ -321,6 +321,7 @@ def validate_next_task(
     error = True
     generate_counter = 0
     while error and generate_counter < 5:
+        response = ""
         try:
             # generate the response from the LLM
             response = decide_next_task(question, chat_history)
@@ -687,6 +688,7 @@ def validate_plot_function_execution():
     print("80) Last data message available plots:", last_FREF.plot.available_plots, sep="\n")
 
     while error and generate_counter < 5:
+        response = ""
         try:
             # generate the response from the selected function
             # print("80) Last FREF:", last_FREF, sep="\n")  # FIXME: DEBUG
@@ -1069,6 +1071,7 @@ def validate_function_execution(
     print("400) Executing function:", function_data["selected_function"], "with params:", function_data["function_parameters"], sep="\n")
 
     while error and generate_counter < 5:
+        response = ""
         try:
             # generate the response from the selected function
             response = func(
@@ -1180,6 +1183,7 @@ def validate_function_result_description():
     generate_counter = 0
 
     while error and generate_counter < 5:
+        response = ""
         try:
             # generate the response from the LLM
             response = describe_function_result()
