@@ -232,32 +232,17 @@ def generate_scatterplot(
     yaxis_title: Optional[str] = None
 ) -> Plot:
     """
-    Generate an interactive office layout map with color-coded highlights for desks and rooms.
-
-    The function overlays a fixed background image of the office floor plan with colored rectangular
-    markers for desks and rooms based on their usage or custom values. Hover tooltips provide details 
-    like room/desk ID, name/number, and value. The color reflects the numeric value (e.g. utilization),
-    using a red-yellow-green colormap that is betwean 0 and 1.
+    Generate a scatter plot from structured input data of correct format.
 
     Args:
-        room_ids (dict[int, float], optional):
-            Mapping of room IDs to values (e.g. utilization). These will be marked in the image.
-        room_names (dict[str, float], optional):
-            Alternative to `room_ids`. Room names are internally mapped to IDs.
-        desk_ids (dict[int, float], optional):
-            Mapping of desk IDs to values. These will be shown as smaller colored boxes.
-        label_markings (str, optional):
-            Optional label description shown in the hover tooltip. Defaults to "label" if None.
-        title (str, optional):
-            Title of the map. Defaults to "Map".
+        data (FunctionData): A dictionary in the format 
+            {trace_name: {x_value: y_value}}. Defaults to `None`.
+        title (str, optional): Title of the scatter plot.
+        xaxis_title (str, optional): Label for the x-axis.
+        yaxis_title (str, optional): Label for the y-axis.
 
     Returns:
-        Plot: A Plotly figure with the office background and interactive overlays.
-
-    Notes:
-        - Coordinates for desks and rooms are statically defined and tied to a 640x480 image.
-        - Desk/room positions are predefined and not inferred from layout data.
-        - The base image is located at: `data/office_plan_optisch.png`
+        Plot: A Plotly scatter plot figure.
     """
     traces = list()
     for trace_name, trace_data in data.items():
@@ -381,30 +366,32 @@ def generate_map(
     title: Optional[str] = "Map",
 ) -> Plot:
     """
-    Generate a visual map of an office layout with optional desk and room highlights.
+    Generate an interactive office layout map with color-coded highlights for desks and rooms.
+
+    The function overlays a fixed background image of the office floor plan with colored rectangular
+    markers for desks and rooms based on their usage or custom values. Hover tooltips provide details 
+    like room/desk ID, name/number, and value. The color reflects the numeric value (e.g. utilization),
+    using a red-yellow-green colormap that is betwean 0 and 1.
 
     Args:
-        room_ids (Iterable[int], optional): 
-            List of room IDs to highlight.
-        room_names (Iterable[str], optional):
-            List of room names to highlight. Converted to IDs internally.
-        desk_ids (Iterable[int], optional): 
-            List of desk IDs to highlight.
+        room_ids (dict[int, float], optional):
+            Mapping of room IDs to values (e.g. utilization). These will be marked in the image.
+        room_names (dict[str, float], optional):
+            Alternative to `room_ids`. Room names are internally mapped to IDs.
+        desk_ids (dict[int, float], optional):
+            Mapping of desk IDs to values. These will be shown as smaller colored boxes.
         label_markings (str, optional):
-            An optional custom label string. If `None`, 'label' is used.
+            Optional label description shown in the hover tooltip. Defaults to "label" if None.
         title (str, optional):
-            A title for the map plot. Defaults to 'Map'.
+            Title of the map. Defaults to "Map".
 
     Returns:
-        Plot: A Plotly-based image with overlaid highlights for specified desks and rooms.
+        Plot: A Plotly figure with the office background and interactive overlays.
 
     Notes:
-        - Desk and room coordinates are predefined for a specific static image.
-        - Desk and room data mappings are loaded from `Dataset._desk_room_mapping`.
-        - Highlights:
-            - Desks: small red markers.
-            - Rooms: larger blue markers.
-        - Background image is fixed and located in the project directory under `data/office_plan_optisch.png`.
+        - Coordinates for desks and rooms are statically defined and tied to a 640x480 image.
+        - Desk/room positions are predefined and not inferred from layout data.
+        - The base image is located at: `data/office_plan_optisch.png`
     """
     room_ids = room_ids if room_ids is not None else dict()
     room_names = room_names if room_names is not None else dict()
