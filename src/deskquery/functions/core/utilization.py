@@ -163,25 +163,22 @@ def mean_utilization(
     if top_or_bottom_n:
         utilization = utilization.sort_values(ascending=from_bottom)[:top_or_bottom_n]
     
-    data_return = {
-        "utilization": utilization.to_dict(), 
-        "count": len(utilization)
-    }
+    data_return = utilization.to_dict()
     
     # change the plot type depending on for what we have the utilization
     if by_room:  
         plot = PlotForFunction(
             default_plot=generate_map(
-                room_names= data_return["utilization"],
+                room_names= data_return,
                 title="Utalization in the different rooms",
                 label_markings="utalization"
             ),
-            available_plots=[generate_barchart, generate_map]
+            available_plots=[generate_map]
         )
     elif by_day:
         plot = PlotForFunction(
             default_plot=generate_barchart(
-                data={"Utilization": data_return["utilization"]},
+                data={"Utilization": data_return},
                 title=column_name,
                 xaxis_title=column_name,
                 yaxis_title="mean utilization"
@@ -195,7 +192,7 @@ def mean_utilization(
                 title="Utalization of the different desks",
                 label_markings="utalization"
             ),
-            available_plots=[generate_barchart, generate_map]
+            available_plots=[generate_map]
         )
 
     return FunctionRegistryExpectedFormat(data=data_return, plot=plot)
@@ -343,7 +340,7 @@ def detect_utilization_anomalies(
         end_date=end_date,
     )
 
-    utilization = result["data"]["utilization"]
+    utilization = result["data"]
     mean_util = sum(utilization.values()) / (len(utilization))
 
     anomalies = {
@@ -545,8 +542,8 @@ if __name__ == "__main__":
         start_date=start,
         end_date=end
     )
-    pprint(return_dict["data"]["utilization"])
-    print("Num rooms:", return_dict["data"]["count"])
+    pprint(return_dict["data"])
+    print("Num rooms:", len(return_dict["data"]))
     print()
    
     print("=== Utilization by desk with threshold > 0.6 ===")
@@ -559,8 +556,8 @@ if __name__ == "__main__":
         threshold=0.6,
         from_bottom=False
     )
-    pprint(return_dict["data"]["utilization"])
-    print("Desks over 60% Utalization:", return_dict["data"]["count"])
+    pprint(return_dict["data"])
+    print("Desks over 60% Utalization:", len(return_dict["data"]))
     print()
     
     
@@ -574,7 +571,7 @@ if __name__ == "__main__":
         top_or_bottom_n = 5,
         from_bottom = False
     )
-    print("Top 5 Desks by Utalization:", return_dict["data"]["utilization"])
+    print("Top 5 Desks by Utalization:", return_dict["data"])
     print()
 
 
@@ -588,7 +585,7 @@ if __name__ == "__main__":
         end_date=end
     )
     
-    pprint(return_dict["data"]["utilization"])
+    pprint(return_dict["data"])
     print()
     
     
