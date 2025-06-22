@@ -36,7 +36,7 @@ def forecast_employees(
         booking_type (str): Either all, fixed (only fixed bookings) or variable (only variable bookings)
         weekly_growth_rate (float, optional): Expected weekly multiplicative growth rate (e.g., 1.02 for +2% per week).
         weekly_absolute_growth (float, optional): Expected weekly absolute growth in employee count.
-        forecast_model (str): Model used to forecast time series if weekly_growth_rate and weekly_absolute_growth are not given.
+        forecast_model (str): Model used to forecast time series if weekly_growth_rate and weekly_absolute_growth are not given should be one of "linear", "moving_average", "exponential_smoothing".
         weeks_ahead (int): Number of weeks into the future to simulate.
         plotable (bool): If called from another function set to False
 
