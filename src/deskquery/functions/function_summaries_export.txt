@@ -68,8 +68,8 @@ def simulate_policy(
     policy: Dict,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
-    num_weeks: int = 100,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"],  # FIXME: Change to English
+    num_weeks: Optional[int] = 100,
+    weekdays: Optional[List[str]] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
 Assigns policies and simulates the weekly attendance of all employees based on them. A policy is a dict of the following parameters 
@@ -89,7 +89,7 @@ def detect_policy_violations(
     policy: Dict,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"], # FIXME: Change to English
+    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
     only_stats: bool = False

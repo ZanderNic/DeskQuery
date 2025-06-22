@@ -1,6 +1,6 @@
 # std-lib imports
 from typing import Optional, List, Dict, Tuple
-from datetime import datetime, timedelta
+from datetime import timedelta
 from collections import Counter
 
 # 3 party imports
@@ -18,8 +18,8 @@ def simulate_policy(
     policy: Dict,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
-    num_weeks: int = 100,
-    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
+    num_weeks: Optional[int] = 100,
+    weekdays: Optional[List[str]] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
     """
@@ -34,17 +34,32 @@ def simulate_policy(
         more_days_allowed (bool): If True, adds additional days based on attendance.
 
     Args:
-        data (Dataset): The dataset containing booking data.
-        policy (Dict): Default policy parameters.
-        exceptions (Optional[Dict[int, Dict]]): Special policy rules for certain employee IDs.
-        random_assignments (Optional[List[Tuple[int, Dict]]]): List of tuples (number_of_employees, policy_dict) for random policy assignment.
-        num_weeks (int): Number of weeks over which the attendance is simulated.
-        weekdays (List[str]): List of weekdays used in the simulation, e.g., ["monday", "tuesday", "wednesday", "thursday", "friday"].
+        data (Dataset): 
+            The dataset containing booking data.
+        policy (Dict): 
+            Default policy parameters.
+        exceptions (Dict[int, Dict], optional): 
+            Special policy rules for certain employee IDs. Defaults to `None`, 
+            meaning the default policy is applied to all employees.
+        random_assignments (List[Tuple[int, Dict]], optional): 
+            List of tuples (number_of_employees, policy_dict) for random policy assignment.
+            Defaults to `None`, meaning no random assignments are made.
+        num_weeks (int, optional): 
+            Number of weeks over which the attendance is simulated. Defaults to 100.
+        weekdays (List[str], optional): 
+            List of weekdays used in the simulation. Defaults to 
+            ["monday", "tuesday", "wednesday", "thursday", "friday"] if none are given.
+
         plotable (bool): If called from another function set to False
 
     Returns:
-        dict[str, object]: Dictionary containing the average total attendance (Monday to Sunday) across all employees and potentially other metrics.
+        dict[str, object]: 
+            Dictionary containing the average total attendance (Monday to Sunday) across all employees and potentially other metrics.
     """
+    if not weekdays:
+        weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    if isinstance(weekdays, str):
+        weekdays = [weekdays]
     weekdays = [day.lower() for day in weekdays]
 
     attendances = load_attendance_profiles(data=data, weekdays=weekdays)
@@ -98,7 +113,10 @@ def simulate_policy(
 
         return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
 
-    return FunctionRegistryExpectedFormat(data=total_attendance, plot=PlotForFunction(default_plot=None, available_plots=[]))
+    return FunctionRegistryExpectedFormat(
+        data=total_attendance, 
+        plot=PlotForFunction()
+    )
 
 
 def detect_policy_violations(
@@ -106,10 +124,10 @@ def detect_policy_violations(
     policy: Dict,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
-    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None,
-    only_stats: bool = False
+    weekdays: Optional[List[str]] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
+    start_date: Optional[datetime.datetime] = None, 
+    end_date: Optional[datetime.datetime] = None,
+    only_stats: Optional[bool] = False
 ) -> FunctionRegistryExpectedFormat:
     """
     Takes a policy and searches the data for violations. A policy is a dict of the following parameters 
@@ -123,18 +141,35 @@ def detect_policy_violations(
         more_days_allowed (bool): If True, adds additional days based on attendance.
 
     Args:
-        data (Dataset): The dataset containing booking data.
-        policy (Dict): Default policy parameters.
-        exceptions (Optional[Dict[int, Dict]]): Targeted special rules for certain employee IDs.
-        random_assignments (Optional[List[Tuple[int, Dict]]]): List of tuples (number_of_employees, policy dict) for random assignment.
-        weekdays (List[str]): Days of the week considered, e.g., ["monday", "tuesday", "wednesday", "thursday", "friday"].
-        start_date (Optional[datetime]): Start date of the period to evaluate. Defaults to earliest date in data if None.
-        end_date (Optional[datetime]): End date of the period to evaluate. Defaults to latest date in data if None.
-        only_stats (bool): If True, returns only aggregated weekly violation counts instead of detailed per-user violations.
+        data (Dataset): 
+            The dataset containing booking data.
+        policy (Dict): 
+            Default policy parameters.
+        exceptions (Dict[int, Dict], optional): 
+            Targeted special rules for certain employee IDs. Defaults to `None`,
+            meaning the default policy is applied to all employees.
+        random_assignments (List[Tuple[int, Dict]], optional): 
+            List of tuples (number_of_employees, policy dict) for random assignment.
+            Defaults to `None`, meaning no random assignments are made.
+        weekdays (List[str], optional): 
+            Days of the week that are considered. Defaults to 
+            ["monday", "tuesday", "wednesday", "thursday", "friday"] if none are given.
+        start_date (datetime.datetime, optional): 
+            Start date of the period to evaluate. Defaults to earliest date in the data if `None`.
+        end_date (datetime.datetime, optional): 
+            End date of the period to evaluate. Defaults to latest date in the data if `None`.
+        only_stats (bool, optional): 
+            If True, returns only aggregated weekly violation counts instead of 
+            detailed per-user violations. Defaults to `False`.
 
     Returns:
-        dict[str, object]: Dictionary containing either per-user violations or aggregated weekly violation statistics.
+        dict[str, object]: 
+            Dictionary containing either per-user violations or aggregated weekly violation statistics.
     """
+    if not weekdays:
+        weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    if isinstance(weekdays, str):
+        weekdays = [weekdays]
     weekdays = [day.lower() for day in weekdays]
 
     attendances = load_attendances(data=data)
