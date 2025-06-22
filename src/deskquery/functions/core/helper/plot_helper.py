@@ -494,7 +494,7 @@ def generate_map(
     }
 
     rooms_to_mark = {
-        f"Room ID: {id} Name: {room_name_id_mapping[id]} {label_markings or "label"}: {value}": {
+        f"Room ID: {id} Name: {room_name_id_mapping[id]} {label_markings or 'label'}: {value}": {
             "color": value_to_color(value),
             "coords": room_coords[id]
         }
@@ -565,7 +565,8 @@ def generate_table(
 
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
-    from deskquery.functions.core.policy import detect_policy_violations
+    from deskquery.functions.core.forecasting import estimate_necessary_desks, forecast_employees
+    from deskquery.functions.core.policy import simulate_policy
     dataset = create_dataset()
 
     policy = {
@@ -576,18 +577,22 @@ if __name__ == "__main__":
         "more_days_allowed":True
     }
 
-    exceptions = {
-        4: {'fixed_days': ["friday"], 'number_days': 4, 'more_days_allowed': True},
-        14: {'fixed_days': ["friday"], 'number_days': 4, 'more_days_allowed': True}
-    }
+    # exceptions = {
+    #     4: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True},
+    #     14: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True}
+    # }
 
-    random_assignments = [
-        (10, {'number_days': 1, 'more_days_allowed': False})
-    ]
+    # random_assignments = [
+    #     (10, {'number_days': 1, 'more_days_allowed': False})
+    # ]
 
-    result = detect_policy_violations(dataset, policy, exceptions, random_assignments, only_stats=True)
+    result = estimate_necessary_desks(dataset, forecast_model="sarima", weekly_absolute_growth=1, weeks_ahead=52, policy=policy)
     output = generate_lineplot(result["data"])
-    if isinstance(output, str):
-        print(output)
-    else:
-        output.write_html("hist.html")
+
+    # result = simulate_policy(dataset, policy=policy)
+    # output = generate_barchart(result["data"])
+
+    # result = forecast_employees(dataset, forecast_model="sarima")
+    # output = generate_lineplot(result["data"])
+
+    output.write_html("hist.html")

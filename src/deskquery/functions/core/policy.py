@@ -27,13 +27,15 @@ def simulate_policy(
     Assigns policies and simulates the weekly attendance of all employees based on them. A policy is a dict of the following parameters 
     which are included in the policy, exceptions (if given) and random_assignments (if given):
 
-        timeframe (str): Policy timeframe (currently only "week" is supported).
-        fixed_days (Optional[List[str]]): Days that are always selected.
-        choseable_days (Optional[List[str]]): Days from which a fixed number is chosen.
-        number_choseable_days (Optional[int]): Number of days to pick from `choseable_days`.
-        number_days (Optional[int]): Target total number of days.
+    policy = {
+        timeframe (str): Policy timeframe (currently only "week" is supported);
+        fixed_days (Optional[List[str]]): Days that are always selected;
+        choseable_days (Optional[List[str]]): Days from which a fixed number is chosen;
+        number_choseable_days (Optional[int]): Number of days to pick from `choseable_days`;
+        number_days (Optional[int]): Target total number of days;
         more_days_allowed (bool): If True, adds additional days based on attendance.
-
+    }
+        
     Args:
         data (Dataset): 
             The dataset containing booking data.
@@ -54,8 +56,12 @@ def simulate_policy(
         plotable (bool): If called from another function set to False
 
     Returns:
-        dict[str, object]: 
-            Dictionary containing the average total attendance (Monday to Sunday) across all employees and potentially other metrics.
+        FunctionRegistryExpectedFormat: 
+            - If `plotable` is `True`, a FunctionRegistryExpectedFormat object 
+              containing the average total attendance (Monday to Sunday) across 
+              all employees and a plot of the attendance per weekday. 
+            - If `plotable` is `False`, a FunctionRegistryExpectedFormat object
+              containing the total attendance as a numpy array without a plot.
     """
     if not weekdays:
         weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
@@ -134,13 +140,15 @@ def detect_policy_violations(
     Takes a policy and searches the data for violations. A policy is a dict of the following parameters 
     which are included in the policy, exceptions (if given) and random_assignments (if given):
 
-        timeframe (str): Policy timeframe (currently only "week" is supported).
-        fixed_days (Optional[List[str]]): Days that are always selected.
-        choseable_days (Optional[List[str]]): Days from which a fixed number is chosen.
-        number_choseable_days (Optional[int]): Number of days to pick from `choseable_days`.
-        number_days (Optional[int]): Target total number of days.
+    policy = {
+        timeframe (str): Policy timeframe (currently only "week" is supported);
+        fixed_days (List[str], optional): Days that are always selected;
+        choseable_days (List[str], optional): Days from which a fixed number is chosen;
+        number_choseable_days (int, optional): Number of days to pick from `choseable_days`;
+        number_days (int, optional): Target total number of days;
         more_days_allowed (bool): If True, adds additional days based on attendance.
-
+    }
+        
     Args:
         data (Dataset): 
             The dataset containing booking data.
@@ -150,7 +158,8 @@ def detect_policy_violations(
             Targeted special rules for certain employee IDs. Defaults to `None`,
             meaning the default policy is applied to all employees.
         random_assignments (List[Tuple[int, Dict]], optional): 
-            List of tuples (number_of_employees, policy dict) for random assignment.
+            List of tuples (number_of_employees, policy dict) for random policy
+            variant assignments for a specified number of employees.
             Defaults to `None`, meaning no random assignments are made.
         weekdays (List[str], optional): 
             Days of the week that are considered. Defaults to 
@@ -164,8 +173,11 @@ def detect_policy_violations(
             detailed per-user violations. Defaults to `False`.
 
     Returns:
-        dict[str, object]: 
-            Dictionary containing either per-user violations or aggregated weekly violation statistics.
+        FunctionRegistryExpectedFormat: 
+            - If `only_stats` is `True`, a FunctionRegistryExpectedFormat object 
+              containing the weekly violation statistics and a plot of the violations.
+            - If `only_stats` is `False`, a FunctionRegistryExpectedFormat object
+              containing detailed per-user violations and no plot.
     """
     if not weekdays:
         weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
@@ -287,7 +299,8 @@ def detect_policy_violations(
         )
 
     return FunctionRegistryExpectedFormat(
-        data=weekly_stats
+        data=weekly_stats,
+        plot=PlotForFunction()
     )
 
 

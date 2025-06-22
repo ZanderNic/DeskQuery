@@ -1,6 +1,6 @@
 # std-lib import
 from typing import Optional, List, Dict, Tuple
-from datetime import datetime, date, timedelta
+from datetime import timedelta
 from deskquery.functions.types import FunctionData
 
 # 3 party imports
@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 # projekt imports
 from deskquery.data.dataset import Dataset
@@ -28,7 +28,9 @@ def forecast_employees(
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
     """
-    Forecasts the number of employees.
+    Forecasts the number of employees with different models such as linear or sarima. 
+    Furthermore, this function can handle fixed weekly growth rates and fixed weekly absolute growth. 
+    It gets the worker time series and then forecasts future employee numbers.
 
     Args:
         data (Dataset): 
@@ -44,10 +46,10 @@ def forecast_employees(
         weekly_absolute_growth (float, optional): 
             Expected weekly absolute growth in employee count.
             Defaults to `None`, meaning no absolute growth is applied.
-        forecast_model (str): 
+        forecast_model (str, optional): 
             Model used to forecast time series if weekly_growth_rate and 
             weekly_absolute_growth are not given. This can be either "linear" for 
-            linear regression or "ets" for Exponential Smoothing.
+            linear regression or "sarima" for seasonal moving average regression.
             Defaults to "linear".
         weeks_ahead (int, optional): 
             Number of weeks into the future to simulate. Defaults to 52 weeks.
@@ -56,27 +58,33 @@ def forecast_employees(
             the function will return a plotable result.
 
     Returns:
-        dict[str, object]: 
-            Contains the forecasted desk needs under key "data" and a "plotable" flag.
+        FunctionRegistryExpectedFormat: 
+            - If `plotable` is True, it returns a FunctionRegistryExpectedFormat object
+              containing the worker history and forecast series, as well as a plot.
+        Tuple[int, pd.Series]:
+            - If `plotable` is False, it returns a tuple with the current worker count
+              and the forecasted worker count series.
     """
+    # set default values if applicable
+    if not lag or lag <= 0:
+        lag = 90
     if not booking_type or booking_type not in ["all", "fixed", "variable"]:
         booking_type = 'all'
-    if not forecast_model or forecast_model not in ["linear", "ets"]:
+    if not forecast_model or forecast_model not in ["linear", "sarima"]:
         forecast_model = "linear"
+    if not weeks_ahead or weeks_ahead <= 0:
+        weeks_ahead = 52
+    if not plotable:
+        plotable = True
 
     worker_history_series = load_active_worker_timeseries(data, lag)[booking_type]
-
     current_worker_count = worker_history_series.iloc[-1]
 
     start_week = worker_history_series.index[-1] + pd.Timedelta(weeks=1)
-    forecast_index = pd.date_range(
-        start=start_week,
-        periods=weeks_ahead,
-        freq="W-MON"
-    )
+    forecast_index = pd.date_range(start=start_week, periods=weeks_ahead, freq="W-MON")
 
     if weekly_growth_rate and weekly_absolute_growth:
-        return ValueError("Either use weekly_growth_rate or weekly_absolute_growth. If None is given the forecast is done with the forecast_model")
+        raise ValueError("Either use weekly_growth_rate or weekly_absolute_growth. If None is given the forecast is done with the forecast_model")
 
     if weekly_growth_rate is not None:
         worker_forecast = np.array([
@@ -89,10 +97,17 @@ def forecast_employees(
             for i in range(weeks_ahead)
         ])
     else:
-        forecast = forecast_timeseries(worker_history_series, weeks_ahead, forecast_model)
-        if isinstance(forecast, pd.Series):
-            forecast = forecast.resample("W-MON").mean().iloc[:weeks_ahead].values
-        worker_forecast = forecast
+        if forecast_model == "sarima":
+            model = SARIMAX(worker_history_series, order=(1, 1, 1), seasonal_order=(1, 1, 1, 52), enforce_stationarity=False, enforce_invertibility=False)
+            results = model.fit(disp=False)
+            forecast = results.forecast(steps=weeks_ahead)
+            worker_forecast = forecast.values
+
+        else:
+            forecast = forecast_timeseries(worker_history_series, weeks_ahead, forecast_model)
+            if isinstance(forecast, pd.Series):
+                forecast = forecast.resample("W-MON").mean().iloc[:weeks_ahead].values
+            worker_forecast = forecast
 
     worker_forecast_series = pd.Series(worker_forecast, index=forecast_index, name="Worker forecast")
 
@@ -124,46 +139,83 @@ def forecast_employees(
 
 def estimate_necessary_desks(
     data: Dataset,
-    lag: int = 90,
-    booking_type: str = "all",
-    weekly_growth_rate: Optional[float] = None,
-    weekly_absolute_growth: Optional[float] = None,
-    forecast_model = "linear",
-    target_utilization: float = 1.0,
-    weeks_ahead: int = 52,
     policy: Optional[Dict] = None,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
+    lag: Optional[int] = 90,
+    booking_type: Optional[str] = "all",
+    weekly_growth_rate: Optional[float] = None,
+    weekly_absolute_growth: Optional[float] = None,
+    forecast_model: Optional[str] = "linear",
+    weeks_ahead: Optional[int] = 52,
+    target_utilization: Optional[float] = 1.0,
 ) -> FunctionRegistryExpectedFormat:
     """
-    Estimates required number of desks to meet a target utilization. It can handle policies. If no policy
-    is given it uses the attendance profile and a standard policy (no requirements). Either time series forecast is used or 
-    the weekly growth rate / absolute growth. A policy is a dict of the following parameters 
-    which are included in the policy, exceptions (if given) and random_assignments (if given):
+    Estimates required number of desks to meet a target utilization. It can handle policies. 
+    If no policy is given, it uses the attendance profile and a standard policy (no requirements).
+    Either time series forecast is used or the weekly growth rate / absolute growth.
+    A policy is a dict of the following parameters which are included in the policy, 
+    exceptions (if given) and random_assignments (if given):
 
-        timeframe (str): Policy timeframe (currently only "week" is supported).
-        fixed_days (Optional[List[str]]): Days that are always selected.
-        choseable_days (Optional[List[str]]): Days from which a fixed number is chosen.
-        number_choseable_days (Optional[int]): Number of days to pick from `choseable_days`.
-        number_days (Optional[int]): Target total number of days.
-        more_days_allowed (bool): If True, adds additional days based on attendance.
+    policy = {
+        timeframe (str): Policy timeframe (currently only "week" is supported);
+        fixed_days (List[str], optional): Days that are always selected;
+        choseable_days (List[str], optional): Days from which a fixed number is chosen;
+        number_choseable_days (int, optional): Number of days to pick from `choseable_days`;
+        number_days (int, optional): Target total number of days;
+        more_days_allowed (bool): If True, adds additional days based on attendance;
+    }
 
     Args:
-        data (Dataset): The dataset containing booking data.
-        lag (int): Number of days used to build the attendance profile (default: 90).
-        booking_type (str): Either all, fixed (only fixed bookings) or variable (only variable bookings)
-        weekly_growth_rate (float, optional): Expected weekly multiplicative growth rate (e.g., 1.02 for +2% per week).
-        weekly_absolute_growth (float, optional): Expected weekly absolute growth in employee count.
-        forecast_model (str): Model used to forecast time series if weekly_growth_rate and weekly_absolute_growth are not given.
-        weeks_ahead (int): Number of weeks into the future to simulate.
-        target_utilization (float): Target average utilization (e.g., 0.8 for 80%).
-        policy (Dict): Base policy definition (see `simulate_policy` for structure).
-        exceptions (Optional[Dict[int, Dict]]): Individual employee-specific exceptions to the policy.
-        random_assignments (Optional[List[Tuple[int, Dict]]]): Random policy variants for specified number of employees.
+        data (Dataset): 
+            The dataset containing booking data.
+        policy (Dict): 
+            Base policy definition from above. If not given, the policy {"timeframe": "week"} is used.
+        exceptions (Dict[int, Dict], optional): 
+            Targeted special rules for certain employee IDs. Defaults to `None`,
+            meaning the default policy is applied to all employees.
+        random_assignments (List[Tuple[int, Dict]], optional):
+            List of tuples (number_of_employees, policy dict) for random policy
+            variant assignments for a specified number of employees.
+            Defaults to `None`, meaning no random assignments are made.
+        lag (int, optional): 
+            Number of days used to build the attendance profile. Defaults to 90.
+        booking_type (str, optional): 
+            Either 'all', 'fixed' (only fixed bookings) or 'variable' (only variable bookings).
+            Defaults to all bookings being used if none is given.
+        weekly_growth_rate (float, optional): 
+            Expected weekly multiplicative growth rate (e.g., 1.02 for +2% per week).
+            Defaults to `None`, meaning no growth rate is applied.
+        weekly_absolute_growth (float, optional): 
+            Expected weekly absolute growth in employee count.
+            Defaults to `None`, meaning no absolute growth is applied.
+        forecast_model (str): 
+            Model used to forecast time series if weekly_growth_rate and 
+            weekly_absolute_growth are not given. This can be either "linear" for 
+            linear regression or "sarima" for seasonal moving average regression.
+            Defaults to "linear".
+        weeks_ahead (int, optional): 
+            Number of weeks into the future to simulate. Defaults to 52 weeks.
+        target_utilization (float, optional): 
+            Target average utilization (e.g., 0.8 for 80%). Defaults to 1.0 (100% utilization).
 
     Returns:
-        dict[str, object]: Contains the forecasted desk needs under key "data" and a "plotable" flag.
+        FunctionRegistryExpectedFormat: 
+            A FunctionRegistryExpectedFormat object containing the necessary desks 
+            forecast and number of desks as well as a plot.
     """
+    # set default values if applicable
+    if not lag or lag <= 0:
+        lag = 90
+    if not booking_type or booking_type not in ["all", "fixed", "variable"]:
+        booking_type = 'all'
+    if not forecast_model or forecast_model not in ["linear", "sarima"]:
+        forecast_model = "linear"
+    if not weeks_ahead or weeks_ahead <= 0:
+        weeks_ahead = 52
+    if not target_utilization or target_utilization < 0.0:
+        target_utilization = 1.0
+
     current_worker_count, worker_forecast_series = forecast_employees(data, lag, booking_type, weekly_growth_rate, weekly_absolute_growth, forecast_model, weeks_ahead, False)
 
     worker_forecast = worker_forecast_series.values
@@ -212,8 +264,8 @@ def estimate_necessary_desks(
 ####### Helpers ###########################################################################################################################################################################
 
 def load_active_worker_timeseries(
-        data: Dataset,
-        time_window: int = 90
+    data: Dataset,
+    time_window: int = 90
 ) -> Dict[str, pd.Series]:
     """
     Calculates the number of active workers at any given time. An active worker

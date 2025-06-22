@@ -1,6 +1,6 @@
 #!/usr/bin/env python 
 from typing import Optional, List, Literal, Sequence, Dict
-from datetime import datetime
+import datetime
 import pandas as pd
 from collections import Counter
 from itertools import combinations
@@ -16,8 +16,8 @@ def get_avg_employee_bookings(
     return_total_mean: bool = False,
     granularity: Literal["day", "week", "month", "year"] = 'year',
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
+    start_date: Optional[datetime.datetime] = None,
+    end_date: Optional[datetime.datetime] = None,
     include_double_bookings: bool = False,
     include_fixed: bool = True,
     return_user_names: bool = True,
@@ -27,22 +27,36 @@ def get_avg_employee_bookings(
     Compute average booking frequency per employee over a specified time granularity.
 
     Parameters:
-        data (Dataset): Dataset containing booking records.
-        user_names (str | Sequence[str], optional): Filter for specific usernames.
-        user_ids (int | Sequence[int], optional): Filter for specific user IDs.
-        num_employees (int, optional): Limit result to top-N employees by average bookings.
-        return_total_mean (bool): If True, return the mean over all employees instead of per-user values.
-        granularity (str): Time unit for averaging. One of "day", "week", "month", or "year".
-        weekdays (List[str]): Days of the week to include in the analysis.
-        start_date (datetime, optional): Start of date range to consider.
-        end_date (datetime, optional): End of date range to consider.
-        include_double_bookings (bool): If False, exclude double bookings from analysis.
-        include_fixed (bool): If False, exclude fixed (non-bookable) desks from analysis.
-        return_user_names (bool): If True, map user IDs to usernames in the output.
-        include_non_booking_users (bool): If True, include users with 0 bookings in the result.
+        data (Dataset):
+            Dataset containing booking records.
+        user_names (str | Sequence[str], optional): 
+            Filter for specific usernames.
+        user_ids (int | Sequence[int], optional): 
+            Filter for specific user IDs.
+        num_employees (int, optional): 
+            Limit result to top-N employees by average bookings.
+        return_total_mean (bool): 
+            If True, return the mean over all employees instead of per-user values.
+        granularity (str): 
+            Time unit for averaging. One of "day", "week", "month", or "year".
+        weekdays (List[str]): 
+            Days of the week to include in the analysis.
+        start_date (datetime.datetime, optional): 
+            Start of date range to consider.
+        end_date (datetime.datetime, optional): 
+            End of date range to consider.
+        include_double_bookings (bool): 
+            If False, exclude double bookings from analysis.
+        include_fixed (bool): 
+            If False, exclude fixed (non-bookable) desks from analysis.
+        return_user_names (bool): 
+            If True, map user IDs to usernames in the output.
+        include_non_booking_users (bool): 
+            If True, include users with 0 bookings in the result.
 
     Returns:
-        FunctionRegistryExpectedFormat: Contains the data and plots of booking average bookings.
+        FunctionRegistryExpectedFormat: 
+            Contains the data and plot of average employee bookings.
     """
     if not include_fixed:
         data = data.drop_fixed()
@@ -109,8 +123,8 @@ def get_booking_repeat_pattern(
     user_ids: Optional[int | Sequence[int]] = None,
     most_used_desk: int = 1,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None,
+    start_date: Optional[datetime.datetime] = None, 
+    end_date: Optional[datetime.datetime] = None,
     include_fixed: bool = True,
 ) -> FunctionRegistryExpectedFormat:
     """
@@ -122,8 +136,8 @@ def get_booking_repeat_pattern(
         user_ids (Optional[list[int]]): Filter by specific user IDs.
         most_used_desk (int): Number of top booked desks to consider per user.
         weekdays (List[str]): List of weekdays to include.
-        start_date (Optional[datetime]): Start of the analysis period.
-        end_date (Optional[datetime]): End of the analysis period.
+        start_date (Optional[datetime.datetime]): Start of the analysis period.
+        end_date (Optional[datetime.datetime]): End of the analysis period.
         include_fixed (bool): Whether to include fixed desk bookings.
 
     Returns:
@@ -176,8 +190,8 @@ def get_booking_clusters(
     user_ids: Optional[list[int]] = None,
     include_fixed: bool = False,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None,
+    start_date: Optional[datetime.datetime] = None, 
+    end_date: Optional[datetime.datetime] = None,
 ) -> FunctionRegistryExpectedFormat:
     """
     Finds groups of users who frequently book desks close to each other.
@@ -190,8 +204,8 @@ def get_booking_clusters(
         user_ids (Optional[list[int]]): list of user IDs to filter by.
         include_fixed (bool): excludes fixed desk bookings from analysis.
         weekdays (List[str]): weekdays to consider.
-        start_date (Optional[datetime]): start date.
-        end_date (Optional[datetime]): end date.
+        start_date (Optional[datetime.datetime]): start date.
+        end_date (Optional[datetime.datetime]): end date.
 
     Returns:
         FunctionRegistryExpectedFormat: 
@@ -230,8 +244,8 @@ def get_co_booking_frequencies(
     same_room_only: Optional[bool] = None, 
     include_fixed: bool = True,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None,
+    start_date: Optional[datetime.datetime] = None, 
+    end_date: Optional[datetime.datetime] = None,
 )-> FunctionRegistryExpectedFormat:
     """
     Identifies pairs of users who frequently book on the same days and calculates co-booking statistics.
@@ -246,8 +260,8 @@ def get_co_booking_frequencies(
         same_room_only (bool): only consider co-bookings where both users were in the same room.
         include_fixed (bool): excludes fixed desk bookings from analysis.
         weekdays (List[str]): weekdays to consider for the analysis (e.g., ["monday", "wednesday"]).
-        start_date (Optional[datetime]): start date 
-        end_date (Optional[datetime]): end date
+        start_date (Optional[datetime.datetime]): start date 
+        end_date (Optional[datetime.datetime]): end date
 
     Returns:
         FunctionRegistryExpectedFormat:
@@ -429,6 +443,6 @@ if __name__ == "__main__":
 
     start_date_str = "2022.12.19"
     end_date_str = "2025.05.30"
-    start_date_obj = datetime.strptime(start_date_str, "%Y.%m.%d")
-    end_date_obj = datetime.strptime(end_date_str, "%Y.%m.%d")
+    start_date_obj = datetime.datetime.strptime(start_date_str, "%Y.%m.%d")
+    end_date_obj = datetime.datetime.strptime(end_date_str, "%Y.%m.%d")
 

@@ -89,10 +89,10 @@ def detect_policy_violations(
     policy: Dict,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
-    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
+    weekdays: Optional[List[str]] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     start_date: Optional[datetime] = None, 
     end_date: Optional[datetime] = None,
-    only_stats: bool = False
+    only_stats: Optional[bool] = False
 ) -> FunctionRegistryExpectedFormat:
 Takes a policy and searches the data for violations. A policy is a dict of the following parameters 
 which are included in the policy, exceptions (if given) and random_assignments (if given):
@@ -154,15 +154,16 @@ Optionally, it can restrict analysis to bookings in the same room.
 
 def forecast_employees(
     data: Dataset,
-    lag: int = 90,
-    booking_type: str = "all",
-    weekly_growth_rate: float = None,
-    weekly_absolute_growth: float = None,
-    forecast_model = "linear",
-    weeks_ahead: int = 52,
+    lag: Optional[int] = 90,
+    booking_type: Optional[str] = "all",
+    weekly_growth_rate: Optional[float] = None,
+    weekly_absolute_growth: Optional[float] = None,
+    forecast_model: Optional[str] = "linear",
+    weeks_ahead: Optional[int] = 52,
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
-Forecasts the number of employees.
+Forecasts the number of employees with different models such as linear or sarima. Furthermore this function can handle fixed weekly growth rates and
+fixed weekly absolute growth. It gets the worker time series and then forecasts future employee numbers.
 
 ---
 
