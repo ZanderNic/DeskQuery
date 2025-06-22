@@ -269,6 +269,8 @@ The available tasks (names) and their meanings are:
 - "execute_function_on_former_result": Execute a function on the result of a previously executed function.
 - "plot_former_result": Generate a plot for the result of a previously executed function.
 - "execute_function_plan": Execute a sequence of functions to answer the user query.
+- "chat": If the user query is a general question or a request for information that does not require function execution or any other of the given tasks.
+
 Answer in a strict PYTHON DICT format as shown below.
 
 ### STRICT PYTHON DICT response format:
@@ -339,6 +341,7 @@ def validate_next_task(
         
         # if json loaded fine, check if the task is specified
         possible_tasks = [
+            "chat",
             "execute_function",
             "explain_former_result",
             "execute_function_on_former_result",
@@ -363,6 +366,116 @@ def validate_next_task(
             "message": "I couldn't understand your request. Please try again or describe it in a different way."
         }
 
+
+###############################################################################
+
+# STEP 5: Let the LLM answer the user query without any function execution or referenced messages
+
+def get_chat_answer(
+    user_message: str,
+    chat_history: List[dict] = [],
+):
+    global current_client
+    prompt_template = """
+You are a smart assistant for a desk booking analytics system.
+Your general purpose is to answer user queries about office desk analytics. You have the ability to execute functions to help answering user queries.
+These functions include the areas of:
+    - desk and room utilizations and their anomalies
+    - simulating attandance policies and detecting policy violations
+    - employee booking behavior and patterns including cesk clustering and co-booking frequencies
+    - employee booking forecasts and necessary desk estimations
+You are also able to provide different visualizations of the data and results.
+Result visualizations include:
+    - heatmaps
+    - histograms
+    - bar charts
+    - line charts
+    - scatter plots
+    - a marked office desk map for desk bookings
+
+You are given a user query and a chat history with the user to fulfill your task.
+
+### Task:
+
+Answer the user query with respect to the chat history if applicable.
+If the user query does not relate to your functionality, politely inform the user about your purpose in a short message.
+
+Answer in a strict PYTHON DICT format as shown below.
+
+### STRICT PYTHON DICT response format:
+
+{{
+"message": "<Your answer to the user query>",
+}}
+
+### User Query:
+
+{user_message}
+
+### Chat History:
+
+{chat_history}
+
+### Your Response:
+"""
+    prompt = prompt_template.format(
+        user_message=user_message,
+        chat_history=chat_history
+    )
+
+    response = current_client.chat_completion(
+        input_str=prompt,
+        role='system',
+        response_json=False
+    )
+
+    resp_data = clean_llm_output(response)
+
+    print("5) LLM Chat Answer:", resp_data, sep="\n")  # FIXME: DEBUG
+
+    return resp_data
+
+def validate_chat_answer(
+    user_message: str, 
+    chat_history: List[dict] = [],
+):
+    # try to generate a valid json response
+    error = True
+    generate_counter = 0
+    while error and generate_counter < 5:
+        try:
+            # generate the response from the LLM
+            response = get_chat_answer(user_message, chat_history)
+            # parse the response as dict
+            json_data = eval(response)
+            if not isinstance(json_data, dict):
+                raise ValueError("Response is not a valid dictionary object.")
+            error = False
+        except Exception as e:
+            print("Error while parsing the LLM response:", e)
+            traceback.print_exc()  # Print the stack trace to the console
+            print("Raw response was:", response, sep="\n")
+            error = True
+            generate_counter += 1
+            continue
+        
+        # check the given response's validity
+        if json_data.get("message", False) and isinstance(json_data["message"], str):
+            return {
+                "status": "success",
+                "message": json_data["message"],
+            }
+        else:
+            # if the task is not correctly specified, provoke an error
+            generate_counter += 1
+            error = True
+
+    # abort after 5 insufficient generations
+    if error and generate_counter >= 5:
+        return {
+            "status": "error",
+            "message": "I could not process your request. Please try again or describe it in a different way."
+        }
 
 ###############################################################################
 
@@ -1133,7 +1246,10 @@ Answer the user query by describing the function results.
 Do not use the underlying function name or parameter names to describe the results but their semantic.
 If there were any assumptions made about the function parameters, explain them to the user without using variable names.
 If the function result's field "plotted" is set to "True", a visualization of the result data will be provided to the user.
-If the function result's field "plotable" is set to "True" AND "plotted" IS FALSE, ask the user if they want to see a plot of the result.
+If the function result's field "plotable" is set to "True" AND "plotted" IS FALSE:
+    - The user will get a table with the evaluated data result
+    - NO PLOT will be generated
+    - Ask the user if they want to see a plot of the result
 
 Answer in a strict PYTHON DICT format as shown below.
 
@@ -1256,6 +1372,13 @@ def handleMessage(
     while STEP != 0:
         if STEP == 1:
             # STEP 1: Call LLM to select the correct next task
+
+            # reset variables
+            function_data = {}
+            function_data["function_registry"] = copy.deepcopy(function_registry)
+            PARAM_EXTRACTION_chat_history = []
+
+
             function_data['user_question'] = user_message
             
             task_selection_response = validate_next_task(
@@ -1267,10 +1390,7 @@ def handleMessage(
             )
 
             if task_selection_response.get("status", "") == "error":
-                # reset local variables for the next request
-                function_data = {}
-                function_data['function_registry'] = copy.deepcopy(function_registry)
-                PARAM_EXTRACTION_chat_history = []
+                # quit loop
                 STEP = 0
 
                 return {
@@ -1291,6 +1411,33 @@ def handleMessage(
                     STEP = 10
                 elif function_data['task'] == "execute_function_plan":
                     pass
+                else:
+                    STEP = 5
+
+        if STEP == 5:
+            # STEP 5: Let the LLM answer the query without any function and without any referenced messages
+
+            response = validate_chat_answer(
+                user_message, 
+                chat_data.filter_messages(
+                    exclude_status=["error", "no_match"],
+                    include_data=False,
+                )[:-1]  # use limited chat messages without the user query
+            )
+
+            if response.get("status", "") == "error":
+                # quit loop
+                STEP = 0
+
+                return {
+                    "status": "error",
+                    "message": response.get("message", "I could not process your request. Please try again or describe it in a different way.")
+                }
+            else:
+                # quit loop
+                STEP = 0
+
+                return response
 
         if STEP == 10:
             # STEP 10: Decide on the message to explain referenced by the user query
@@ -1303,10 +1450,7 @@ def handleMessage(
             )
 
             if referenced_messages_response.get("status", "") == "error":
-                # reset local variables for the next request
-                function_data = {}
-                function_data['function_registry'] = copy.deepcopy(function_registry)
-                PARAM_EXTRACTION_chat_history = []
+                # quit loop
                 STEP = 0
 
                 return {
@@ -1348,10 +1492,7 @@ def handleMessage(
             )
 
             if explanation_response.get("status", "") == "error":
-                # reset local variables for the next request
-                function_data = {}
-                function_data['function_registry'] = copy.deepcopy(function_registry)
-                PARAM_EXTRACTION_chat_history = []
+                # quit loop
                 STEP = 0
 
                 return {
@@ -1362,10 +1503,7 @@ def handleMessage(
                     )
                 }
             else:
-                # reset local variables for the next request
-                function_data = {}
-                function_data['function_registry'] = copy.deepcopy(function_registry)
-                PARAM_EXTRACTION_chat_history = []
+                # quit loop
                 STEP = 0
 
                 return explanation_response
@@ -1392,10 +1530,7 @@ def handleMessage(
                 if function_selection_response.get("explanation", None):
                     message += " " + function_selection_response["explanation"]
 
-                # reset local variables for the next request
-                function_data = {}
-                function_data['function_registry'] = copy.deepcopy(function_registry)
-                PARAM_EXTRACTION_chat_history = []
+                # quit loop
                 STEP = 0
 
                 return {
@@ -1445,10 +1580,7 @@ def handleMessage(
                 STEP = 50
 
                 if FUNCTIONS_DISCARDED >= 5:
-                    # reset local variables for the next request
-                    function_data = {}
-                    function_data['function_registry'] = copy.deepcopy(function_registry)
-                    PARAM_EXTRACTION_chat_history = []
+                    # quit loop
                     STEP = 0
 
                     return {
@@ -1497,10 +1629,7 @@ def handleMessage(
                 STEP = 50
 
                 if FUNCTIONS_DISCARDED >= 5:
-                    # reset local variables for the next request
-                    function_data = {}
-                    function_data['function_registry'] = copy.deepcopy(function_registry)
-                    PARAM_EXTRACTION_chat_history = []
+                    # quit loop
                     STEP = 0
 
                     return {
@@ -1546,10 +1675,7 @@ def handleMessage(
             response = validate_plot_function_execution()
 
             if response.get("status", "") == "error":
-                # reset local variables for the next request
-                function_data = {}
-                function_data['function_registry'] = copy.deepcopy(function_registry)
-                PARAM_EXTRACTION_chat_history = []
+                # quit loop
                 STEP = 0
 
                 return {
@@ -1586,10 +1712,7 @@ def handleMessage(
                 if function_selection_response.get("explanation", None):
                     message += " " + function_selection_response["explanation"]
 
-                # reset local variables for the next request
-                function_data = {}
-                function_data['function_registry'] = copy.deepcopy(function_registry)
-                PARAM_EXTRACTION_chat_history = []
+                # quit loop
                 STEP = 0
 
                 return {
@@ -1610,10 +1733,7 @@ def handleMessage(
             # this case should not occur since the invalid functions have already
             # been removed from the function registry in STEP 100
             if not function_docstring:
-                # reset local variables for the next request
-                function_data = {}
-                function_data['function_registry'] = copy.deepcopy(function_registry)
-                PARAM_EXTRACTION_chat_history = []
+                # quit loop
                 STEP = 0
 
                 return {
@@ -1658,10 +1778,7 @@ def handleMessage(
                 STEP = 100
 
                 if FUNCTIONS_DISCARDED >= 5:
-                    # reset local variables for the next request
-                    function_data = {}
-                    function_data['function_registry'] = copy.deepcopy(function_registry)
-                    PARAM_EXTRACTION_chat_history = []
+                    # quit loop
                     STEP = 0
 
                     return {
@@ -1711,10 +1828,7 @@ def handleMessage(
                 STEP = 100
 
                 if FUNCTIONS_DISCARDED >= 5:
-                    # reset local variables for the next request
-                    function_data = {}
-                    function_data['function_registry'] = copy.deepcopy(function_registry)
-                    PARAM_EXTRACTION_chat_history = []
+                    # quit loop
                     STEP = 0
 
                     return {
@@ -1782,10 +1896,7 @@ def handleMessage(
             elif response.get("status", "") == "success":
                 response["data"] = function_data["function_execution_result"]
 
-            # reset local variables for the next request
-            function_data = {}
-            function_data['function_registry'] = copy.deepcopy(function_registry)
-            PARAM_EXTRACTION_chat_history = []
+            # quit request loop
             STEP = 0
 
             return response

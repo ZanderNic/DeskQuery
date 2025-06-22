@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const modelSelectorBtn = document.getElementById('model-selector-btn');
   const modelSelectorOptions = document.getElementById('model-selector-options');
   const selectedModelDisplay = document.getElementById('selected-model');
-  const overlay = document.getElementById('empty-chat-overlay');
 
 
   // ============================
@@ -77,23 +76,41 @@ document.addEventListener('DOMContentLoaded', () => {
     requestAnimationFrame(() => {
       const hasMessages = chatContainer.querySelector('.message');
       if (!currentChatId || !hasMessages) {
-        overlay.classList.remove('hidden');
+        // clear chatContainer
+        chatContainer.innerHTML = '';
+        // create and append the empty chat overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'empty-chat-overlay';
+        
+        const overlayHeader = document.createElement('h2');
+        overlayHeader.textContent = "How can I help you with your desk analytics today?";
+        overlay.appendChild(overlayHeader);
+
+        const overlayText = document.createElement('p');
+        overlayText.textContent = "Ask me anything about occupancy, bookings, or workspace trends.";
+        overlay.appendChild(overlayText);
+
+        chatContainer.appendChild(overlay);
       } else {
-        overlay.classList.add('hidden');
+        // in this case a chat overlay must be present, so it can be removed
+        const overlay = chatContainer.querySelector('.empty-chat-overlay');
+        if (overlay) {
+          overlay.remove();
+        }
       }
     });
   }
 
-  function setActiveChatInSidebar(chatId) {
-    chatList.querySelectorAll('.chat-entry').forEach(entry => {
-      const span = entry.querySelector('.chat-title');
-      if (span && span.getAttribute('data-id') === chatId) {
-        entry.classList.add('active');
-      } else {
-        entry.classList.remove('active');
-      }
-    });
-  }
+  // function setActiveChatInSidebar(chatId) {
+  //   chatList.querySelectorAll('.chat-entry').forEach(entry => {
+  //     const span = entry.querySelector('.chat-title');
+  //     if (span && span.getAttribute('data-id') === chatId) {
+  //       entry.classList.add('active');
+  //     } else {
+  //       entry.classList.remove('active');
+  //     }
+  //   });
+  // }
 
 
   // ======================
@@ -188,6 +205,9 @@ document.addEventListener('DOMContentLoaded', () => {
       grouped[section].forEach(c => {
         const entry = document.createElement('div');
         entry.className = 'chat-entry';
+        if (c.chat_id === currentChatId) {
+          entry.classList.add('active');  // highlight the active chat
+        }
 
         const title = document.createElement('span');
         title.className = 'chat-title';
@@ -273,7 +293,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         entry.onclick = () => {
-          if (!isEditing) loadChat(c.chat_id);
+          if (!isEditing) {
+            loadChat(c.chat_id)
+            loadChatList();
+          };
         };
 
         entry.appendChild(title);
@@ -299,8 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await res.json();
       currentChatId = data.chat_id;
-      await loadChatList();                   // refresh sidebar to include the new chat
-      setActiveChatInSidebar(currentChatId);  // select chat as active chat in sidebar
+      await loadChatList();  // refresh sidebar to include the new chat
     }
 
     appendMessage(text, 'user');    
@@ -318,7 +340,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, chat_id: currentChatId })
+        body: JSON.stringify({ 
+          message: text, 
+          chat_id: currentChatId 
+        })
       });
 
       const data = await response.json();
@@ -359,9 +384,6 @@ document.addEventListener('DOMContentLoaded', () => {
           renderAssistantMessage(lastAssistantMsg);
         }
       }
-
-      loadChatList();
-
     } catch (error) {
       thinkingMsg.remove();
       renderAssistantDescriptor();
@@ -418,7 +440,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
     
-    setActiveChatInSidebar(currentChatId)    // set active chat in history to indicate which one is active
     updateOverlayVisibility();  // if empty chat show empty Overlay
   }
   
@@ -597,6 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const data = await res.json();
     currentChatId = data.chat_id;
+    console.log("New chat created with ID:", currentChatId);
     chatContainer.innerHTML = '';         // reset chat container to contain nothing in new chat
     
     await loadChatList();                 // load the chat list with the new chat added

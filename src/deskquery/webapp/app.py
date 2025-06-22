@@ -26,6 +26,8 @@ global dataset
 dataset = create_dataset()
 global NEXT_STEP
 NEXT_STEP = 1
+global current_chat_id
+current_chat_id = None
 
 @app.route('/')
 def index():
@@ -36,10 +38,18 @@ def index():
 def chat():
     global NEXT_STEP
     global current_model
+    global current_chat_id
     try:
         data = request.get_json()
         user_input = data.get('message', '')
         chat_id = data.get('chat_id', None) or str(uuid.uuid4())
+
+        # check if a new chat was selected
+        print("current chat id:", current_chat_id)
+        print("got chat id:", chat_id)
+        if chat_id != current_chat_id:
+            current_chat_id = chat_id
+            NEXT_STEP = 1
 
         print("backend: chat: current_model:", current_model)
 
@@ -205,6 +215,7 @@ def delete_chat_route(chat_id):
 def create_new_chat():
     new_chat = ChatData()
     new_chat.save()
+    print("New chat created in backend with ID:", new_chat.chat_id)
     return jsonify({"chat_id": new_chat.chat_id, "title": new_chat.title})
 
 

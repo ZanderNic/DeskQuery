@@ -62,6 +62,25 @@ html, body {
   width: 100%;
   flex: 1;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #555 #1e1e1e;
+}
+
+#chat-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+#chat-container::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 4px;
+}
+
+#chat-container::-webkit-scrollbar-button {
+  display: none;
+}
+
+#chat-container::-webkit-scrollbar-track {
+  background-color: #1e1e1e;
 }
 
 
@@ -127,17 +146,20 @@ html, body {
   user-select: none;
   padding-right: 5px;
   cursor: pointer;
+  scrollbar-width: thin;
+  scrollbar-color: #555 #1e1e1e;
 }
 
 .chat-title::-webkit-scrollbar {
-  height: 6px;
+  width: 3px;
 }
 .chat-title::-webkit-scrollbar-thumb {
   background-color: #555;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 .chat-title::-webkit-scrollbar-track {
-  background-color: #1e1e1e;
+  background-color: #111111;
+  border-radius: 2px;
 }
 
 .chat-title:focus {
@@ -304,7 +326,7 @@ html, body {
   background-color: #111111;
 }
 
-#empty-chat-overlay {
+.empty-chat-overlay {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -320,15 +342,11 @@ html, body {
   box-sizing: border-box;
 }
 
-#empty-chat-overlay.hidden {
-  display: none;
-}
-
-#empty-chat-overlay h2 {
+.empty-chat-overlay h2 {
   margin-bottom: 8px;
 }
 
-#empty-chat-overlay p {
+.empty-chat-overlay p {
   margin-top: 0;
 }
 
@@ -415,6 +433,7 @@ html, body {
   table-layout: auto;
   width: 100%;
   border-radius: 8px;
+  border-collapse: separate;
 }
 
 .dataframe thead {
@@ -422,7 +441,8 @@ html, body {
   background-color: #313131;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
-  border-bottom: 3px solid #747474;
+  border-color: red;
+  border-bottom: 3px solid red;
 }
 
 .dataframe tr {
@@ -545,6 +565,7 @@ html, body {
   border: none;
   border-radius: 16px;
   font-size: 18px;
+  font-family: Arial, sans-serif;
   outline: none;
   background-color: #404040;
   color: white;
@@ -555,15 +576,24 @@ html, body {
 }
 
 #send-btn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  height: 48px;
+
   margin-left: 10px;
-  padding: 12px 24px;
-  font-size: 18px;
+  padding: 12px 18px;
+  
+  /* font-size: 16px;
+  font-weight: 600; */
   background-color: #1e88e5;
   border: none;
   color: white;
-  border-radius: 8px;
+  border-radius: 16px;
+  
   cursor: pointer;
-  height: 48px;
 }
 
 #chat-info-wrapper {

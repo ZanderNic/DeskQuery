@@ -22,10 +22,10 @@ class ChatData:
 
     def __init__(
         self,
-        chat_id: Optional[str] = str(uuid.uuid4()),
+        chat_id: Optional[str] = None,
         title: Optional[str] = "New Chat",
         messages: Optional[List[Dict[str, str]]] = [],
-        created_at: Optional[datetime.datetime] = datetime.datetime.now(datetime.timezone.utc),
+        created_at: Optional[datetime.datetime] = None,
         last_timestamp: Optional[datetime.datetime] = None,
     ):
         """
@@ -34,23 +34,26 @@ class ChatData:
         Args:
             chat_id (str, optional):
                 The unique identifier for the chat. Defaults to 
-                `str(uuid.uuid4())` if not provided.
+                `str(uuid.uuid4())` if `None` is given.
             title (str, optional):
                 The title of the chat. Defaults to 'New Chat'.
             messages (list, optional):
                 A list of messages in the chat. Defaults to an empty list.
             created_at (datetime, optional):
                 The creation timestamp of the chat. Defaults to 
-                `datetime.datetime.now(datetime.timezone.utc)` if not provided.
+                `datetime.datetime.now(datetime.timezone.utc)` if `None` is 
+                given.
             last_timestamp (datetime, optional):
                 The last timestamp of the chat. Defaults to the value of 
                 `created_at` if not provided.
         """
+        if not chat_id:
+            chat_id = str(uuid.uuid4())
         self.chat_id = chat_id
         self.title = title
         self.messages = messages
-        self.created_at = created_at
-        self.last_timestamp = last_timestamp or created_at
+        self.created_at = created_at if created_at else datetime.datetime.now(datetime.timezone.utc)
+        self.last_timestamp = last_timestamp or self.created_at
 
     def __getitem__(
         self,
