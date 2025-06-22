@@ -1,6 +1,6 @@
 # std-lib imports
 from typing import Optional, List, Dict, Tuple
-from datetime import timedelta
+from datetime import timedelta, datetime
 from collections import Counter
 
 # 3 party imports
@@ -125,8 +125,8 @@ def detect_policy_violations(
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
     weekdays: Optional[List[str]] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
-    start_date: Optional[datetime.datetime] = None, 
-    end_date: Optional[datetime.datetime] = None,
+    start_date: Optional[datetime] = None, 
+    end_date: Optional[datetime] = None,
     only_stats: Optional[bool] = False
 ) -> FunctionRegistryExpectedFormat:
     """
