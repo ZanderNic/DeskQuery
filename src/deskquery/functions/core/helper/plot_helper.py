@@ -90,7 +90,6 @@ def add_to_marks_to_fig(
     ))
 
 
-
 def add_img_to_fig(fig, img, img_width, img_height):
     fig.update_layout(
         images=[dict(
@@ -117,9 +116,6 @@ def add_img_to_fig(fig, img, img_width, img_height):
         margin=dict(l=0, r=0, t=0, b=0)
     )
 
-def value_to_color(value: float) -> str:
-    rgba = plt.cm.RdYlGn(value)
-    return f'rgb({int(rgba[0]*255)}, {int(rgba[1]*255)}, {int(rgba[2]*255)})'
 
 def value_to_color(value: float) -> str:
     rgba = plt.cm.RdYlGn(value)
@@ -189,9 +185,9 @@ def generate_barchart(
     Args:
         data (FunctionData): A dictionary in the format 
             {trace_name: {category: value}}. Defaults to `None`.
-        title (str, optional): Title of the bar chart.
-        xaxis_title (str, optional): Label for the x-axis.
-        yaxis_title (str, optional): Label for the y-axis.
+        title (str, optional): Title of the bar chart. Defaults to `None`.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
 
     Returns:
         Plot: A Plotly bar chart figure.
@@ -217,9 +213,9 @@ def generate_barchart(
 
     fig = create_plotly_figure(
         traces, 
-        title=title, 
-        xaxis_title=xaxis_title, 
-        yaxis_title=yaxis_title
+        title=title if title else '', 
+        xaxis_title=xaxis_title if xaxis_title else '', 
+        yaxis_title=yaxis_title if yaxis_title else ''
     )
 
     return fig
@@ -237,9 +233,9 @@ def generate_scatterplot(
     Args:
         data (FunctionData): A dictionary in the format 
             {trace_name: {x_value: y_value}}. Defaults to `None`.
-        title (str, optional): Title of the scatter plot.
-        xaxis_title (str, optional): Label for the x-axis.
-        yaxis_title (str, optional): Label for the y-axis.
+        title (str, optional): Title of the scatter plot. Defaults to `None`.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
 
     Returns:
         Plot: A Plotly scatter plot figure.
@@ -256,9 +252,9 @@ def generate_scatterplot(
 
     fig = create_plotly_figure(
         traces, 
-        title=title, 
-        xaxis_title=xaxis_title, 
-        yaxis_title=yaxis_title
+        title=title if title else '', 
+        xaxis_title=xaxis_title if xaxis_title else '', 
+        yaxis_title=yaxis_title if yaxis_title else ''
     )
 
     return fig
@@ -276,9 +272,9 @@ def generate_lineplot(
     Args:
         data (FunctionData): A dictionary in the format 
             {trace_name: {x_value: y_value}}. Defaults to `None`.
-        title (str, optional): Title of the line plot.
-        xaxis_title (str, optional): Label for the x-axis.
-        yaxis_title (str, optional): Label for the y-axis.
+        title (str, optional): Title of the line plot. Defaults to `None`.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
 
     Returns:
         Plot: A Plotly line plot figure.
@@ -303,9 +299,9 @@ def generate_lineplot(
 
     fig = create_plotly_figure(
         traces, 
-        title=title, 
-        xaxis_title=xaxis_title, 
-        yaxis_title=yaxis_title
+        title=title if title else '',
+        xaxis_title=xaxis_title if xaxis_title else '',
+        yaxis_title=yaxis_title if yaxis_title else ''
     )
 
     return fig
@@ -326,9 +322,9 @@ def generate_hist(
             {trace_name: {"x": x_values}}. Defaults to `None`.
         nbinsx (int, optional): Number of bins along the x-axis. 
             If not specified, defaults to the length of x_values.
-        title (str, optional): Title of the histogram.
-        xaxis_title (str, optional): Label for the x-axis.
-        yaxis_title (str, optional): Label for the y-axis.
+        title (str, optional): Title of the histogram. Defaults to `None`.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
 
     Returns:
         Plot: A Plotly histogram figure.
@@ -350,9 +346,9 @@ def generate_hist(
 
     fig = create_plotly_figure(
         traces, 
-        title=title, 
-        xaxis_title=xaxis_title, 
-        yaxis_title=yaxis_title
+        title=title if title else '',
+        xaxis_title=xaxis_title if xaxis_title else '',
+        yaxis_title=yaxis_title if yaxis_title else ''
     )
 
     return fig
@@ -376,12 +372,15 @@ def generate_map(
     Args:
         room_ids (dict[int, float], optional):
             Mapping of room IDs to values (e.g. utilization). These will be marked in the image.
+            Defaults to `None`, which means no rooms are marked.
         room_names (dict[str, float], optional):
             Alternative to `room_ids`. Room names are internally mapped to IDs.
+            Defaults to `None`, which means no rooms are marked.
         desk_ids (dict[int, float], optional):
             Mapping of desk IDs to values. These will be shown as smaller colored boxes.
+            Defaults to `None`, which means no values are shown for desks.
         label_markings (str, optional):
-            Optional label description shown in the hover tooltip. Defaults to "label" if None.
+            Optional label description shown in the hover tooltip. Defaults to "label" if not given.
         title (str, optional):
             Title of the map. Defaults to "Map".
 
@@ -393,9 +392,14 @@ def generate_map(
         - Desk/room positions are predefined and not inferred from layout data.
         - The base image is located at: `data/office_plan_optisch.png`
     """
-    room_ids = room_ids if room_ids is not None else dict()
-    room_names = room_names if room_names is not None else dict()
-    desk_ids = desk_ids if desk_ids is not None else dict()
+    # set default values if applicable
+    room_ids = room_ids if room_ids and isinstance(room_ids, dict) else dict()
+    room_names = room_names if room_names and isinstance(room_names, dict) else dict()
+    desk_ids = desk_ids if desk_ids and isinstance(desk_ids, dict) else dict()
+    if not label_markings:
+        label_markings = "label"
+    if not title:
+        title = "Map"
 
     room_name_id_mapping = Dataset._desk_room_mapping.set_index("roomId")["roomName"].to_dict()
     desk_id_number_mapping = Dataset._desk_room_mapping.set_index("deskId")["deskNumber"].to_dict()
@@ -525,12 +529,11 @@ def generate_table(
             A dictionary where each key is a column name and the value is a 
             list of column values. Defaults to `None`.
         title (str, optional): 
-            Title for the table.
+            Title for the table. Defaults to `None`.
 
     Returns:
         Plot: A Plotly table figure.
     """
-
     traces = list()
     for trace_name, trace_data in data.items():
         try:
@@ -557,7 +560,7 @@ def generate_table(
 
     fig = create_plotly_figure(
         traces, 
-        title=title
+        title=title if title else ''
     )
 
     return fig

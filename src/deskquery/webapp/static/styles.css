@@ -420,45 +420,39 @@ html, body {
   text-align: center;
 
   padding: 3px;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 
   font-size: 15px;
   font-weight: 700;
   background-color: #3b3b3b;
   color: #ffffff;
-  border-radius: 8px;
+  border-radius: 8px 8px 0 0;
 }
 
 .dataframe {
-  table-layout: auto;
   width: 100%;
-  border-radius: 8px;
-  border-collapse: separate;
+  table-layout: auto;
+  border-collapse: collapse;
 }
 
 .dataframe thead {
   width: 100%;
   background-color: #313131;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  border-color: red;
-  border-bottom: 3px solid red;
 }
 
-.dataframe tr {
+/* .dataframe tr {
   width: 100%;
-  gap: 0;
-  border-bottom: 1px solid #747474;
-}
+} */
 
 .dataframe th {
-  padding: 3px;
+  padding: 3px 5px;
   text-align: center;
   vertical-align: middle;
   white-space: nowrap;
   font-size: 14px;
   font-weight: 600;
   color: #fff;
+  border-bottom: 3px solid #747474;
 }
 
 .dataframe td {
@@ -469,6 +463,9 @@ html, body {
   font-size: 13px;
   font-weight: 400;
   color: #fff;
+  border-bottom: 1px solid #747474;
+  border-left: 1px dashed #4d4d4d;
+  border-right: 1px dashed #4d4d4d;
 }
 
 .assistant {
