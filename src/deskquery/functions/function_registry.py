@@ -10,7 +10,7 @@ import re
 
 
 plot_function_registry = {
-    "generate_heatmap": generate_heatmap,
+    # "generate_heatmap": generate_heatmap,  # currently disabled
     "generate_hist": generate_hist,
     "generate_barchart": generate_barchart,
     "generate_scatterplot": generate_scatterplot,

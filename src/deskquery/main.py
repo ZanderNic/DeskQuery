@@ -323,7 +323,7 @@ def validate_next_task(
     error = True
     generate_counter = 0
     while error and generate_counter < 5:
-        response = ""
+        response = "<Error inside executed function>"
         try:
             # generate the response from the LLM
             response = decide_next_task(question, chat_history)
@@ -387,7 +387,6 @@ These functions include the areas of:
     - employee booking forecasts and necessary desk estimations
 You are also able to provide different visualizations of the data and results.
 Result visualizations include:
-    - heatmaps
     - histograms
     - bar charts
     - line charts
@@ -444,6 +443,7 @@ def validate_chat_answer(
     error = True
     generate_counter = 0
     while error and generate_counter < 5:
+        response = "<Error inside executed function>"
         try:
             # generate the response from the LLM
             response = get_chat_answer(user_message, chat_history)
@@ -539,6 +539,7 @@ def validate_referenced_messages(
     error = True
     generate_counter = 0
     while error and generate_counter < 5:
+        response = "<Error inside executed function>"
         try:
             # generate the response from the LLM
             response = select_referenced_messages(question, chat_history)
@@ -638,6 +639,7 @@ def validate_referenced_message_explanation(
     error = True
     generate_counter = 0
     while error and generate_counter < 5:
+        response = "<Error inside executed function>"
         try:
             # generate the response from the LLM
             response = explain_referenced_messages(question, referenced_messages)
@@ -735,6 +737,7 @@ def validate_plot_function_selection(
     error = True
     generate_counter = 0
     while error and generate_counter < 5:
+        response = "<Error inside executed function>"
         try:
             # generate the response from the LLM
             response = select_plot_function(query)
@@ -801,7 +804,7 @@ def validate_plot_function_execution():
     print("80) Last data message available plots:", last_FREF.plot.available_plots, sep="\n")
 
     while error and generate_counter < 5:
-        response = ""
+        response = "<Error inside executed function>"
         try:
             # generate the response from the selected function
             # print("80) Last FREF:", last_FREF, sep="\n")  # FIXME: DEBUG
@@ -899,7 +902,7 @@ def validate_selected_function(
     error = True
     generate_counter = 0
     while error and generate_counter < 5:
-        response = ""
+        response = "<Error inside executed function>"
         try:
             # generate the response from the LLM
             response = select_function(query)
@@ -1003,6 +1006,7 @@ def validate_function_usability(
     error = True
     generate_counter = 0
     while error and generate_counter < 5:
+        response = "<Error inside executed function>"
         try:
             # generate the response from the LLM
             response = assess_function_usability(query, function_docstring)
@@ -1128,6 +1132,7 @@ def validate_function_parameter_extraction(
     error = True
     generate_counter = 0
     while error and generate_counter < 5:
+        response = "<Error inside executed function>"
         try:
             # generate the response from the LLM
             response = infer_function_parameters(
@@ -1184,7 +1189,7 @@ def validate_function_execution(
     print("400) Executing function:", function_data["selected_function"], "with params:", function_data["function_parameters"], sep="\n")
 
     while error and generate_counter < 5:
-        response = ""
+        response = "<Error inside executed function>"
         try:
             # generate the response from the selected function
             response = func(
@@ -1299,7 +1304,7 @@ def validate_function_result_description():
     generate_counter = 0
 
     while error and generate_counter < 5:
-        response = ""
+        response = "<Error inside executed function>"
         try:
             # generate the response from the LLM
             response = describe_function_result()
