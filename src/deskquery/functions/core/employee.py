@@ -6,10 +6,10 @@ from collections import Counter
 from itertools import combinations
 from deskquery.data.dataset import Dataset
 from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction
-from deskquery.functions.core.helper.plot_helper import generate_heatmap, generate_barchart, generate_hist, generate_map
+from deskquery.functions.core.helper.plot_helper import generate_barchart
 
 def get_avg_employee_bookings(
-    dataset: Dataset,
+    data: Dataset,
     user_names: Optional[str | Sequence[str]] = None,
     user_ids: Optional[int | Sequence[int]] = None,
     num_employees: Optional[int] = None,
@@ -27,7 +27,7 @@ def get_avg_employee_bookings(
     Compute average booking frequency per employee over a specified time granularity.
 
     Parameters:
-        dataset (Dataset): Dataset containing booking records.
+        data (Dataset): Dataset containing booking records.
         user_names (str | Sequence[str], optional): Filter for specific usernames.
         user_ids (int | Sequence[int], optional): Filter for specific user IDs.
         num_employees (int, optional): Limit result to top-N employees by average bookings.
@@ -45,22 +45,22 @@ def get_avg_employee_bookings(
         FunctionRegistryExpectedFormat: Contains the data and plots of booking average bookings.
     """
     if not include_fixed:
-        dataset = dataset.drop_fixed()
+        data = data.drop_fixed()
     if not include_double_bookings:
-        dataset = dataset.drop_double_bookings()
-    if dataset.empty:
+        data = data.drop_double_bookings()
+    if data.empty:
         return FunctionRegistryExpectedFormat()
 
     if user_ids or user_names:
         user_ids = [] if not user_ids else user_ids
         user_names = [] if not user_names else user_names
-        dataset = dataset.get_users(user_names, user_ids)
+        data = data.get_users(user_names, user_ids)
 
-    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
-    dataset = dataset.get_days(weekdays=weekdays)
+    data = data.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    data = data.get_days(weekdays=weekdays)
 
     column_name = f"avg_bookings_{granularity}"
-    dataset = dataset.expand_time_intervals_counts(granularity, column_name=column_name)
+    data = data.expand_time_intervals_counts(granularity, column_name=column_name)
     def mean(series):
         """Calc the mean for the bookings correctly (with filling possible gaps)"""
         def fill_granularity_gaps(counter: Counter) -> Counter:
@@ -73,12 +73,14 @@ def get_avg_employee_bookings(
         mean = sum(user_sum.values()) / len(user_sum)
 
         return round(mean, 2)
-    avg_bookings = dataset.group_bookings(by="userId", aggregation={column_name: (column_name, mean)}, agg_col_name=column_name)
+    avg_bookings = data.group_bookings(by="userId", aggregation={column_name: (column_name, mean)}, agg_col_name=column_name)
     if include_non_booking_users:
         missing_user = set(Dataset._userid_username_mapping.keys()) - set(avg_bookings.index)
-        missing_user = pd.DataFrame.from_dict({user_id: 0 for user_id in missing_user}, 
-                                              orient="index", 
-                                              columns=avg_bookings.columns)
+        missing_user = pd.DataFrame.from_dict(
+            {user_id: 0 for user_id in missing_user}, 
+            orient="index", 
+            columns=avg_bookings.columns
+        )
         avg_bookings = pd.concat([avg_bookings, missing_user])
     if num_employees:
         avg_bookings = avg_bookings.sort_bookings(by=column_name, ascending=False).head(num_employees)
@@ -92,17 +94,17 @@ def get_avg_employee_bookings(
     plot = PlotForFunction(
         default_plot=generate_barchart(
             data=avg_bookings,
-            title=column_name,
+            title=f"Average bookings per {granularity}",
             xaxis_title="user_name" if return_user_names else "user_id",
             yaxis_title=column_name
         ),
-        available_plots=[generate_barchart, generate_heatmap]
+        available_plots=[generate_barchart]
     )
 
     return FunctionRegistryExpectedFormat(data=avg_bookings, plot=plot)
 
 def get_booking_repeat_pattern(
-    dataset: Dataset,
+    data: Dataset,
     user_names: Optional[str | Sequence[str]] = None,
     user_ids: Optional[int | Sequence[int]] = None,
     most_used_desk: int = 1,
@@ -115,7 +117,7 @@ def get_booking_repeat_pattern(
     Identifies users who book the same desks or same days repeatedly.
     
     Args:
-        dataset (Dataset): The booking dataset to analyze.
+        data (Dataset): The booking dataset to analyze.
         user_names (Optional[list[str]]): Filter by specific user names.
         user_ids (Optional[list[int]]): Filter by specific user IDs.
         most_used_desk (int): Number of top booked desks to consider per user.
@@ -128,22 +130,22 @@ def get_booking_repeat_pattern(
         FunctionRegistryExpectedFormat: Contains the data and plots of booking repeat patterns.
     """
     if not include_fixed:
-        dataset = dataset.drop_fixed()
+        data = data.drop_fixed()
 
     if user_ids or user_names:
         user_ids = [] if not user_ids else user_ids
         user_names = [] if not user_names else user_names
-        dataset = dataset.get_users(user_names, user_ids)
+        data = data.get_users(user_names, user_ids)
 
-    if dataset.empty:
+    if data.empty:
         return FunctionRegistryExpectedFormat()
 
     # Treating double bookings makes no sense, as no meaningful conclusion can be drawn from them
-    dataset = dataset.drop_double_bookings()
-    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
-    dataset = dataset.get_days(weekdays=weekdays)
+    data = data.drop_double_bookings()
+    data = data.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    data = data.get_days(weekdays=weekdays)
 
-    df = dataset.expand_time_interval_desk_counter(weekdays=weekdays)
+    df = data.expand_time_interval_desk_counter(weekdays=weekdays)
     result = (df.sort_values(['userId', 'num_desk_bookings'], ascending=False)
             .groupby('userId')
             .head(most_used_desk)
@@ -164,12 +166,12 @@ def get_booking_repeat_pattern(
             xaxis_title="User",
             yaxis_title="Booking Percentage"
         ),
-        available_plots=[generate_barchart, generate_heatmap]
+        available_plots=[generate_barchart]
     )
     return FunctionRegistryExpectedFormat(data=plot_data, plot=plot)
 
 def get_booking_clusters(
-    dataset: Dataset,
+    data: Dataset,
     co_booking_count_min: int = 3, 
     user_ids: Optional[list[int]] = None,
     include_fixed: bool = False,
@@ -183,7 +185,7 @@ def get_booking_clusters(
     on a minimum number of shared bookings.
 
     Args:
-        dataset (Dataset): Booking data.
+        data (Dataset): Booking data.
         co_booking_count_min (int): Minimum number of shared bookings.
         user_ids (Optional[list[int]]): list of user IDs to filter by.
         include_fixed (bool): excludes fixed desk bookings from analysis.
@@ -196,15 +198,15 @@ def get_booking_clusters(
             Information about the found booking clusters.
     """
     if not include_fixed:
-        dataset = dataset.drop_fixed()
+        data = data.drop_fixed()
     # Treating double bookings makes no sense
-    dataset = dataset.drop_double_bookings()
-    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
-    dataset = dataset.get_days(weekdays=weekdays)
-    dataset.expand_time_interval_desk_counter(weekdays=weekdays)
+    data = data.drop_double_bookings()
+    data = data.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    data = data.get_days(weekdays=weekdays)
+    data.expand_time_interval_desk_counter(weekdays=weekdays)
     
-    dataset = dataset.explode('expanded_desks_day')[['userId', 'userName', 'roomId', 'deskNumber', 'expanded_desks_day']]
-    df_paris = booking_graph(dataset).sort_values("weight", ascending=False)
+    data = data.explode('expanded_desks_day')[['userId', 'userName', 'roomId', 'deskNumber', 'expanded_desks_day']]
+    df_paris = booking_graph(data).sort_values("weight", ascending=False)
 
     mask = df_paris["weight"] >= co_booking_count_min
     df_paris = df_paris[mask]
@@ -223,7 +225,7 @@ def get_booking_clusters(
     return FunctionRegistryExpectedFormat(data=result, plot=PlotForFunction())
 
 def get_co_booking_frequencies(
-    dataset: Dataset,
+    data: Dataset,
     min_shared_days: int = 5, 
     same_room_only: Optional[bool] = None, 
     include_fixed: bool = True,
@@ -239,7 +241,7 @@ def get_co_booking_frequencies(
     Optionally, it can restrict analysis to bookings in the same room.
 
     Args:
-        dataset (Dataset): dataset with booking information.
+        data (Dataset): Dataset with booking information.
         min_shared_days (int): minimum number of shared booking days required to include a user pair.
         same_room_only (bool): only consider co-bookings where both users were in the same room.
         include_fixed (bool): excludes fixed desk bookings from analysis.
@@ -251,18 +253,20 @@ def get_co_booking_frequencies(
         FunctionRegistryExpectedFormat:
     """
     if not include_fixed:
-        dataset = dataset.drop_fixed()
+        data = data.drop_fixed()
+    if not weekdays:
+        weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
     # Treating double bookings makes no sense
-    dataset = dataset.drop_double_bookings()
-    dataset = dataset.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
-    dataset = dataset.get_days(weekdays=weekdays)
-    dataset.expand_time_interval_desk_counter()
+    data = data.drop_double_bookings()
+    data = data.get_timeframe(start_date=start_date, end_date=end_date, show_available=False)
+    data = data.get_days(weekdays=weekdays)
+    data.expand_time_interval_desk_counter()
 
-    dataset = dataset.explode('expanded_desks_day')[['userId', 'userName', 'roomId', 'expanded_desks_day']]
-    booking_counter = dataset["userId"].value_counts().reset_index()
+    data = data.explode('expanded_desks_day')[['userId', 'userName', 'roomId', 'expanded_desks_day']]
+    booking_counter = data["userId"].value_counts().reset_index()
     booking_counter = booking_counter.rename(columns={"count": "total_bookings"})
 
-    pairs_df = count_co_bookings(dataset, include_room=same_room_only)
+    pairs_df = count_co_bookings(data, include_room=same_room_only)
     if min_shared_days:
         pairs_df = pairs_df[pairs_df["count"] >= min_shared_days]
 
@@ -323,7 +327,7 @@ def get_co_booking_frequencies(
             xaxis_title="UserId2",
             yaxis_title="Share (%)"
         ),
-        available_plots=[generate_barchart, generate_heatmap]
+        available_plots=[generate_barchart]
     )
     return FunctionRegistryExpectedFormat(data=plot_dict_barchart, plot=plot)
 

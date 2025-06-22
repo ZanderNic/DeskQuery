@@ -4,12 +4,14 @@ import datetime
 from datetime import timedelta
 
 # third party imports
+from numpy import right_shift
 import pandas as pd
 
 # project imports
 from deskquery.data.dataset import Dataset
 from deskquery.functions.types import PlotForFunction, FunctionRegistryExpectedFormat
 from deskquery.functions.core.helper.plot_helper import *
+
 
 def mean_utilization(
     data: Dataset,
@@ -92,11 +94,11 @@ def mean_utilization(
     if by_room:                                                
         key = df["roomName"]
         n_desks_per_room = data.get_desks_per_room_count()
-        # here it should be num desks in room times time period
-        total_possible = n_desks_per_room * count_matching_weekdays(start_date, end_date, weekday)
+       
+        total_possible = n_desks_per_room * count_matching_weekdays(start_date, end_date, weekday)       # here it should be num desks in room times time period
         actual_counts = key.value_counts()
         column_name = "room"
-    
+
         utilization = pd.Series({
             room: round(actual_counts.get(room, 0) / total_possible.get(room, 1), 3)
             for room in total_possible.keys()
@@ -104,9 +106,10 @@ def mean_utilization(
         
     elif by_desks:
         key = df["roomName"] + "_" + df["deskNumber"].astype(str)   
+        df["composite_key"] = key
         desk_keys = key.unique()
-        # here the max utilization is the number of days for every desk
-        total_possible = count_matching_weekdays(start_date, end_date, weekday)
+         
+        total_possible = count_matching_weekdays(start_date, end_date, weekday)       # here the max utilization is the number of days for every desk
         column_name = "desk"
         
         actual_counts = key.value_counts()
@@ -114,14 +117,30 @@ def mean_utilization(
             desk: round(actual_counts.get(desk, 0) / total_possible, 3)
             for desk in desk_keys
         })
+        
+        desk_key_to_id = df.drop_duplicates("composite_key").set_index("composite_key")["deskId"].to_dict()
+
+        desk_ids = {
+            desk_key_to_id[key]: utilization[key]
+            for key in utilization.index
+            if key in desk_key_to_id
+        }
+
+        desk_key_to_id = df.drop_duplicates("composite_key").set_index("composite_key")["deskId"].to_dict()
+
+        desk_ids = {
+            desk_key_to_id[key]: utilization[key]
+            for key in utilization.index
+            if key in desk_key_to_id
+        }
 
     elif by_day:
         df["day"] = pd.to_datetime(df["blockedFrom"]).dt.day_name()
         key = df["day"]
 
-        # count the number of appearances of different days
-        weekday_counts = count_weekday_occurrences(start_date, end_date, weekday)
+        weekday_counts = count_weekday_occurrences(start_date, end_date, weekday)           # count the number of appearances of different days
         n_desks = data.get_desks_count()
+
         # here the number of possible bookings is the number of appearances of the different
         # weekday * the total number of desks that are available (the same for every day)
         total_possible = {day: count * n_desks for day, count in weekday_counts.items()}
@@ -144,20 +163,37 @@ def mean_utilization(
     if top_or_bottom_n:
         utilization = utilization.sort_values(ascending=from_bottom)[:top_or_bottom_n]
     
-    data_return = {
-        "utilization": utilization.to_dict(), 
-        "count": len(utilization)
-    }
+    data_return = utilization.to_dict()
     
-    plot = PlotForFunction(
-        default_plot=generate_barchart(
-            data=data_return["utilization"],
-            title=column_name,
-            xaxis_title=column_name,
-            yaxis_title="mean utilization"
-        ),
-        available_plots=[generate_barchart, generate_heatmap]
-    )
+    # change the plot type depending on for what we have the utilization
+    if by_room:  
+        plot = PlotForFunction(
+            default_plot=generate_map(
+                room_names= data_return,
+                title="Utalization in the different rooms",
+                label_markings="utalization"
+            ),
+            available_plots=[generate_map]
+        )
+    elif by_day:
+        plot = PlotForFunction(
+            default_plot=generate_barchart(
+                data={"Utilization": data_return},
+                title=column_name,
+                xaxis_title=column_name,
+                yaxis_title="mean utilization"
+            ),
+            available_plots=[generate_barchart]
+        )
+    else:
+        plot = PlotForFunction(
+            default_plot=generate_map(
+                desk_ids= desk_ids,
+                title="Utalization of the different desks",
+                label_markings="utalization"
+            ),
+            available_plots=[generate_map]
+        )
 
     return FunctionRegistryExpectedFormat(data=data_return, plot=plot)
 
@@ -260,7 +296,7 @@ def utilization_stats(
             "var": float(round(values["sumsq"] / max_possible - mean ** 2, 6)),
         }
 
-    return FunctionRegistryExpectedFormat(data=result_data_dict, plot=None)
+    return FunctionRegistryExpectedFormat(data=result_data_dict)
 
 
 def detect_utilization_anomalies(
@@ -304,7 +340,7 @@ def detect_utilization_anomalies(
         end_date=end_date,
     )
 
-    utilization = result["data"]["utilization"]
+    utilization = result["data"]
     mean_util = sum(utilization.values()) / (len(utilization))
 
     anomalies = {
@@ -314,7 +350,7 @@ def detect_utilization_anomalies(
 
     plot = PlotForFunction(
         default_plot=generate_barchart(
-            data=anomalies,
+            data={"anomalies": anomalies},
             yaxis_title="mean utilization"
         ),
         available_plots=[generate_barchart]
@@ -506,8 +542,8 @@ if __name__ == "__main__":
         start_date=start,
         end_date=end
     )
-    pprint(return_dict["data"]["utilization"])
-    print("Num rooms:", return_dict["data"]["count"])
+    pprint(return_dict["data"])
+    print("Num rooms:", len(return_dict["data"]))
     print()
    
     print("=== Utilization by desk with threshold > 0.6 ===")
@@ -520,8 +556,8 @@ if __name__ == "__main__":
         threshold=0.6,
         from_bottom=False
     )
-    pprint(return_dict["data"]["utilization"])
-    print("Desks over 60% Utalization:", return_dict["data"]["count"])
+    pprint(return_dict["data"])
+    print("Desks over 60% Utalization:", len(return_dict["data"]))
     print()
     
     
@@ -535,7 +571,7 @@ if __name__ == "__main__":
         top_or_bottom_n = 5,
         from_bottom = False
     )
-    print("Top 5 Desks by Utalization:", return_dict["data"]["utilization"])
+    print("Top 5 Desks by Utalization:", return_dict["data"])
     print()
 
 
@@ -549,7 +585,7 @@ if __name__ == "__main__":
         end_date=end
     )
     
-    pprint(return_dict["data"]["utilization"])
+    pprint(return_dict["data"])
     print()
     
     
@@ -590,7 +626,7 @@ if __name__ == "__main__":
         start_date=start,
         end_date=end
     )
-    pprint(result["data"])
+    print(result["data"])
     print()
 
     print("=== Anomaly detection by weekday ===")
@@ -602,5 +638,34 @@ if __name__ == "__main__":
         start_date=start,
         end_date=end
     )
-    pprint(result["data"])
+    print(result["data"])
     print()
+
+
+
+    from deskquery.functions.core.plot import generate_plot_for_function
+
+    print("=== Test: Plot mean_utilization (by_room) ===")
+    return_dict = mean_utilization(
+        data=dataset,
+        by_room=True,
+        include_fixed=True,
+        start_date=start,
+        end_date=end
+    )
+    print(return_dict["data"])
+    plot_result = generate_plot_for_function(return_dict)
+    plot_result.plot.default_plot.show() 
+    
+
+    print("=== Test: Plot mean_utilization (by_deks) ===")
+    return_dict = mean_utilization(
+        data=dataset,
+        by_desks=True,
+        threshold=0.02,
+        include_fixed=True,
+        start_date=start,
+        end_date=end
+    )
+    plot_result = generate_plot_for_function(return_dict)
+    plot_result.plot.default_plot.show() 

@@ -2,8 +2,12 @@
 import os, json
 from pathlib import Path
 import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import uuid
+
+# project imports
+from deskquery.functions.function_registry import plot_function_registry
+from deskquery.functions.types import *
 
 # set base_path to chat history storage
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -18,10 +22,10 @@ class ChatData:
 
     def __init__(
         self,
-        chat_id: Optional[str] = str(uuid.uuid4()),
+        chat_id: Optional[str] = None,
         title: Optional[str] = "New Chat",
         messages: Optional[List[Dict[str, str]]] = [],
-        created_at: Optional[datetime.datetime] = datetime.datetime.now(datetime.timezone.utc),
+        created_at: Optional[datetime.datetime] = None,
         last_timestamp: Optional[datetime.datetime] = None,
     ):
         """
@@ -30,23 +34,26 @@ class ChatData:
         Args:
             chat_id (str, optional):
                 The unique identifier for the chat. Defaults to 
-                `str(uuid.uuid4())` if not provided.
+                `str(uuid.uuid4())` if `None` is given.
             title (str, optional):
                 The title of the chat. Defaults to 'New Chat'.
             messages (list, optional):
                 A list of messages in the chat. Defaults to an empty list.
             created_at (datetime, optional):
                 The creation timestamp of the chat. Defaults to 
-                `datetime.datetime.now(datetime.timezone.utc)` if not provided.
+                `datetime.datetime.now(datetime.timezone.utc)` if `None` is 
+                given.
             last_timestamp (datetime, optional):
                 The last timestamp of the chat. Defaults to the value of 
                 `created_at` if not provided.
         """
+        if not chat_id:
+            chat_id = str(uuid.uuid4())
         self.chat_id = chat_id
         self.title = title
         self.messages = messages
-        self.created_at = created_at
-        self.last_timestamp = last_timestamp or created_at
+        self.created_at = created_at if created_at else datetime.datetime.now(datetime.timezone.utc)
+        self.last_timestamp = last_timestamp or self.created_at
 
     def __getitem__(
         self,
@@ -110,7 +117,7 @@ class ChatData:
         os.makedirs(HISTORY_DIR, exist_ok=True)
         path = HISTORY_DIR / f"{self.chat_id}.json"
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
+            json.dump(make_json_serializable(self.to_dict()), f, ensure_ascii=False, indent=2,  default=str)
 
     def delete(
         self,
@@ -309,6 +316,7 @@ class ChatData:
         include_status: Optional[List[str]] = None,
         include_ids: Optional[List[int]] = None,
         include_data: bool = False,
+        sort: Optional[str] = 'asc'
     ):
         """
         Filters the messages in the chat based on the provided criteria and
@@ -341,6 +349,11 @@ class ChatData:
             include_data (bool, optional):
                 If `True`, includes messages with data. If `False`, inserts
                 placeholders for the data in the messages. Defaults to `False`.
+            sort (str, optional):
+                The sorting order of the filtered messages. Can be either
+                'asc' for ascending or 'desc' for descending order based on
+                the message ID. Defaults to 'asc'. If some other value is
+                provided, the messages will not be sorted.
         
         Returns:
             List[dict]: 
@@ -378,18 +391,49 @@ class ChatData:
                     message_to_add = message
                     if not include_data:
                         # if data is not included, create a filtered message
+                        plot_args = {}
+                        if message["data"].get("plotly", False):
+                            default_plot = Plot(message["data"]["plotly"])
+                            plot_layout = default_plot["layout"]
+                            try:
+                                plot_args["title"] = plot_layout["title"]["text"]
+                            except Exception as e:
+                                pass
+                            try:
+                                plot_args["xaxis_title"] = plot_layout["xaxis"]["title"]["text"]
+                            except Exception as e:
+                                pass
+                            try:
+                                plot_args["yaxis_title"] = plot_layout["yaxis"]["title"]["text"]
+                            except Exception as e:
+                                pass
+                            try:
+                                plot_args["zaxis_title"] = plot_layout["zaxis"]["title"]["text"]
+                            except Exception as e:
+                                pass
+
                         message_to_add = {
                             "id": message["id"],
                             "status": message["status"],
                             "role": message["role"],
                             "content": message["content"],
-                            "data": True,
-                            "data_plotable": message["data"]["plotable"] if "data" in message else False
+                            "data": {
+                                "plot_args": plot_args,
+                                "plotable": message["data"]["plotable"],
+                                "plotted": message["data"]["plotted"],
+                                "available_plots": message["data"]["available_plots"],
+                            }
                         }
                     filtered_messages.append(message_to_add)
 
                 else:
                     filtered_messages.append(message)
+
+        # sort the filtered messages by id
+        if sort == 'asc':
+            filtered_messages.sort(key=lambda m: m["id"])
+        elif sort == 'desc':
+            filtered_messages.sort(key=lambda m: m["id"], reverse=True)
 
         return filtered_messages
 
@@ -398,6 +442,71 @@ class ChatData:
     ):
         return f"<ChatData chat_id={self.chat_id} title={self.title} messages={len(self.messages)} created_at={self.created_at.isoformat()}>"
 
+
+def FREF_from_dict(
+    data: Dict[str, Any],
+) -> FunctionRegistryExpectedFormat:
+    """
+    Converts a dictionary, primarily originating from the `ChatData` class, to 
+    a FunctionRegistryExpectedFormat object.
+    
+    Args:
+        data (Dict[str, Any]):
+            The data to use for the creation. This should feature the 
+            `FunctionData` as a dictionary, the `PlotForFunction` seperated in
+            the default plots JSON string und the `plotly` field and the 
+            available plots as a list of `PlotFunction` function names and the 
+            `plotted` boolean indicating whether the data has already been
+            plotted.
+
+            Minimal Expected keys and structure:
+
+            ```
+            data = {
+                # FunctionData as dict
+                "function_data": {...},
+                # Plotly dictionary of the default plot
+                "plotly": "{...}",
+                # List of available plot function names from functions.helper.plot_helper
+                "available_plots": ["PlotFunction1", "PlotFunction2", ...],
+                # Boolean indicating if the data has been plotted before
+                "plotted": False
+            }
+            ```
+
+    Returns:
+        FunctionRegistryExpectedFormat:
+            The converted object.
+
+    Raises:
+        ValueError: 
+            If the data does not match the expected format.
+    """
+    if not (
+        isinstance(data, dict) and 
+        "function_data" in data and 
+        isinstance(data["function_data"], dict) and
+        "plotly" in data and 
+        isinstance(data["plotly"], dict) and
+        "available_plots" in data and 
+        isinstance(data["available_plots"], list) and
+        "plotted" in data and 
+        isinstance(data["plotted"], bool)
+    ):
+        raise ValueError(
+            "Invalid data format for FunctionRegistryExpectedFormat."
+        )
+
+    return FunctionRegistryExpectedFormat(
+        data=FunctionData(data["function_data"]),
+        plot=PlotForFunction(
+            default_plot=Plot(data["plotly"]),
+            available_plots=[
+                plot_function_registry[func] for func in data["available_plots"]
+            ]
+        ),
+        plotted=data["plotted"]
+    )
 
 def list_chats(
     to_dict: Optional[bool] = False
@@ -419,7 +528,6 @@ def list_chats(
     chats = []
 
     for file in HISTORY_DIR.glob("*.json"):
-        print("found file: ", file, "with stem: ", file.stem)
         chat = ChatData.load(file.stem)
         if chat:
             if to_dict:
@@ -429,3 +537,24 @@ def list_chats(
 
     chats.sort(key=lambda c: c['last_timestamp'], reverse=True)
     return chats
+
+
+
+def make_json_serializable(obj):
+    if isinstance(obj, dict):
+        return {
+            str(make_json_serializable(k)): make_json_serializable(v)
+            for k, v in obj.items()
+        }
+    elif isinstance(obj, list):
+        return [make_json_serializable(i) for i in obj]
+    elif isinstance(obj, tuple):
+        return tuple(make_json_serializable(i) for i in obj)
+    elif isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    elif isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    elif hasattr(obj, "__str__"):
+        return str(obj)
+    else:
+        return repr(obj)
