@@ -45,14 +45,12 @@ def mean_utilization(
             The dataset containing all bookings.
         include_fixed (bool, optional): 
             If True, expands recurring (fixed) bookings across valid weekdays. Defaults to False.
-        
         by_desks (bool):
             If True, groups statistics by individual desk (e.g., 'Room_3'). Defaults to False.
         by_room (bool): 
             If True, groups statistics by room. Defaults to False.
         by_day (bool): 
             If True, groups statistics by weekday name (e.g., 'Monday'). Defaults to False.
-        
         desk_id (List[int], optional):
             If provided, filters the analysis to the selected desk IDs.
             Defaults to `None`, meaning no filtering is applied.
@@ -62,12 +60,10 @@ def mean_utilization(
         weekday (List[str], optional):
             List of weekday names (e.g., ['monday', 'friday']) to include in analysis.
             If `None`, defaults to all weekdays (Monday to Friday).
-        
         start_date (datetime.datetime, optional): 
             Start of the evaluation period. If `None`, defaults to 90 days ago.
         end_date (datetime.datetime, optional): 
             End of the evaluation period. If `None`, defaults to today.
-        
         threshold (float, optional):
             Optional minimum or maximum utilization threshold to filter results where min
             or max is selected by the bottom bool. Defaults to `None`, meaning no filtering is applied.
@@ -89,12 +85,19 @@ def mean_utilization(
     if sum([by_room, by_desks, by_day]) != 1:
         raise ValueError("You must set exactly one of by_room, by_desks, or by_day to True.")
 
+    # set default values if applicable
+    if include_fixed is None:
+        include_fixed = False
+    if not weekday:
+        weekday = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    elif isinstance(weekday, str):
+        weekday = [weekday.lower()]
     if not start_date:
         start_date = datetime.datetime.today() - timedelta(days=90)
     if not end_date:
         end_date = datetime.datetime.today()
-    if not weekday:
-        weekday = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    if from_bottom is None:
+        from_bottom = False
     
     df = prepare_utilization_dataset(
         data=data,
@@ -212,7 +215,7 @@ def mean_utilization(
 
 def utilization_stats(
     data: Dataset,
-    include_fixed: bool = False,
+    include_fixed: Optional[bool] = False,
     by_desks: bool = False,
     by_room: bool = False,
     by_day: bool = False,
@@ -225,23 +228,36 @@ def utilization_stats(
     """
     Identifies utilization outliers based on deviation from the global mean.
 
+    # FIXME: TO BE UPDATED
     This function detects keys (desks, rooms, or weekdays) whose average utilization deviates significantly 
     from the global mean (by at least the given threshold). It uses the same aggregation logic as 
     `analyze_utilization` and returns only the outlier entries.
+    # FIXME: TO BE UPDATED
 
     Args:
         data (Dataset): 
             The dataset containing booking data.
         include_fixed (bool): 
             If True, expands recurring bookings into daily entries. Defaults to False.
-        by_desks (bool): If True, detects anomalies per desk. Defaults to False.
-        by_room (bool): If True, detects anomalies per room. Defaults to False.
-        by_day (bool): If True, detects anomalies per weekday. Defaults to False.
-        desk_id (Optional[List[int]]): Optional desk filter. Defaults to None.
-        room_name (Optional[List[str]]): Optional room filter. Defaults to None.
-        weekday (List[str]): List of weekdays to consider in the analysis. Defaults to ["monday", "tuesday", "wednesday", "thursday", "friday"].
-        start_date (Optional[datetime.datetime]): Start of the analysis window. Defaults to None and will then take 90 days ago.
-        end_date (Optional[datetime.datetime]): End of the analysis window. Defaults to None and will then take today.
+        by_desks (bool):
+            If True, groups statistics by individual desk (e.g., 'Room_3'). Defaults to False.
+        by_room (bool): 
+            If True, groups statistics by room. Defaults to False.
+        by_day (bool): 
+            If True, groups statistics by weekday name (e.g., 'Monday'). Defaults to False.
+        desk_id (List[int], optional):
+            If provided, filters the analysis to the selected desk IDs.
+            Defaults to `None`, meaning no filtering is applied.
+        room_name (List[str], optional):
+            If provided, filters the analysis to the selected rooms.
+            Defaults to `None`, meaning no filtering is applied.
+        weekday (List[str], optional):
+            List of weekday names (e.g., ['monday', 'friday']) to include in analysis.
+            If `None`, defaults to all weekdays (Monday to Friday).
+        start_date (datetime.datetime, optional): 
+            Start of the evaluation period. If `None`, defaults to 90 days ago.
+        end_date (datetime.datetime, optional): 
+            End of the evaluation period. If `None`, defaults to today.
 
     Raises:
         ValueError:
@@ -254,9 +270,16 @@ def utilization_stats(
     if sum([by_room, by_desks, by_day]) != 1:
         raise ValueError("You must set exactly one of by_room, by_desks, or by_day to True.")
 
-    if start_date is None:
+    # set default values if applicable
+    if include_fixed is None:
+        include_fixed = False
+    if not weekday:
+        weekday = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    elif isinstance(weekday, str):
+        weekday = [weekday.lower()]
+    if not start_date:
         start_date = datetime.datetime.today() - timedelta(days=90)
-    if end_date is None:
+    if not end_date:
         end_date = datetime.datetime.today()
 
     df = prepare_utilization_dataset(
@@ -317,8 +340,8 @@ def utilization_stats(
 
 def detect_utilization_anomalies(
     data: Dataset,
-    include_fixed: bool = False,
-    threshold: float = 0.2,
+    include_fixed: Optional[bool] = False,
+    threshold: Optional[float] = 0.2,
     by_desks: bool = False,
     by_room: bool = False,
     by_day: bool = False,
@@ -332,17 +355,38 @@ def detect_utilization_anomalies(
     Detects desks, rooms or weekdays with abnormally high or low mean utilization values.
 
     Args:
-        data (Dataset): Booking dataset.
-        threshold (float): Minimum absolute deviation from the global mean utilization. Defaults to 0,2.
-        by_room (bool): If True, analyze by room. If False, analyze by weekday. Defaults to False.
-        include_fixed (bool): Whether to include expanded fixed bookings. Defaults to False.
-        start_date (Optional[datetime.datetime]): Start of the analysis window. Defaults to None and will then take 90 days ago.
-        end_date (Optional[datetime.datetime]): End of the analysis window. Defaults to None and will then take today.
+        data (Dataset): 
+            The dataset containing booking data.
+        threshold (float, optional): 
+            Minimum absolute deviation from the global mean utilization. Defaults to 0.2.
+        by_desks (bool):
+            If True, groups statistics by individual desk (e.g., 'Room_3'). Defaults to False.
+        by_room (bool): 
+            If True, groups statistics by room. Defaults to False.
+        by_day (bool): 
+            If True, groups statistics by weekday name (e.g., 'Monday'). Defaults to False.
+        desk_id (List[int], optional):
+            If provided, filters the analysis to the selected desk IDs.
+            Defaults to `None`, meaning no filtering is applied.
+        room_name (List[str], optional):
+            If provided, filters the analysis to the selected rooms.
+            Defaults to `None`, meaning no filtering is applied.
+        weekday (List[str], optional):
+            List of weekday names (e.g., ['monday', 'friday']) to include in analysis.
+            If `None`, defaults to all weekdays (Monday to Friday).
+        start_date (datetime.datetime, optional): 
+            Start of the evaluation period. If `None`, defaults to 90 days ago.
+        end_date (datetime.datetime, optional): 
+            End of the evaluation period. If `None`, defaults to today.
 
     Returns:
         FunctionRegistryExpectedFormat:
             Contains the data and plots of abnormal utilizations.
     """
+    # set default values if applicable
+    if threshold is None or not isinstance(threshold, (int, float)) or threshold < 0:
+        threshold = 0.2
+
     result = mean_utilization(
         data=data,
         include_fixed=include_fixed,
