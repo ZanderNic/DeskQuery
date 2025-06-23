@@ -195,7 +195,10 @@ def mean_utilization(
             available_plots=[generate_map]
         )
 
-    return FunctionRegistryExpectedFormat(data=data_return, plot=plot)
+    return FunctionRegistryExpectedFormat(
+        data=data_return, 
+        plot=plot
+    )
 
 
 def utilization_stats(
@@ -296,7 +299,10 @@ def utilization_stats(
             "var": float(round(values["sumsq"] / max_possible - mean ** 2, 6)),
         }
 
-    return FunctionRegistryExpectedFormat(data=result_data_dict)
+    return FunctionRegistryExpectedFormat(
+        data=result_data_dict, 
+        plot=PlotForFunction()
+    )
 
 
 def detect_utilization_anomalies(
@@ -356,7 +362,10 @@ def detect_utilization_anomalies(
         available_plots=[generate_barchart]
     )
 
-    return FunctionRegistryExpectedFormat(data=anomalies, plot=plot)
+    return FunctionRegistryExpectedFormat(
+        data=anomalies, 
+        plot=plot
+    )
 
 
 ####### Helpers ########################################################################################################

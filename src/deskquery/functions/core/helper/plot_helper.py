@@ -372,13 +372,13 @@ def generate_map(
     Args:
         room_ids (dict[int, float], optional):
             Mapping of room IDs to values (e.g. utilization). These will be marked in the image.
-            Defaults to `None`, which means no rooms are marked.
+            Defaults to `None`, which means no specific rooms are marked.
         room_names (dict[str, float], optional):
             Alternative to `room_ids`. Room names are internally mapped to IDs.
-            Defaults to `None`, which means no rooms are marked.
+            Defaults to `None`, which means no specific rooms are marked.
         desk_ids (dict[int, float], optional):
             Mapping of desk IDs to values. These will be shown as smaller colored boxes.
-            Defaults to `None`, which means no values are shown for desks.
+            Defaults to `None`, which means no specific values are shown for desks.
         label_markings (str, optional):
             Optional label description shown in the hover tooltip. Defaults to "label" if not given.
         title (str, optional):

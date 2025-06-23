@@ -44,8 +44,25 @@ def generate_plot_for_function(
         raise ValueError(
             "Unfortunately, there are no other plots than the default one available for this function result."
         )
-
-    if plot_to_generate:
+    if not plot.available_plots:
+        raise ValueError(
+            "Unfortunately, there are no plots available for this function result."
+        )
+    # if there is no plot to generate defined but the default plot is available
+    if not plot_to_generate and use_default_plot and plot.default_plot:
+        # enable plotting in the frontend
+        function_result.plotted = True
+        return function_result
+    # if there is no plot to generate defined and the default plot should not be used
+    # but there is another plot than the default one available
+    elif (not plot_to_generate and len(plot.available_plots) > 1 and (
+          use_default_plot and not plot.default_plot or not use_default_plot)):
+        plot_to_generate = plot.available_plots[1]
+    
+    # plot.available_plots should not be empty here
+    if plot_to_generate == plot.available_plots[0]:
+        use_default_plot = True
+    else:
         use_default_plot = False
 
     if use_default_plot:

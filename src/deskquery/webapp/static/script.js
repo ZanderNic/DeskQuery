@@ -38,10 +38,20 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
       case 'table':
         wrapper.className = 'message table';
+        // set table height
+        const numRows = Object.keys(data.data.df).length;
+        const tableHeight = 62 + numRows*26 + 28;
+        if (tableHeight > 450) {
+          wrapper.style.minHeight = '422px';
+        } else {
+          wrapper.style.minHeight = `${tableHeight}px`;
+        }
+        // add table header
         const tableHeader = document.createElement('div');
         tableHeader.className = 'table-header';
         tableHeader.textContent = data.data.plotly.layout?.title?.text || '';
         wrapper.appendChild(tableHeader);
+        // render table content
         wrapper.appendChild(renderTable(
           data.data,
           data.data.plotly.layout?.xaxis?.title?.text || ''

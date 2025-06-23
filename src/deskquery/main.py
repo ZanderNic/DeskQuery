@@ -682,6 +682,7 @@ def validate_referenced_message_explanation(
 
 def select_plot_function(
     query : List[dict],
+    plot_function_registry: dict = plot_function_registry,
 ):
     prompt_template = """
 You are a smart assistant for a desk booking analytics system.
@@ -718,6 +719,8 @@ Answer in a strict PYTHON DICT format as shown below.
         query=query
     )
 
+    print("50) LLM Plot Function Selection Prompt:", prompt, sep="\n")  # FIXME: DEBUG
+
     response = current_client.chat_completion(
         input_str=prompt,
         role='system',
@@ -733,6 +736,36 @@ Answer in a strict PYTHON DICT format as shown below.
 def validate_plot_function_selection(
     query: List[dict],
 ):
+    global function_data
+    global plot_function_registry
+
+    last_data_message = None
+    available_plots = []
+
+    for message in reversed(function_data['referenced_messages']):
+        if message.get("data", False) and message["data"].get("plotable", False):
+            last_data_message = message
+
+    if last_data_message is None:
+        return {
+            "status": "error",
+            "message": "I could not identify a valid message with data to plot. Please try again or describe it in a different way."
+        }
+    else:
+        last_FREF = FREF_from_dict(last_data_message["data"])
+        available_plots = last_FREF.plot.available_plots
+
+    if not available_plots:
+        return {
+            "status": "error",
+            "message": "There seems to be no available plot function to visualize the result. Please try again or describe it in a different way."
+        }
+    
+    # Mask the plot_function_registry with only the available plots
+    masked_plot_function_registry = {k: v for k, v in plot_function_registry.items() if v in available_plots}
+    print("50) Available plot functions:", masked_plot_function_registry, sep="\n")  # FIXME: DEBUG
+
+
     # try to generate a valid json response
     error = True
     generate_counter = 0
@@ -740,7 +773,7 @@ def validate_plot_function_selection(
         response = "<Error inside executed function>"
         try:
             # generate the response from the LLM
-            response = select_plot_function(query)
+            response = select_plot_function(query, masked_plot_function_registry)
             # parse the response as dict
             json_data = eval(response)
             if not isinstance(json_data, dict):

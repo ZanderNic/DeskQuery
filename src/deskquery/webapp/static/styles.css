@@ -409,7 +409,6 @@ html, body {
   width: 70%;
   max-width: 70%;
   /* height: 100%; */
-  min-height: 450px;
   max-height: 450px;
   overflow: auto;
   background-color: #424242;
