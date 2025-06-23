@@ -49,7 +49,7 @@ def forecast_employees(
         forecast_model (str, optional): 
             Model used to forecast time series if weekly_growth_rate and 
             weekly_absolute_growth are not given. This can be either "linear" for 
-            linear regression or "sarima" for seasonal moving average regression.
+            linear regression or "sarimax" for seasonal moving average regression.
             Defaults to "linear".
         weeks_ahead (int, optional): 
             Number of weeks into the future to simulate. Defaults to 52 weeks.
