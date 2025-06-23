@@ -13,51 +13,69 @@ def get_avg_employee_bookings(
     user_names: Optional[str | Sequence[str]] = None,
     user_ids: Optional[int | Sequence[int]] = None,
     num_employees: Optional[int] = None,
-    return_total_mean: bool = False,
+    return_total_mean: Optional[bool] = False,
     granularity: Literal["day", "week", "month", "year"] = 'year',
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     start_date: Optional[datetime.datetime] = None,
     end_date: Optional[datetime.datetime] = None,
-    include_double_bookings: bool = False,
-    include_fixed: bool = True,
-    return_user_names: bool = True,
-    include_non_booking_users: bool = False
+    include_double_bookings: Optional[bool] = False,
+    include_fixed: Optional[bool] = True,
+    return_user_names: Optional[bool] = True,
+    include_non_booking_users: Optional[bool] = False
 ) -> FunctionRegistryExpectedFormat:
     """
     Compute average booking frequency per employee over a specified time granularity.
 
     Parameters:
         data (Dataset):
-            Dataset containing booking records.
+            Dataset with booking information.
         user_names (str | Sequence[str], optional): 
-            Filter for specific usernames.
+            Filter for specific usernames. Defaults to `None`, which means no filtering is applied.
         user_ids (int | Sequence[int], optional): 
-            Filter for specific user IDs.
+            Filter for specific user IDs. Defaults to `None`, which means no filtering is applied.
         num_employees (int, optional): 
-            Limit result to top-N employees by average bookings.
-        return_total_mean (bool): 
-            If True, return the mean over all employees instead of per-user values.
-        granularity (str): 
-            Time unit for averaging. One of "day", "week", "month", or "year".
-        weekdays (List[str]): 
-            Days of the week to include in the analysis.
+            Limit result to top-N employees by average bookings. Defaults to `None`, which means all employees are included.
+        return_total_mean (bool, optional): 
+            If True, return the mean over all employees instead of per-user values. Defaults to False.
+        granularity (str):
+            Time unit for averaging. One of "day", "week", "month", or "year". Default is "year".
+        weekdays (List[str]):
+            Days of the week to include in the analysis. Defaults to `None`, meaning all weekdays are included.
         start_date (datetime.datetime, optional): 
-            Start of date range to consider.
-        end_date (datetime.datetime, optional): 
-            End of date range to consider.
-        include_double_bookings (bool): 
-            If False, exclude double bookings from analysis.
-        include_fixed (bool): 
-            If False, exclude fixed (non-bookable) desks from analysis.
-        return_user_names (bool): 
-            If True, map user IDs to usernames in the output.
-        include_non_booking_users (bool): 
-            If True, include users with 0 bookings in the result.
+            Start of date range to consider. Defaults to `None`, using the dataset's start date. 
+        end_date (datetime.datetime, optional):
+            End of date range to consider. Defaults to `None`, using the dataset's end date.
+        include_double_bookings (bool, optional): 
+            If False, exclude double bookings from analysis. Defaults to False.
+        include_fixed (bool, optional):
+            If False, exclude fixed (non-bookable) desks from analysis. Defaults to True.
+        return_user_names (bool, optional): 
+            If True, map user IDs to usernames in the output. Defaults to True.
+        include_non_booking_users (bool, optional): 
+            If True, include users with 0 bookings in the result. Defaults to False.
 
     Returns:
         FunctionRegistryExpectedFormat: 
             Contains the data and plot of average employee bookings.
     """
+    # set default values if applicable
+    if return_total_mean is None:
+        return_total_mean = False
+    if not granularity or not granularity in Dataset._date_format_mapping:
+        granularity = 'year'
+    if not weekdays:
+        weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    elif isinstance(weekdays, str):
+        weekdays = [weekdays.lower()]
+    if include_double_bookings is None:
+        include_double_bookings = False
+    if include_fixed is None:
+        include_fixed = True
+    if return_user_names is None:
+        return_user_names = True
+    if include_non_booking_users is None:
+        include_non_booking_users = False
+
     if not include_fixed:
         data = data.drop_fixed()
     if not include_double_bookings:
@@ -121,28 +139,46 @@ def get_booking_repeat_pattern(
     data: Dataset,
     user_names: Optional[str | Sequence[str]] = None,
     user_ids: Optional[int | Sequence[int]] = None,
-    most_used_desk: int = 1,
+    most_used_desk: Optional[int] = 1,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime.datetime] = None, 
     end_date: Optional[datetime.datetime] = None,
-    include_fixed: bool = True,
+    include_fixed: Optional[bool] = True,
 ) -> FunctionRegistryExpectedFormat:
     """
     Identifies users who book the same desks or same days repeatedly.
     
     Args:
-        data (Dataset): The booking dataset to analyze.
-        user_names (Optional[list[str]]): Filter by specific user names.
-        user_ids (Optional[list[int]]): Filter by specific user IDs.
-        most_used_desk (int): Number of top booked desks to consider per user.
-        weekdays (List[str]): List of weekdays to include.
-        start_date (Optional[datetime.datetime]): Start of the analysis period.
-        end_date (Optional[datetime.datetime]): End of the analysis period.
-        include_fixed (bool): Whether to include fixed desk bookings.
+        data (Dataset):
+            Dataset with booking information.
+        user_names (list[str], optional):
+            Filter by specific user names. Defaults to `None`, meaning no filtering is applied.
+        user_ids (list[int], optional):
+            Filter by specific user IDs. Defaults to `None`, meaning no filtering is applied.
+        most_used_desk (int, optional):
+            Number of top booked desks to consider per user. Defaults to 1, meaning only the most booked desk is considered.
+        weekdays (List[str]): 
+            List of weekdays to include. If `None`, all weekdays are included.
+        start_date (datetime.datetime, optional):
+            Start of the analysis period. Defaults to `None`, meaning the dataset's start date is used.
+        end_date (datetime.datetime, optional):
+            End of the analysis period. Defaults to `None`, meaning the dataset's end date is used.
+        include_fixed (bool, optional):
+            Whether to include fixed desk bookings. Defaults to True.
 
     Returns:
         FunctionRegistryExpectedFormat: Contains the data and plots of booking repeat patterns.
     """
+    # set default values if applicable
+    if not most_used_desk or not isinstance(most_used_desk, int) or most_used_desk < 1:
+        most_used_desk = 1
+    if not weekdays:
+        weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    elif isinstance(weekdays, str):
+        weekdays = [weekdays.lower()]
+    if include_fixed is None:
+        include_fixed = True
+
     if not include_fixed:
         data = data.drop_fixed()
 
@@ -186,9 +222,9 @@ def get_booking_repeat_pattern(
 
 def get_booking_clusters(
     data: Dataset,
-    co_booking_count_min: int = 3, 
-    user_ids: Optional[list[int]] = None,
-    include_fixed: bool = False,
+    co_booking_count_min: Optional[int] = 3, 
+    user_ids: Optional[List[int]] = None,
+    include_fixed: Optional[bool] = False,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime.datetime] = None, 
     end_date: Optional[datetime.datetime] = None,
@@ -199,18 +235,35 @@ def get_booking_clusters(
     on a minimum number of shared bookings.
 
     Args:
-        data (Dataset): Booking data.
-        co_booking_count_min (int): Minimum number of shared bookings.
-        user_ids (Optional[list[int]]): list of user IDs to filter by.
-        include_fixed (bool): excludes fixed desk bookings from analysis.
-        weekdays (List[str]): weekdays to consider.
-        start_date (Optional[datetime.datetime]): start date.
-        end_date (Optional[datetime.datetime]): end date.
+        data (Dataset):
+            Dataset with booking information.
+        co_booking_count_min (int, optional):
+            Minimum number of shared bookings. Defaults to 3.
+        user_ids (List[int], optional):
+            List of user IDs to filter by. If `None`, all users are considered.
+        include_fixed (bool, optional):
+            Whether to include fixed desk bookings. Defaults to False.
+        weekdays (List[str]): 
+            List of weekdays to include. If `None`, all weekdays are included.
+        start_date (datetime.datetime, optional):
+            Start of the analysis period. Defaults to `None`, meaning the dataset's start date is used.
+        end_date (datetime.datetime, optional):
+            End of the analysis period. Defaults to `None`, meaning the dataset's end date is used.
 
     Returns:
         FunctionRegistryExpectedFormat: 
             Information about the found booking clusters.
     """
+    # set default values if applicable
+    if not co_booking_count_min or not isinstance(co_booking_count_min, int) or co_booking_count_min < 1:
+        co_booking_count_min = 3
+    if include_fixed is None:
+        include_fixed = False
+    if not weekdays:
+        weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    elif isinstance(weekdays, str):
+        weekdays = [weekdays.lower()]
+
     if not include_fixed:
         data = data.drop_fixed()
     # Treating double bookings makes no sense
@@ -240,9 +293,9 @@ def get_booking_clusters(
 
 def get_co_booking_frequencies(
     data: Dataset,
-    min_shared_days: int = 5, 
+    min_shared_days: Optional[int] = 5, 
     same_room_only: Optional[bool] = None, 
-    include_fixed: bool = True,
+    include_fixed: Optional[bool] = True,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime.datetime] = None, 
     end_date: Optional[datetime.datetime] = None,
@@ -255,17 +308,36 @@ def get_co_booking_frequencies(
     Optionally, it can restrict analysis to bookings in the same room.
 
     Args:
-        data (Dataset): Dataset with booking information.
-        min_shared_days (int): minimum number of shared booking days required to include a user pair.
-        same_room_only (bool): only consider co-bookings where both users were in the same room.
-        include_fixed (bool): excludes fixed desk bookings from analysis.
-        weekdays (List[str]): weekdays to consider for the analysis (e.g., ["monday", "wednesday"]).
-        start_date (Optional[datetime.datetime]): start date 
-        end_date (Optional[datetime.datetime]): end date
+        data (Dataset):
+            Dataset with booking information.
+        min_shared_days (int, optional): 
+            Minimum number of shared booking days required to include a user pair. Defaults to 5.
+        same_room_only (bool, optional):
+            Whether to consider only co-bookings where both users were in the same room. Defaults to True. 
+        include_fixed (bool, optional):
+            Whether to include fixed desk bookings. Defaults to True.
+        weekdays (List[str]): 
+            List of weekdays to include. If `None`, all weekdays are included.
+        start_date (datetime.datetime, optional):
+            Start of the analysis period. Defaults to `None`, meaning the dataset's start date is used.
+        end_date (datetime.datetime, optional):
+            End of the analysis period. Defaults to `None`, meaning the dataset's end date is used.
 
     Returns:
         FunctionRegistryExpectedFormat:
     """
+    # set default values if applicable
+    if not min_shared_days or not isinstance(min_shared_days, int) or min_shared_days < 1:
+        min_shared_days = 5
+    if same_room_only is None:
+        same_room_only = True
+    if include_fixed is None:
+        include_fixed = True
+    if not weekdays:
+        weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    elif isinstance(weekdays, str):
+        weekdays = [weekdays.lower()]
+
     if not include_fixed:
         data = data.drop_fixed()
     if not weekdays:
