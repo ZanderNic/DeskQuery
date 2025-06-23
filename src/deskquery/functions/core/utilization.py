@@ -226,13 +226,17 @@ def utilization_stats(
     end_date: Optional[datetime.datetime] = None,
 ) -> FunctionRegistryExpectedFormat:
     """
-    Identifies utilization outliers based on deviation from the global mean.
+    Computes utilization statistics (mean, min, max, variance) for desks, rooms, or weekdays
+    over a specified date range.
 
-    # FIXME: TO BE UPDATED
-    This function detects keys (desks, rooms, or weekdays) whose average utilization deviates significantly 
-    from the global mean (by at least the given threshold). It uses the same aggregation logic as 
-    `analyze_utilization` and returns only the outlier entries.
-    # FIXME: TO BE UPDATED
+    Utilization is defined as the number of actual bookings divided by the number of possible
+    bookings for each group. The number of possible bookings is based on:
+    - the total number of weekdays in the range,
+    - the number of desks per room (if by_room),
+    - the total number of desks (if by_day),
+    - or one desk per day (if by_desks).
+
+    The results are grouped by one of: desk, room, or weekday — exactly one must be specified.
 
     Args:
         data (Dataset): 
@@ -265,7 +269,9 @@ def utilization_stats(
 
     Returns:
         FunctionRegistryExpectedFormat:
-            Contains the data of identified utilization outliers.
+            The `data` field contains a dictionary mapping keys (desks, rooms, or days)
+            to a dictionary of utilization statistics with keys:
+            'mean', 'min', 'max', and 'var' (variance).
     """
     if sum([by_room, by_desks, by_day]) != 1:
         raise ValueError("You must set exactly one of by_room, by_desks, or by_day to True.")
@@ -352,7 +358,13 @@ def detect_utilization_anomalies(
     end_date: Optional[datetime.datetime] = None,
 ) -> FunctionRegistryExpectedFormat:
     """
-    Detects desks, rooms or weekdays with abnormally high or low mean utilization values.
+    Detects utilization anomalies by identifying desks, rooms, or weekdays whose mean 
+    utilization deviates significantly from the global average.
+
+    An anomaly is defined as any key (desk, room, or weekday) whose mean utilization differs
+    from the overall mean utilization by more than the specified threshold.
+
+    Exactly one of `by_desks`, `by_room`, or `by_day` must be set to True to define the grouping logic.
 
     Args:
         data (Dataset): 
