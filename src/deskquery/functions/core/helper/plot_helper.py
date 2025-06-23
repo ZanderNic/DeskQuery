@@ -133,13 +133,17 @@ def generate_heatmap(
     Generate a heatmap from structured input data of correct format.
 
     Args:
-        data (FunctionData): A dictionary in the format 
+        data (FunctionData, optional): A dictionary in the format 
             {trace_name: {"x": x_values, "y": y_values, "z": z_values}}. 
-            Defaults to `None`.
-        title (str, optional): Title of the heatmap.
-        xaxis_title (str, optional): Label for the x-axis.
-        yaxis_title (str, optional): Label for the y-axis.
-        colorscale (str): Color scale used for the heatmap. Defaults to 'Viridis'.
+            Defaults to `None`, meaning no data is plotted unless explicitly provided.
+        title (str, optional): Title of the heatmap. Defaults to `None`, 
+            meaning no title is displayed unless specified.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`, 
+            meaning the x-axis will have no label unless specified.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`, 
+            meaning the y-axis will have no label unless specified.
+        colorscale (str, optional): Color scale used for the heatmap. 
+            Defaults to 'Viridis'.
 
     Returns:
         Plot: A Plotly heatmap figure.
@@ -183,11 +187,15 @@ def generate_barchart(
     Generate a bar chart/bar plot from structured input data of correct format.
 
     Args:
-        data (FunctionData): A dictionary in the format 
-            {trace_name: {category: value}}. Defaults to `None`.
-        title (str, optional): Title of the bar chart. Defaults to `None`.
-        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
-        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
+        data (FunctionData, optional): A dictionary in the format 
+            {trace_name: {category: value}}. Defaults to `None`, 
+            meaning no data is plotted unless explicitly provided.
+        title (str, optional): Title of the bar chart. Defaults to `None`, 
+            meaning no title is displayed unless specified.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`, 
+            meaning the x-axis will have no label unless specified.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`, 
+            meaning the y-axis will have no label unless specified.
 
     Returns:
         Plot: A Plotly bar chart figure.
@@ -231,11 +239,15 @@ def generate_scatterplot(
     Generate a scatter plot from structured input data of correct format.
 
     Args:
-        data (FunctionData): A dictionary in the format 
-            {trace_name: {x_value: y_value}}. Defaults to `None`.
-        title (str, optional): Title of the scatter plot. Defaults to `None`.
-        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
-        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
+        data (FunctionData, optional): A dictionary in the format 
+            {trace_name: {x_value: y_value}}. Defaults to `None`, 
+            meaning no data is plotted unless explicitly provided.
+        title (str, optional): Title of the scatter plot. Defaults to `None`, 
+            meaning no title is displayed unless specified.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`, 
+            meaning the x-axis will have no label unless specified.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`, 
+            meaning the y-axis will have no label unless specified.
 
     Returns:
         Plot: A Plotly scatter plot figure.
@@ -266,15 +278,19 @@ def generate_lineplot(
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None
 ) -> Plot:
-    """
+   """
     Generate a line plot from structured input data of correct format.
 
     Args:
-        data (FunctionData): A dictionary in the format 
-            {trace_name: {x_value: y_value}}. Defaults to `None`.
-        title (str, optional): Title of the line plot. Defaults to `None`.
-        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
-        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
+        data (FunctionData, optional): A dictionary in the format 
+            {trace_name: {x_value: y_value}}. Defaults to `None`, 
+            meaning no data is plotted unless explicitly provided.
+        title (str, optional): Title of the line plot. Defaults to `None`, 
+            meaning no title is displayed unless specified.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`, 
+            meaning the x-axis will have no label unless specified.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`, 
+            meaning the y-axis will have no label unless specified.
 
     Returns:
         Plot: A Plotly line plot figure.
@@ -318,13 +334,17 @@ def generate_hist(
     Generate a histogram from structured input data of correct format.
 
     Args:
-        data (FunctionData): A dictionary in the format 
-            {trace_name: {"x": x_values}}. Defaults to `None`.
+        data (FunctionData, optional): A dictionary in the format 
+            {trace_name: {"x": x_values}}. Defaults to `None`, 
+            meaning no data is provided unless explicitly passed.
         nbinsx (int, optional): Number of bins along the x-axis. 
             If not specified, defaults to the length of x_values.
-        title (str, optional): Title of the histogram. Defaults to `None`.
-        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
-        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
+        title (str, optional): Title of the histogram. Defaults to `None`, 
+            meaning no title is displayed unless specified.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`, 
+            meaning the x-axis will have no label unless specified.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`, 
+            meaning the y-axis will have no label unless specified.
 
     Returns:
         Plot: A Plotly histogram figure.
@@ -367,10 +387,10 @@ def generate_map(
     The function overlays a fixed background image of the office floor plan with colored rectangular
     markers for desks and rooms based on their usage or custom values. Hover tooltips provide details 
     like room/desk ID, name/number, and value. The color reflects the numeric value (e.g. utilization),
-    using a red-yellow-green colormap that is betwean 0 and 1.
+    using a red-yellow-green colormap that is between 0 and 1.
 
     A valid map can be created by setting all parameters to `None`.
-    
+
     Args:
         room_ids (dict[int, float], optional):
             Mapping of room IDs to values (e.g. utilization). These will be marked in the image.
@@ -384,7 +404,7 @@ def generate_map(
         label_markings (str, optional):
             Optional label description shown in the hover tooltip. Defaults to "label" if not given.
         title (str, optional):
-            Title of the map. Defaults to "Map".
+            Title of the map. Defaults to "Map", meaning this title is displayed unless overridden.
 
     Returns:
         Plot: A Plotly figure with the office background and interactive overlays.
@@ -527,11 +547,13 @@ def generate_table(
     Generate a formatted table using Plotly.
 
     Args:
-        data (FunctionData): 
+        data (FunctionData, optional): 
             A dictionary where each key is a column name and the value is a 
-            list of column values. Defaults to `None`.
+            list of column values. Defaults to `None`, meaning no table is 
+            rendered unless data is explicitly provided.
         title (str, optional): 
-            Title for the table. Defaults to `None`.
+            Title for the table. Defaults to `None`, meaning no title is 
+            displayed unless specified.
 
     Returns:
         Plot: A Plotly table figure.
