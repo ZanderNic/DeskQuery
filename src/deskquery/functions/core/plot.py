@@ -13,21 +13,22 @@ def generate_plot_for_function(
 ) -> dict:
     """
     Takes a function result and creates a visualization of the data.
-    Therefore, a specific plot function or the function results default plot may be used.
+    Therefore, a specific plot function or the function result's default plot may be used.
 
     Args:
         function_result (FunctionRegistryExpectedFormat):
             Function result object containing a FunctionData and PlotForFunction object.
-        additional_plot_args (Dict[str, str]):
+        additional_plot_args (Dict[str, str], optional):
             A dict with keyword arguments for the plot creation usually containing the keys "title"
             for the main plot title, "xaxis_title" and "yaxis_title" for specific axes titles.
+            Defaults to an empty dictionary, meaning no additional titles or labels are provided.
         plot_to_generate (PlotFunction, optional):
             The PlotFunction to use for the visualization indicating the plot type. The choices are given by the
-            function result's available plots. If this is `None`, the default plot for the result data is used.
-        use_default_plot (bool):
+            function result's available plots. Defaults to `None`, meaning the default plot for the result data is used.
+        use_default_plot (bool, optional):
             If `True`, the function result's predefined default plot type is used.
             If `False`, another available plot than the default one must be specified as `plot_to_generate` to not
-            result in an error.
+            result in an error. Defaults to `True`.
 
     Returns:
         FunctionRegistryExpectedFormat:
