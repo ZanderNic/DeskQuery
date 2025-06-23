@@ -2,8 +2,8 @@ from __future__ import annotations
 from typing import Any, MutableMapping, Iterator, Dict, Optional, List
 import plotly.graph_objects as go
 from abc import ABC, abstractmethod
-from deskquery.data.dataset import Dataset
 
+from deskquery.data.dataset import Dataset
 
 class Plot(go.Figure):
     def __init__(self, *args, **kwargs):
@@ -19,13 +19,10 @@ class PlotFunction(ABC):
 class PlotForFunction:
     def __init__(self, default_plot: Optional[Plot] = Plot(), available_plots: List[PlotFunction] = []):
         self.default_plot = default_plot
-        # FIXME: The following if is always true since the default plot is of type Plot and not PlotFunction
-        if default_plot not in available_plots and default_plot: 
-            available_plots.append(default_plot)
         self.available_plots = available_plots
     
     def to_json(self) -> str:
-        return f"{{default_plot: {self.default_plot.to_json()}, available_plots: {[plot.__name__ for plot in self.available_plots[:-1]]}}}"
+        return f"{{default_plot: {self.default_plot.to_dict()}, available_plots: {[plot.__name__ for plot in self.available_plots]}}}"
 
     def __str__(self) -> str:
         return self.to_json()
@@ -36,10 +33,16 @@ class FunctionData(Dict):
 
 
 class FunctionRegistryExpectedFormat(MutableMapping):
-    def __init__(self, data: FunctionData = FunctionData(), plot: PlotForFunction = PlotForFunction()):
+    def __init__(
+        self, 
+        data: FunctionData = FunctionData(), 
+        plot: PlotForFunction = PlotForFunction(),
+        plotted: bool = False,
+    ):
         self.data = data
         self.plot = plot
         self.plotable = True if plot.available_plots else False
+        self.plotted = plotted
 
     def __getitem__(self, key: str) -> Any:
         if key == "plot":
@@ -48,6 +51,8 @@ class FunctionRegistryExpectedFormat(MutableMapping):
             return self.data
         elif key == "plotable":
             return self.plotable
+        elif key == "plotted":
+            return self.plotted
         else:
             raise KeyError(f"{key} not defined.")
 
@@ -77,4 +82,5 @@ class FunctionRegistryExpectedFormat(MutableMapping):
             "data": self.data,
             "plot": self.plot.to_json(),
             "plotable": self.plotable,
+            "plotted": self.plotted
         })

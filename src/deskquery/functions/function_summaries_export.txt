@@ -1,6 +1,6 @@
 def mean_utilization(
     data: Dataset,
-    include_fixed: bool = False,
+    include_fixed: Optional[bool] = False,
     by_desks: bool = False,
     by_room: bool = False,
     by_day: bool = False,
@@ -68,19 +68,21 @@ def simulate_policy(
     policy: Dict,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
-    num_weeks: int = 100,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"],  # FIXME: Change to English
+    num_weeks: Optional[int] = 100,
+    weekdays: Optional[List[str]] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
 Assigns policies and simulates the weekly attendance of all employees based on them. A policy is a dict of the following parameters 
 which are included in the policy, exceptions (if given) and random_assignments (if given):
 
-    timeframe (str): Policy timeframe (currently only "week" is supported).
-    fixed_days (Optional[List[str]]): Days that are always selected.
-    choseable_days (Optional[List[str]]): Days from which a fixed number is chosen.
-    number_choseable_days (Optional[int]): Number of days to pick from `choseable_days`.
-    number_days (Optional[int]): Target total number of days.
+policy = {
+    timeframe (str): Policy timeframe (currently only "week" is supported);
+    fixed_days (Optional[List[str]]): Days that are always selected;
+    choseable_days (Optional[List[str]]): Days from which a fixed number is chosen;
+    number_choseable_days (Optional[int]): Number of days to pick from `choseable_days`;
+    number_days (Optional[int]): Target total number of days;
     more_days_allowed (bool): If True, adds additional days based on attendance.
+}
 
 ---
 
@@ -89,31 +91,47 @@ def detect_policy_violations(
     policy: Dict,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
-    weekdays: List[str] = ["Mo", "Di", "Mi", "Do", "Fr"], # FIXME: Change to English
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None,
-    only_stats: bool = False
+    weekdays: Optional[List[str]] = ["monday", "tuesday", "wednesday", "thursday", "friday"],
+    start_date: Optional[datetime.datetime] = None, 
+    end_date: Optional[datetime.datetime] = None,
+    only_stats: Optional[bool] = False
 ) -> FunctionRegistryExpectedFormat:
 Takes a policy and searches the data for violations. A policy is a dict of the following parameters 
 which are included in the policy, exceptions (if given) and random_assignments (if given):
 
-    timeframe (str): Policy timeframe (currently only "week" is supported).
-    fixed_days (Optional[List[str]]): Days that are always selected.
-    choseable_days (Optional[List[str]]): Days from which a fixed number is chosen.
-    number_choseable_days (Optional[int]): Number of days to pick from `choseable_days`.
-    number_days (Optional[int]): Target total number of days.
+policy = {
+    timeframe (str): Policy timeframe (currently only "week" is supported);
+    fixed_days (List[str], optional): Days that are always selected;
+    choseable_days (List[str], optional): Days from which a fixed number is chosen;
+    number_choseable_days (int, optional): Number of days to pick from `choseable_days`;
+    number_days (int, optional): Target total number of days;
     more_days_allowed (bool): If True, adds additional days based on attendance.
+}
+
+---
+
+def get_booking_repeat_pattern(
+    data: Dataset,
+    user_names: Optional[str | Sequence[str]] = None,
+    user_ids: Optional[int | Sequence[int]] = None,
+    most_used_desk: int = 1,
+    weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
+    start_date: Optional[datetime.datetime] = None, 
+    end_date: Optional[datetime.datetime] = None,
+    include_fixed: bool = True,
+) -> FunctionRegistryExpectedFormat:
+Identifies users who book the same desks or same days repeatedly.
 
 ---
 
 def get_booking_clusters(
-    dataset: Dataset,
+    data: Dataset,
     co_booking_count_min: int = 3, 
     user_ids: Optional[list[int]] = None,
     include_fixed: bool = False,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None,
+    start_date: Optional[datetime.datetime] = None, 
+    end_date: Optional[datetime.datetime] = None,
 ) -> FunctionRegistryExpectedFormat:
 Finds groups of users who frequently book desks close to each other.
 Filters data by users, dates, and weekdays, then identifies clusters based 
@@ -122,13 +140,13 @@ on a minimum number of shared bookings.
 ---
 
 def get_co_booking_frequencies(
-    dataset: Dataset,
+    data: Dataset,
     min_shared_days: int = 5, 
     same_room_only: Optional[bool] = None, 
     include_fixed: bool = True,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
-    start_date: Optional[datetime] = None, 
-    end_date: Optional[datetime] = None,
+    start_date: Optional[datetime.datetime] = None, 
+    end_date: Optional[datetime.datetime] = None,
 )-> FunctionRegistryExpectedFormat:
 Identifies pairs of users who frequently book on the same days and calculates co-booking statistics.
 
@@ -138,55 +156,49 @@ Optionally, it can restrict analysis to bookings in the same room.
 
 ---
 
-def generate_plot_for_function(
-    func_result: FunctionRegistryExpectedFormat,
-    additional_plot_args: Dict[str, str] = {},
-    plot_to_generate: Optional[PlotFunction] = None,
-    use_default_plot: bool = True
-) -> dict:
-Takes a function result and creates a visualization of the data.
-Therefore, a specific plot function or the function results default plot may be used.
-
----
-
 def forecast_employees(
     data: Dataset,
-    lag: int = 90,
-    booking_type: str = "all",
-    weekly_growth_rate: float = None,
-    weekly_absolute_growth: float = None,
-    forecast_model = "linear",
-    weeks_ahead: int = 52,
+    lag: Optional[int] = 90,
+    booking_type: Optional[str] = "all",
+    weekly_growth_rate: Optional[float] = None,
+    weekly_absolute_growth: Optional[float] = None,
+    forecast_model: Optional[str] = "linear",
+    weeks_ahead: Optional[int] = 52,
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
-Forecasts the number of employees.
+Forecasts the number of employees with different models such as linear or sarimax. 
+Furthermore, this function can handle fixed weekly growth rates and fixed weekly absolute growth. 
+It gets the worker time series and then forecasts future employee numbers.
 
 ---
 
 def estimate_necessary_desks(
     data: Dataset,
-    lag: int = 90,
-    booking_type: str = "all",
-    weekly_growth_rate: Optional[float] = None,
-    weekly_absolute_growth: Optional[float] = None,
-    forecast_model = "linear",
-    target_utilization: float = 1.0,
-    weeks_ahead: int = 52,
     policy: Optional[Dict] = None,
     exceptions: Optional[Dict[int, Dict]] = None,
     random_assignments: Optional[List[Tuple[int, Dict]]] = None,
+    lag: Optional[int] = 90,
+    booking_type: Optional[str] = "all",
+    weekly_growth_rate: Optional[float] = None,
+    weekly_absolute_growth: Optional[float] = None,
+    forecast_model: Optional[str] = "linear",
+    weeks_ahead: Optional[int] = 52,
+    target_utilization: Optional[float] = 1.0,
 ) -> FunctionRegistryExpectedFormat:
-Estimates required number of desks to meet a target utilization. It can handle policies. If no policy
-is given it uses the attendance profile and a standard policy (no requirements). Either time series forecast is used or 
-the weekly growth rate / absolute growth. A policy is a dict of the following parameters 
-which are included in the policy, exceptions (if given) and random_assignments (if given):
+Estimates required number of desks to meet a target utilization. It can handle policies. 
+If no policy is given, it uses the attendance profile and a standard policy (no requirements).
+Either time series forecast is used or the weekly growth rate / absolute growth.
+A policy is a dict of the following parameters which are included in the policy, 
+exceptions (if given) and random_assignments (if given):
 
-    timeframe (str): Policy timeframe (currently only "week" is supported).
-    fixed_days (Optional[List[str]]): Days that are always selected.
-    choseable_days (Optional[List[str]]): Days from which a fixed number is chosen.
-    number_choseable_days (Optional[int]): Number of days to pick from `choseable_days`.
-    number_days (Optional[int]): Target total number of days.
-    more_days_allowed (bool): If True, adds additional days based on attendance.
+policy = {
+    timeframe (str): Policy timeframe (currently only "week" is supported);
+    fixed_days (List[str], optional): Days that are always selected;
+    choseable_days (List[str], optional): Days from which a fixed number is chosen;
+    number_choseable_days (int, optional): Number of days to pick from `choseable_days`;
+    number_days (int, optional): Target total number of days;
+    more_days_allowed (bool): If True, adds additional days based on attendance;
+}
 
 ---
 

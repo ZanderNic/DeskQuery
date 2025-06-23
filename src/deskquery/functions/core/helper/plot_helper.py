@@ -1,10 +1,17 @@
 #!/usr/bin/env python 
-from typing import Optional, Sequence, Iterable
-import plotly.graph_objects as go
-from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot, FunctionData
-from pathlib import Path
-from deskquery.data.dataset import Dataset
+# std lib imports
+from typing import Optional, Sequence, Iterable, Dict
 import PIL
+from pathlib import Path
+
+# 3 party imports
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+
+# Projekt imports
+from deskquery.data.dataset import Dataset
+from deskquery.functions.types import FunctionRegistryExpectedFormat, PlotForFunction, Plot, FunctionData
+
 
 def create_plotly_figure(
     traces: Sequence[go.Trace],
@@ -18,10 +25,10 @@ def create_plotly_figure(
         fig.add_trace(trace)
 
     fig.update_layout(
-        title=title,
-        xaxis_title=xaxis_title,
-        yaxis_title=yaxis_title,
-        template="plotly_white",
+        title=title if title else "",
+        xaxis_title=xaxis_title if xaxis_title else "",
+        yaxis_title=yaxis_title if yaxis_title else "",
+        template="ggplot2",
         bargap=0.15,
         font=dict(size=14),
         margin=dict(l=40, r=40, t=60, b=40)
@@ -30,16 +37,34 @@ def create_plotly_figure(
     return fig
 
 
-def add_to_marks_to_fig(fig, mark_dict, mark_set_width, mark_set_height, img_width, img_height, shape_width, shape_height, color):
+def add_to_marks_to_fig(
+    fig,
+    mark_dict,
+    mark_set_width,
+    mark_set_height,
+    img_width,
+    img_height,
+    shape_width,
+    shape_height,
+    default_color
+):
     if not mark_dict:
         return
 
-    marks_x_coords, marks_y_coords = list(zip(*[
-        (img_width * x / mark_set_width, img_height * y / mark_set_height)
-        for x, y in mark_dict.values()
-    ]))
+    marks_x_coords, marks_y_coords, colors, texts = [], [], [], []
 
-    for x, y in zip(marks_x_coords, marks_y_coords):
+    for text, entry in mark_dict.items():
+        coords = entry["coords"] if isinstance(entry, dict) else entry
+        color = entry.get("color", default_color) if isinstance(entry, dict) else default_color
+
+        x = img_width * coords[0] / mark_set_width
+        y = img_height * coords[1] / mark_set_height
+
+        marks_x_coords.append(x)
+        marks_y_coords.append(y)
+        colors.append(color)
+        texts.append(text)
+
         fig.layout.shapes += (dict(
             type='rect',
             xref='x',
@@ -50,17 +75,18 @@ def add_to_marks_to_fig(fig, mark_dict, mark_set_width, mark_set_height, img_wid
             y1=y + shape_height / 2,
             line=dict(color=color),
             fillcolor=color,
-            opacity=0.5
+            opacity=0.9
         ),)
 
     fig.add_trace(go.Scatter(
         x=marks_x_coords,
         y=marks_y_coords,
         mode='markers',
-        marker=dict(size=20, color='rgba(0,0,0,0)'),
+        marker=dict(size=20, color=colors),
         hoverinfo='text',
-        text=list(mark_dict.keys()),
-        showlegend=False
+        text=texts,
+        showlegend=False,
+        opacity=0
     ))
 
 
@@ -90,8 +116,14 @@ def add_img_to_fig(fig, img, img_width, img_height):
         margin=dict(l=0, r=0, t=0, b=0)
     )
 
+
+def value_to_color(value: float) -> str:
+    rgba = plt.cm.RdYlGn(value)
+    return f'rgb({int(rgba[0]*255)}, {int(rgba[1]*255)}, {int(rgba[2]*255)})'
+
+
 def generate_heatmap(
-    data: FunctionData,
+    data: FunctionData = None,
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None,
@@ -100,9 +132,10 @@ def generate_heatmap(
     """ 
     Generate a heatmap from structured input data of correct format.
 
-    Parameters:
+    Args:
         data (FunctionData): A dictionary in the format 
-            {trace_name: {"x": x_values, "y": y_values, "z": z_values}}.
+            {trace_name: {"x": x_values, "y": y_values, "z": z_values}}. 
+            Defaults to `None`.
         title (str, optional): Title of the heatmap.
         xaxis_title (str, optional): Label for the x-axis.
         yaxis_title (str, optional): Label for the y-axis.
@@ -110,7 +143,6 @@ def generate_heatmap(
 
     Returns:
         Plot: A Plotly heatmap figure.
-        str: Error message if input data format is incorrect.
     """
     traces = list()
     for trace_name, trace_data in data.items():
@@ -142,7 +174,7 @@ def generate_heatmap(
 
 
 def generate_barchart(
-    data: FunctionData, 
+    data: FunctionData = None, 
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None
@@ -150,16 +182,15 @@ def generate_barchart(
     """
     Generate a bar chart/bar plot from structured input data of correct format.
 
-    Parameters:
+    Args:
         data (FunctionData): A dictionary in the format 
-            {trace_name: {category: value}}.
-        title (str, optional): Title of the bar chart.
-        xaxis_title (str, optional): Label for the x-axis.
-        yaxis_title (str, optional): Label for the y-axis.
+            {trace_name: {category: value}}. Defaults to `None`.
+        title (str, optional): Title of the bar chart. Defaults to `None`.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
 
     Returns:
         Plot: A Plotly bar chart figure.
-        str: Error message if input data format is incorrect.
     """
     traces = list()
     for trace_name, trace_data in data.items():
@@ -182,16 +213,16 @@ def generate_barchart(
 
     fig = create_plotly_figure(
         traces, 
-        title=title, 
-        xaxis_title=xaxis_title, 
-        yaxis_title=yaxis_title
+        title=title if title else '', 
+        xaxis_title=xaxis_title if xaxis_title else '', 
+        yaxis_title=yaxis_title if yaxis_title else ''
     )
 
     return fig
 
 
 def generate_scatterplot(
-    data: FunctionData, 
+    data: FunctionData = None, 
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None
@@ -199,12 +230,12 @@ def generate_scatterplot(
     """
     Generate a scatter plot from structured input data of correct format.
 
-    Parameters:
+    Args:
         data (FunctionData): A dictionary in the format 
-            {trace_name: {x_value: y_value}}.
-        title (str, optional): Title of the scatter plot.
-        xaxis_title (str, optional): Label for the x-axis.
-        yaxis_title (str, optional): Label for the y-axis.
+            {trace_name: {x_value: y_value}}. Defaults to `None`.
+        title (str, optional): Title of the scatter plot. Defaults to `None`.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
 
     Returns:
         Plot: A Plotly scatter plot figure.
@@ -221,16 +252,16 @@ def generate_scatterplot(
 
     fig = create_plotly_figure(
         traces, 
-        title=title, 
-        xaxis_title=xaxis_title, 
-        yaxis_title=yaxis_title
+        title=title if title else '', 
+        xaxis_title=xaxis_title if xaxis_title else '', 
+        yaxis_title=yaxis_title if yaxis_title else ''
     )
 
     return fig
 
 
 def generate_lineplot(
-    data: FunctionData, 
+    data: FunctionData = None, 
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None
@@ -238,16 +269,15 @@ def generate_lineplot(
     """
     Generate a line plot from structured input data of correct format.
 
-    Parameters:
+    Args:
         data (FunctionData): A dictionary in the format 
-            {trace_name: {x_value: y_value}}.
-        title (str, optional): Title of the line plot.
-        xaxis_title (str, optional): Label for the x-axis.
-        yaxis_title (str, optional): Label for the y-axis.
+            {trace_name: {x_value: y_value}}. Defaults to `None`.
+        title (str, optional): Title of the line plot. Defaults to `None`.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
 
     Returns:
         Plot: A Plotly line plot figure.
-        str: Error message if input data format is incorrect.
     """
     traces = list()
     for trace_name, trace_data in data.items():
@@ -269,16 +299,16 @@ def generate_lineplot(
 
     fig = create_plotly_figure(
         traces, 
-        title=title, 
-        xaxis_title=xaxis_title, 
-        yaxis_title=yaxis_title
+        title=title if title else '',
+        xaxis_title=xaxis_title if xaxis_title else '',
+        yaxis_title=yaxis_title if yaxis_title else ''
     )
 
     return fig
 
 
 def generate_hist(
-    data: FunctionRegistryExpectedFormat,
+    data: FunctionData = None,
     nbinsx: Optional[int] = None,
     title: Optional[str] = None, 
     xaxis_title: Optional[str] = None,
@@ -287,17 +317,17 @@ def generate_hist(
     """
     Generate a histogram from structured input data of correct format.
 
-    Parameters:
-        data (FunctionRegistryExpectedFormat): A dictionary in the format 
-            {trace_name: {"x": x_values}}.
-        nbinsx (int, optional): Number of bins along the x-axis. If not specified, defaults to the length of x_values.
-        title (str, optional): Title of the histogram.
-        xaxis_title (str, optional): Label for the x-axis.
-        yaxis_title (str, optional): Label for the y-axis.
+    Args:
+        data (FunctionData): A dictionary in the format 
+            {trace_name: {"x": x_values}}. Defaults to `None`.
+        nbinsx (int, optional): Number of bins along the x-axis. 
+            If not specified, defaults to the length of x_values.
+        title (str, optional): Title of the histogram. Defaults to `None`.
+        xaxis_title (str, optional): Label for the x-axis. Defaults to `None`.
+        yaxis_title (str, optional): Label for the y-axis. Defaults to `None`.
 
     Returns:
         Plot: A Plotly histogram figure.
-        str: Error message if input data format is incorrect.
     """
     traces = list()
     for trace_name, trace_data in data.items():
@@ -316,49 +346,72 @@ def generate_hist(
 
     fig = create_plotly_figure(
         traces, 
-        title=title, 
-        xaxis_title=xaxis_title, 
-        yaxis_title=yaxis_title
+        title=title if title else '',
+        xaxis_title=xaxis_title if xaxis_title else '',
+        yaxis_title=yaxis_title if yaxis_title else ''
     )
 
     return fig
 
 
 def generate_map(
-    room_ids: Optional[Iterable[int]] = None, 
-    room_names: Optional[Iterable[str]] = None, 
-    desk_ids: Optional[Iterable[int]] = None
+    room_ids: Optional[Dict[int, float]] = None,
+    room_names: Optional[Dict[int, float]] = None,
+    desk_ids: Optional[Dict[int, float]] = None,
+    label_markings: Optional[str] = None,
+    title: Optional[str] = "Map",
 ) -> Plot:
     """
-    Generate a visual map of an office layout with optional desk and room highlights.
+    Generate an interactive office layout map with color-coded highlights for desks and rooms.
 
-    Parameters:
-        room_ids (Iterable[int], optional): List of room IDs to highlight.
-        room_names (Iterable[str], optional): List of room names to highlight. Converted to IDs internally.
-        desk_ids (Iterable[int], optional): List of desk IDs to highlight.
+    The function overlays a fixed background image of the office floor plan with colored rectangular
+    markers for desks and rooms based on their usage or custom values. Hover tooltips provide details 
+    like room/desk ID, name/number, and value. The color reflects the numeric value (e.g. utilization),
+    using a red-yellow-green colormap that is betwean 0 and 1.
+
+    A valid map can be created by setting all parameters to `None`.
+    
+    Args:
+        room_ids (dict[int, float], optional):
+            Mapping of room IDs to values (e.g. utilization). These will be marked in the image.
+            Defaults to `None`, which means no specific rooms are marked.
+        room_names (dict[str, float], optional):
+            Alternative to `room_ids`. Room names are internally mapped to IDs.
+            Defaults to `None`, which means no specific rooms are marked.
+        desk_ids (dict[int, float], optional):
+            Mapping of desk IDs to values. These will be shown as smaller colored boxes.
+            Defaults to `None`, which means no specific values are shown for desks.
+        label_markings (str, optional):
+            Optional label description shown in the hover tooltip. Defaults to "label" if not given.
+        title (str, optional):
+            Title of the map. Defaults to "Map".
 
     Returns:
-        Plot: A Plotly-based image with overlaid highlights for specified desks and rooms.
+        Plot: A Plotly figure with the office background and interactive overlays.
 
     Notes:
-        - Desk and room coordinates are predefined for a specific static image.
-        - Desk and room data mappings are loaded from `Dataset._desk_room_mapping`.
-        - Highlights:
-            - Desks: small red markers.
-            - Rooms: larger blue markers.
-        - Background image is fixed and located in the project directory under `data/office_plan_optisch.png`.
+        - Coordinates for desks and rooms are statically defined and tied to a 640x480 image.
+        - Desk/room positions are predefined and not inferred from layout data.
+        - The base image is located at: `data/office_plan_optisch.png`
     """
-
-    room_ids = set(room_ids) if room_ids is not None else set()
-    room_names = set(room_names) if room_names is not None else set()
-    desk_ids = set(desk_ids) if desk_ids is not None else set()
+    # set default values if applicable
+    room_ids = room_ids if room_ids and isinstance(room_ids, dict) else dict()
+    room_names = room_names if room_names and isinstance(room_names, dict) else dict()
+    desk_ids = desk_ids if desk_ids and isinstance(desk_ids, dict) else dict()
+    if not label_markings:
+        label_markings = "label"
+    if not title:
+        title = "Map"
 
     room_name_id_mapping = Dataset._desk_room_mapping.set_index("roomId")["roomName"].to_dict()
     desk_id_number_mapping = Dataset._desk_room_mapping.set_index("deskId")["deskNumber"].to_dict()
+    room_name_to_id = Dataset._desk_room_mapping.drop_duplicates("roomName").set_index("roomName")["roomId"].to_dict()
 
-    room_ids.update(Dataset._desk_room_mapping.loc[
-        Dataset._desk_room_mapping["roomName"].isin(room_names), "roomId"
-    ])
+    room_ids.update({
+        room_name_to_id[name]: value
+        for name, value in room_names.items()
+        if name in room_name_to_id
+    })
 
     map_path = Path(__file__).resolve().parent.parent.parent.parent / "data" / "office_plan_optisch.png"
     map = PIL.Image.open(map_path)
@@ -438,90 +491,113 @@ def generate_map(
         12: (520, 440)}
 
     desks_to_mark = {
-        (f"Desk ID: {id} Desk Number: {desk_id_number_mapping[id]}"): coords
-        for id, coords in desk_coords.items()
-        if id in desk_ids
+        f"Desk ID: {id} Number: {desk_id_number_mapping[id]} {label_markings or 'label'}: {value}": {
+            "coords": desk_coords[id],
+            "color": value_to_color(value)
+        }
+        for id, value in desk_ids.items()
+        if id in desk_coords
     }
 
-    rooms_to_mark = {f"Room ID: {id} Room Name: {room_name_id_mapping[id]}": coords
-        for id, coords in room_coords.items()
-        if id in room_ids
+    rooms_to_mark = {
+        f"Room ID: {id} Name: {room_name_id_mapping[id]} {label_markings or 'label'}: {value}": {
+            "color": value_to_color(value),
+            "coords": room_coords[id]
+        }
+        for id, value in room_ids.items()
+        if id in room_coords
     }
 
     fig = Plot()
 
     add_to_marks_to_fig(fig, desks_to_mark, mark_set_width, mark_set_height, map_width, map_height, 10, 10, 'red')
-    add_to_marks_to_fig(fig, rooms_to_mark, mark_set_width, mark_set_height, map_width, map_height, 20, 20, 'blue')
+    add_to_marks_to_fig(fig, rooms_to_mark, mark_set_width, mark_set_height, map_width, map_height, 20, 20, "blue")
     add_img_to_fig(fig, map, map_width, map_height)
 
+    fig.update_layout(title=title)
+    
     return fig
 
+
 def generate_table(
-    data: FunctionData, 
+    data: FunctionData = None, 
     title: Optional[str] = None
-) -> Plot | str:
+) -> Plot:
     """
     Generate a formatted table using Plotly.
 
-    Parameters:
-        data (FunctionData): A dictionary where each key is a column name and the value is a list of column values.
-        title (str, optional): Title for the table.
+    Args:
+        data (FunctionData): 
+            A dictionary where each key is a column name and the value is a 
+            list of column values. Defaults to `None`.
+        title (str, optional): 
+            Title for the table. Defaults to `None`.
 
     Returns:
         Plot: A Plotly table figure.
-        str: Error message if input data format is incorrect.
     """
-
     traces = list()
     for trace_name, trace_data in data.items():
         try:
             headers = list(trace_data.keys())
             columns = list(trace_data.values())
         except AttributeError:
-            return "Data for table have to be in following format: {trace1_name: {col_header1: col_data1}}"
+            raise ValueError(
+                "Data for table have to be in following format: {trace1_name: {col_header1: col_data1}}"
+            )
 
         trace = go.Table(
-            header=dict(values=headers,
-                        fill_color='lightgrey',
-                        align='left'),
-            cells=dict(values=columns,
-                    fill_color='white',
-                    align='left')
+            header=dict(
+                values=headers,
+                fill_color='lightgrey',
+                align='left'
+            ),
+            cells=dict(
+                values=columns,
+                fill_color='white',
+                align='left'
+            )
         )
         traces.append(trace)
 
     fig = create_plotly_figure(
         traces, 
-        title=title
+        title=title if title else ''
     )
 
     return fig
 
+
 if __name__ == "__main__":
     from deskquery.data.dataset import create_dataset
-    from deskquery.functions.core.policy import detect_policy_violations
+    from deskquery.functions.core.forecasting import estimate_necessary_desks, forecast_employees
+    from deskquery.functions.core.policy import simulate_policy
     dataset = create_dataset()
 
     policy = {
-        "fixed_days":["Di"],
-        "choseable_days":["Mi", "Do"],
+        "fixed_days":["tuesday"],
+        "choseable_days":["wednesday", "thursday"],
         "number_choseable_days":1,
         "number_days":3,
         "more_days_allowed":True
     }
 
-    exceptions = {
-        4: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True},
-        14: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True}
-    }
+    # exceptions = {
+    #     4: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True},
+    #     14: {'fixed_days': ["Fr"], 'number_days': 4, 'more_days_allowed': True}
+    # }
 
-    random_assignments = [
-        (10, {'number_days': 1, 'more_days_allowed': False})
-    ]
+    # random_assignments = [
+    #     (10, {'number_days': 1, 'more_days_allowed': False})
+    # ]
 
-    result = detect_policy_violations(dataset, policy, exceptions, random_assignments, only_stats=True)
+    result = estimate_necessary_desks(dataset, forecast_model="sarima", weekly_absolute_growth=1, weeks_ahead=52, policy=policy)
     output = generate_lineplot(result["data"])
-    if isinstance(output, str):
-        print(output)
-    else:
-        output.write_html("hist.html")
+
+    # result = simulate_policy(dataset, policy=policy)
+    # output = generate_barchart(result["data"])
+
+    # result = forecast_employees(dataset, forecast_model="sarima")
+    # output = generate_lineplot(result["data"])
+
+    output.write_html("hist.html")

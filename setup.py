@@ -6,16 +6,11 @@ with open("requirements.txt") as f:
 
 setup(
     name="deskquery",
-    version="0.1.0",
-    author="",                                                                      # TODO
-    author_email="",                                                                # TODO
+    version="1.0.0",
     description="An intelligent query system for workplace and desk analytics",
-    
     long_description=open("README.md", encoding="utf-8").read(),
-    
     long_description_content_type="text/markdown",
-    url="https://github.com/deinname/deskquery",                                    # TODO
-    
+    url="https://github.com/ZanderNic/deskquery",                                
     package_dir={"": "src"},
     packages=find_packages(where="src"),
     classifiers=[
