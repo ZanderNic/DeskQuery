@@ -314,7 +314,7 @@ class Dataset(pd.DataFrame):
         return self
 
     @return_if_empty("self")
-    def expand_time_intervals(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None):
+    def expand_time_intervals(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None) -> Dataset:
         def get_period(row):
             dates = pd.date_range(row[start_col], row[end_col], freq='B').to_period(self._date_format_mapping[granularity])
             return dates
@@ -324,13 +324,6 @@ class Dataset(pd.DataFrame):
 
         return self
 
-    @return_if_empty("self")
-    def expand_time_intervals_desks(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None) -> Dataset:
-        if not self.empty:
-            column_name = column_name if column_name else f"expanded_desks_{granularity}"
-            self = self.expand_time_intervals(granularity, start_col, end_col, column_name=column_name)
-            self = self.apply(lambda row: [row["deskId"]] * len(row[column_name]), axis=1)
-        return self
 
     @return_if_empty("self")
     def expand_time_intervals_counts(self, granularity, start_col="blockedFrom", end_col="blockedUntil", column_name: Optional[str] = None) -> Dataset:
@@ -341,26 +334,43 @@ class Dataset(pd.DataFrame):
         return self
 
     @return_if_empty("self")
-    def weekday_counter(self, weekdays: list[str], column_counter: str="weekday_count", column_desks: str="expanded_desks_day"):
+    def weekday_counter(self, weekdays: list[str], column_counter: str="weekday_count", column_desks: str="expanded_desks_day") -> Dataset: #FIXEN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         """
         Counts the occurrence of a weekday within the booking period. Example: Booking from Monday to Friday 
         -> Returns a dataframe that has each weekday as a column (if the weekdays were specified) with their number.
         In the example, 1 for each weekday.
         """
-        
-        def weekdays_count(periods):
-            weekdays = [p.weekday for p in periods]
-            counter = Counter(weekdays)    
-            return {day: counter.get(day, 0) for day in weekdays}
-        self[column_counter] = self[column_desks].apply(weekdays_count)  
-        
+
+        weekday_map = {
+            "monday": 0, "tuesday": 1, "wednesday": 2,
+            "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6
+        }
+
+
+        self[column_counter] = self[column_desks].apply(
+            lambda dates: {
+                day: Counter(
+                    (p.to_timestamp().weekday() if hasattr(p, "to_timestamp") else p.weekday())
+                    for p in dates
+                ).get(weekday_map[day.lower()], 0)
+                for day in weekdays
+            } if dates is not None else {}
+        )
+        return self
+
+    def weekday_individual_counter(self, weekdays: list[str]) -> Dataset:
         weekday_df = pd.json_normalize(self['weekday_count']).fillna(0).astype(int)
         weekday_df.columns = weekdays
         weekday_df.index = self.index
-        return weekday_df
+        df = pd.concat([self, weekday_df], axis=1)
+        df = df.drop(columns=["weekday_count"])
+        df["num_desk_bookings"] = df[weekdays].sum(axis=1)
+        return Dataset(df)
+
+
 
     @return_if_empty("self")
-    def expand_time_interval_desk_counter(self, weekdays: list[str]=["monday", "tuesday", "wednesday", "thursday", "friday"]):
+    def expand_time_interval_desk_counter(self, weekdays: list[str]=["monday", "tuesday", "wednesday", "thursday", "friday"]): #FIXEN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         """
         Function creates a dataframe which shows the username,
         when he booked which tables, as well as the number of table bookings with the number on which weekday they were booked
@@ -373,30 +383,26 @@ class Dataset(pd.DataFrame):
         Returns:
             pd.Dataframe
         """
-        desks = self.expand_time_intervals_desks("day")
-        weekday_df = self.weekday_counter(weekdays)  
+        self = self.expand_time_intervals("day", column_name="expanded_desks_day")
+        self = self.weekday_counter(weekdays)  
+        self = self.weekday_individual_counter(weekdays)
 
-        df = pd.concat([self, weekday_df], axis=1)
-        df["num_desk_bookings"] = desks.apply(len)
 
         aggregation = {"num_desk_bookings": ("num_desk_bookings", "sum"),}
         aggregation.update({col: (col, "sum") for col in weekdays})
-        df = df.group_bookings(by=["userId", "userName", "deskId"],
+        self = self.group_bookings(by=["userId", "userName", "deskId"],
                             aggregation=aggregation,
                             agg_col_name="num_desk_bookings")
 
-        df[weekdays] = df[weekdays].astype(float) 
-        # delete the previously added column
-        self.drop(columns=["weekday_count"], inplace=True)
+        self[weekdays] = self[weekdays].astype(float) 
 
-        df.loc[:, weekdays] = (df.loc[:, weekdays].div(df["num_desk_bookings"], axis=0)* 100).round(2)
-        df["percentage_of_user"] = (df['num_desk_bookings'] / df.groupby(level='userId')['num_desk_bookings'].transform('sum') * 100).round(2)
-
-        return df
+        self.loc[:, weekdays] = (self.loc[:, weekdays].div(self["num_desk_bookings"], axis=0)* 100).round(2)
+        self["percentage_of_user"] = (self['num_desk_bookings'] / self.groupby(level='userId')['num_desk_bookings'].transform('sum') * 100).round(2)
+        return self
 
     
     @return_if_empty("self")
-    def get_double_bookings(self, start_col="blockedFrom", end_col="blockedUntil") -> Dataset:
+    def get_double_bookings(self, start_col="blockedFrom", end_col="blockedUntil") -> Dataset: 
         def has_overlapping_bookings(group):
             """All bookings for a user are processed. "Unlimited" is converted to a date far in the future. 
             The rows are then sorted chronologically, with early bookings appearing first."""
@@ -412,12 +418,12 @@ class Dataset(pd.DataFrame):
         return double_bookings
 
     @return_if_empty("self")
-    def drop_double_bookings(self, start_col="blockedFrom", end_col="blockedUntil"):
+    def drop_double_bookings(self, start_col="blockedFrom", end_col="blockedUntil") -> Dataset:
         double_bookings = self.get_double_bookings(start_col=start_col, end_col=end_col)
         return self.drop(index=double_bookings.index)
 
     @return_if_empty(return_value=0)
-    def get_desks_count(self):
+    def get_desks_count(self) -> int:
         """
         Returns the total number of unique desks in the dataset.
 
@@ -457,7 +463,7 @@ class Dataset(pd.DataFrame):
 
 if __name__ == "__main__":
     data = create_dataset()
-    #dataset.to_csv("OpTisch.csv", index=False)  # Save dataset to CSV without index
+    # dataset.to_csv("OpTisch.csv", index=False)  # Save dataset to CSV without index
     # Some manipulation to showcase the usage
     # Manipulation functions are staticmethods to make it more generic usable
     start_date = datetime(2023, 1, 1)
