@@ -1,6 +1,6 @@
 def mean_utilization(
     data: Dataset,
-    include_fixed: bool = False,
+    include_fixed: Optional[bool] = False,
     by_desks: bool = False,
     by_room: bool = False,
     by_day: bool = False,

@@ -161,16 +161,20 @@ def clean_llm_output(
     """
     Cleans the LLM's output from `client.chat_completion()` by removing 
     unwanted content.
-    
+
     Args:
         response (str): The LLM's raw output.
-    
+
     Returns:
         str: The cleaned output.
     """
     # clean potentially unwanted content from the response string
     cleaned_response = re.sub(
         r'<think>.*?</think>', '', llm_output, flags=re.DOTALL
+    )
+    # Remove anything before the first triple backtick (```) if it exists
+    cleaned_response = re.sub(
+        r'^.*?```', '', cleaned_response, flags=re.DOTALL
     )
     resp_data = cleaned_response.strip('` \n')
     # if json is specified explicitly
@@ -1098,7 +1102,7 @@ If there are referenced messages, use them predominantly to infer the parameters
 ### Task:
 
 Infer the parameters for the given function based on the initial user query and potential additional information of the chat history.
-Also use the given default values for the parameters if applicable. If default values are used, explain them to the user in the "assumptions" field of the response.
+USE the given DEFAULT VALUES for the parameters if applicable. If default values are used, explain them to the user in the "assumptions" field of the response.
 - If all the function parameters can be inferred, specify them in your answer. Set "status" to "success" in this case.
 - If information is missing, mark it clearly with a placeholder and add a `missing_fields` list. Set "status" to "pending" in this case and provide an "explanation" field for the user.
 - If the chat history can not be used to infer the parameters, set "status" to "abort" and leave the rest. Use this only as a last resort.

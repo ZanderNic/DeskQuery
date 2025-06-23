@@ -88,14 +88,11 @@ def chat():
                 "role": "assistant", 
                 "content": response["message"]
             }
-            if response.get("data", False):
-                #df = pd.DataFrame(response["data"].data, dtype=object)
-                
+            if response.get("data", False):                
                 if all(not isinstance(v, (list, dict)) for v in response["data"].data.values()):
                     df = pd.DataFrame([response["data"].data], dtype=object)
                 else:
                     df = pd.DataFrame(response["data"].data, dtype=object)
-                
                 
                 df = df = df.where(pd.notnull(df), None)
 

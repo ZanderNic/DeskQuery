@@ -369,6 +369,8 @@ def generate_map(
     like room/desk ID, name/number, and value. The color reflects the numeric value (e.g. utilization),
     using a red-yellow-green colormap that is betwean 0 and 1.
 
+    A valid map can be created by setting all parameters to `None`.
+    
     Args:
         room_ids (dict[int, float], optional):
             Mapping of room IDs to values (e.g. utilization). These will be marked in the image.

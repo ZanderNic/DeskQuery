@@ -569,6 +569,21 @@ html, body {
   overflow-y: auto;
   min-height: 48px;
   max-height: 200px;
+  scrollbar-width: thin;
+  scrollbar-color: #1e1e1e transparent;
+}
+
+#user-input::-webkit-scrollbar {
+  width: 4px;
+}
+
+#user-input::-webkit-scrollbar-thumb {
+  background-color: #1e1e1e;
+  border-radius: 2px;
+}
+
+#user-input::-webkit-scrollbar-track {
+  background-color: transparent;
 }
 
 #send-btn {
