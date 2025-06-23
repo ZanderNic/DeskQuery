@@ -142,7 +142,15 @@ def forecast_employees(
 
         return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
 
-    return current_worker_count, worker_forecast_series
+    final_data = FunctionData({
+            "current_worker_count": current_worker_count,
+            "worker_forecast_series": worker_forecast_series,
+        })
+
+    return FunctionRegistryExpectedFormat(
+        data=final_data, 
+        plot=PlotForFunction()
+    )
 
 
 def estimate_necessary_desks(
@@ -224,8 +232,9 @@ def estimate_necessary_desks(
     if not target_utilization or target_utilization < 0.0:
         target_utilization = 1.0
 
-    current_worker_count, worker_forecast_series = forecast_employees(data, lag, booking_type, weekly_growth_rate, weekly_absolute_growth, forecast_model, weeks_ahead, False)
-
+    data_func = forecast_employees(data, lag, booking_type, weekly_growth_rate, weekly_absolute_growth, forecast_model, weeks_ahead, False)
+    current_worker_count, worker_forecast_series = data_func["data"]["current_worker_count"], data_func["data"]["worker_forecast_series"]
+    
     worker_forecast = worker_forecast_series.values
 
     if not policy and (exceptions or random_assignments):
