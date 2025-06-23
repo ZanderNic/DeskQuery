@@ -234,15 +234,14 @@ def utilization_stats(
             The dataset containing booking data.
         include_fixed (bool): 
             If True, expands recurring bookings into daily entries. Defaults to False.
-        threshold (float): Minimum absolute deviation from the mean to classify as anomalous.  # FIXME: Should this threshold be used or omitted
-        by_desks (bool): If True, detects anomalies per desk.
-        by_room (bool): If True, detects anomalies per room.
-        by_day (bool): If True, detects anomalies per weekday.
-        desk_id (Optional[List[int]]): Optional desk filter.
-        room_name (Optional[List[str]]): Optional room filter.
-        weekday (List[str]): List of weekdays to consider in the analysis.
-        start_date (Optional[datetime.datetime]): Start of the analysis window. Defaults to 90 days ago.
-        end_date (Optional[datetime.datetime]): End of the analysis window. Defaults to today.
+        by_desks (bool): If True, detects anomalies per desk. Defaults to False.
+        by_room (bool): If True, detects anomalies per room. Defaults to False.
+        by_day (bool): If True, detects anomalies per weekday. Defaults to False.
+        desk_id (Optional[List[int]]): Optional desk filter. Defaults to None.
+        room_name (Optional[List[str]]): Optional room filter. Defaults to None.
+        weekday (List[str]): List of weekdays to consider in the analysis. Defaults to ["monday", "tuesday", "wednesday", "thursday", "friday"].
+        start_date (Optional[datetime.datetime]): Start of the analysis window. Defaults to None and will then take 90 days ago.
+        end_date (Optional[datetime.datetime]): End of the analysis window. Defaults to None and will then take today.
 
     Raises:
         ValueError:
@@ -334,11 +333,11 @@ def detect_utilization_anomalies(
 
     Args:
         data (Dataset): Booking dataset.
-        threshold (float): Minimum absolute deviation from the global mean utilization.
-        by_room (bool): If True, analyze by room. If False, analyze by weekday.
-        include_fixed (bool): Whether to include expanded fixed bookings.
-        start_date (datetime.datetime, optional): Start date for analysis.
-        end_date (datetime.datetime, optional): End date for analysis.
+        threshold (float): Minimum absolute deviation from the global mean utilization. Defaults to 0,2.
+        by_room (bool): If True, analyze by room. If False, analyze by weekday. Defaults to False.
+        include_fixed (bool): Whether to include expanded fixed bookings. Defaults to False.
+        start_date (Optional[datetime.datetime]): Start of the analysis window. Defaults to None and will then take 90 days ago.
+        end_date (Optional[datetime.datetime]): End of the analysis window. Defaults to None and will then take today.
 
     Returns:
         FunctionRegistryExpectedFormat:
