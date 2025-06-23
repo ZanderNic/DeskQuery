@@ -85,11 +85,13 @@ def mean_utilization(
     if sum([by_room, by_desks, by_day]) != 1:
         raise ValueError("You must set exactly one of by_room, by_desks, or by_day to True.")
 
+    valid_days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    
     # set default values if applicable
     if include_fixed is None:
         include_fixed = False
-    if not weekday:
-        weekday = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    if not weekday or all(day in valid_days for day in weekday):
+        weekday = valid_days
     elif isinstance(weekday, str):
         weekday = [weekday.lower()]
     if not start_date:
@@ -276,11 +278,12 @@ def utilization_stats(
     if sum([by_room, by_desks, by_day]) != 1:
         raise ValueError("You must set exactly one of by_room, by_desks, or by_day to True.")
 
+    valid_days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
     # set default values if applicable
     if include_fixed is None:
         include_fixed = False
-    if not weekday:
-        weekday = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    if not weekday or all(day in valid_days for day in weekday):
+        weekday = valid_days
     elif isinstance(weekday, str):
         weekday = [weekday.lower()]
     if not start_date:
@@ -390,15 +393,28 @@ def detect_utilization_anomalies(
             Start of the evaluation period. If `None`, defaults to 90 days ago.
         end_date (datetime.datetime, optional): 
             End of the evaluation period. If `None`, defaults to today.
-
+        include_fixed (bool): 
+            If True, expands recurring bookings into daily entries. Defaults to False.
     Returns:
         FunctionRegistryExpectedFormat:
             Contains the data and plots of abnormal utilizations.
     """
     # set default values if applicable
+    valid_days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    
     if threshold is None or not isinstance(threshold, (int, float)) or threshold < 0:
-        threshold = 0.2
-
+        threshold = 0.2  
+    if include_fixed is None:
+        include_fixed = False
+    if not weekday or all(day in valid_days for day in weekday):
+        weekday = valid_days
+    elif isinstance(weekday, str):
+        weekday = [weekday.lower()]
+    if not start_date:
+        start_date = datetime.datetime.today() - timedelta(days=90)
+    if not end_date:
+        end_date = datetime.datetime.today()
+    
     result = mean_utilization(
         data=data,
         include_fixed=include_fixed,
