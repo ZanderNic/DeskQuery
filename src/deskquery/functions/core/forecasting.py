@@ -251,6 +251,9 @@ def estimate_necessary_desks(
     num_desks = data["deskId"].nunique()
     num_desks_series = pd.Series(num_desks, index=worker_forecast_series.index, name="number_of_desks")
 
+    desk_forecast_series.index = desk_forecast_series.index.strftime("%Y-%m-%d")
+    num_desks_series.index = num_desks_series.index.strftime("%Y-%m-%d")
+
     final_data = FunctionData({
         "desk_forecast": desk_forecast_series.to_dict(),
         "number_of_desks": num_desks_series.to_dict()
@@ -326,25 +329,6 @@ def load_active_worker_timeseries(
         "fixed": compute_timeseries(data[data["variableBooking"] == 0]),
         "variable": compute_timeseries(data[data["variableBooking"] == 1])
     }
-
-
-# Just for testing now. Can be removed later
-def plot_timeseries_with_forecast(
-        historical: pd.Series, 
-        forecast: pd.Series = None, 
-        title: str = "Time Series with Prediction"
-        ):
-    plt.figure(figsize=(12, 6))
-    plt.plot(historical.index, historical.values, label="Historical", color="blue")
-    if forecast is not None:
-        plt.plot(forecast.index, forecast.values, label="Prediction", color="red")
-    plt.title(title)
-    plt.xlabel("Date")
-    plt.ylabel("Value")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
 
 
 if __name__ == "__main__":
