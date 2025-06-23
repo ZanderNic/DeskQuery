@@ -49,7 +49,7 @@ def forecast_employees(
         forecast_model (str, optional): 
             Model used to forecast time series if weekly_growth_rate and 
             weekly_absolute_growth are not given. This can be either "linear" for 
-            linear regression or "sarima" for seasonal moving average regression.
+            linear regression or "sarimax" for seasonal moving average regression.
             Defaults to "linear".
         weeks_ahead (int, optional): 
             Number of weeks into the future to simulate. Defaults to 52 weeks.
@@ -200,7 +200,7 @@ def estimate_necessary_desks(
         forecast_model (str): 
             Model used to forecast time series if weekly_growth_rate and 
             weekly_absolute_growth are not given. This can be either "linear" for 
-            linear regression or "sarima" for seasonal moving average regression.
+            linear regression or "sarimax" for seasonal moving average regression.
             Defaults to "linear".
         weeks_ahead (int, optional): 
             Number of weeks into the future to simulate. Defaults to 52 weeks.
@@ -217,7 +217,7 @@ def estimate_necessary_desks(
         lag = 90
     if not booking_type or booking_type not in ["all", "fixed", "variable"]:
         booking_type = 'all'
-    if not forecast_model or forecast_model not in ["linear", "sarima"]:
+    if not forecast_model or forecast_model not in ["linear", "sarimax"]:
         forecast_model = "linear"
     if not weeks_ahead or weeks_ahead <= 0:
         weeks_ahead = 52
