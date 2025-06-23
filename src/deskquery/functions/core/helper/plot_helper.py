@@ -278,7 +278,7 @@ def generate_lineplot(
     xaxis_title: Optional[str] = None,
     yaxis_title: Optional[str] = None
 ) -> Plot:
-   """
+    """
     Generate a line plot from structured input data of correct format.
 
     Args:
