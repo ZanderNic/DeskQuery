@@ -70,7 +70,7 @@ def forecast_employees(
         lag = 90
     if not booking_type or booking_type not in ["all", "fixed", "variable"]:
         booking_type = 'all'
-    if not forecast_model or forecast_model not in ["linear", "sarima"]:
+    if not forecast_model or forecast_model not in ["linear", "sarimax"]:
         forecast_model = "linear"
     if not weeks_ahead or weeks_ahead <= 0:
         weeks_ahead = 52
@@ -96,18 +96,25 @@ def forecast_employees(
             current_worker_count + (weekly_absolute_growth * i)
             for i in range(weeks_ahead)
         ])
-    else:
-        if forecast_model == "sarima":
-            model = SARIMAX(worker_history_series, order=(1, 1, 1), seasonal_order=(1, 1, 1, 52), enforce_stationarity=False, enforce_invertibility=False)
-            results = model.fit(disp=False)
-            forecast = results.forecast(steps=weeks_ahead)
-            worker_forecast = forecast.values
+    elif forecast_model == "sarimax":
+        model = SARIMAX(worker_history_series, order=(1, 1, 1), seasonal_order=(1, 1, 1, 52), enforce_stationarity=False, enforce_invertibility=False)
+        results = model.fit(disp=False)
+        forecast = results.forecast(steps=weeks_ahead)
+        worker_forecast = forecast.values
 
-        else:
-            forecast = forecast_timeseries(worker_history_series, weeks_ahead, forecast_model)
-            if isinstance(forecast, pd.Series):
-                forecast = forecast.resample("W-MON").mean().iloc[:weeks_ahead].values
-            worker_forecast = forecast
+    else:
+        ts = worker_history_series.copy()
+        ts.index = pd.to_datetime(ts.index)
+        ts = ts.asfreq(pd.infer_freq(ts.index))
+
+        x = np.arange(len(ts)).reshape(-1, 1)
+        y = ts.values
+        model = LinearRegression()
+        model.fit(x, y)
+
+        future_x = np.arange(len(ts), len(ts) + weeks_ahead).reshape(-1, 1)
+        forecast = model.predict(future_x).squeeze()
+        worker_forecast = forecast
 
     worker_forecast_series = pd.Series(worker_forecast, index=forecast_index, name="Worker forecast")
 
@@ -339,62 +346,6 @@ def plot_timeseries_with_forecast(
     plt.show()
 
 
-def forecast_timeseries(
-    ts: pd.Series, 
-    periods_ahead: int = 52, 
-    method: str = "linear", 
-    without_history: bool = True
-) -> pd.Series:
-    """
-    Forecasts a time series with a model.
-
-    Args:
-        ts: Time series to use for forecasting.
-        periods_ahead: Number of periods (weeks or days) to forecast.
-        method: Method of forecasting: "linear" or "ets".
-        without_history: If True, returns only the forecast; otherwise includes history.
-
-    Returns:
-        Forecast time series as pd.Series.
-    """
-    ts = ts.copy()
-    ts.index = pd.to_datetime(ts.index)
-
-    freq = pd.infer_freq(ts.index)
-    if freq is None:
-        raise ValueError("Cannot infer frequency of time series.")
-
-    ts = ts.asfreq(freq)
-
-    if method == "linear":
-        x = np.arange(len(ts)).reshape(-1, 1)
-        y = ts.values
-        model = LinearRegression()
-        model.fit(x, y)
-        future_x = np.arange(len(ts), len(ts) + periods_ahead).reshape(-1, 1)
-        forecast = model.predict(future_x).squeeze()
-    
-    elif method == "ets":
-        model = ExponentialSmoothing(ts, trend="add", seasonal=None)
-        fitted = model.fit()
-        forecast = fitted.forecast(periods_ahead)
-    
-    else:
-        raise ValueError(f"Unknown method '{method}'. Use 'linear' or 'ets'.")
-
-    future_dates = pd.date_range(
-        start=ts.index[-1] + pd.tseries.frequencies.to_offset(freq),
-        periods=periods_ahead,
-        freq=freq
-    )
-
-    forecast_series = pd.Series(forecast, index=future_dates, name="forecast")
-    if without_history:
-        return forecast_series
-    ts.name = "historical"
-    return pd.concat([ts, forecast_series])
-
-
 if __name__ == "__main__":
     from pprint import pprint
     from deskquery.data.dataset import create_dataset
@@ -419,7 +370,16 @@ if __name__ == "__main__":
     pprint(return_dict["data"])
     print()
 
-    ########## Test estimate_necessary_desks with time series forecast ################################################
+    ########## Test estimate_necessary_desks with sarimax time series forecast ################################################
+    print("=== Estimate necessary desks with time series forecast ===")
+    return_dict = estimate_necessary_desks(
+        data=dataset,
+        forecast_model="sarimax"
+    )
+    pprint(return_dict["data"])
+    print()
+
+    ########## Test estimate_necessary_desks with linear time series forecast ################################################
     print("=== Estimate necessary desks with time series forecast ===")
     return_dict = estimate_necessary_desks(
         data=dataset
