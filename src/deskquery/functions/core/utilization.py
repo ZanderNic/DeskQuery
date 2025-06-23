@@ -143,13 +143,6 @@ def mean_utilization(
             if key in desk_key_to_id
         }
 
-        desk_key_to_id = df.drop_duplicates("composite_key").set_index("composite_key")["deskId"].to_dict()
-
-        desk_ids = {
-            desk_key_to_id[key]: utilization[key]
-            for key in utilization.index
-            if key in desk_key_to_id
-        }
 
     elif by_day:
         df["day"] = pd.to_datetime(df["blockedFrom"]).dt.day_name()
@@ -187,7 +180,7 @@ def mean_utilization(
         plot = PlotForFunction(
             default_plot=generate_map(
                 room_names= data_return,
-                title="Utalization in the different rooms",
+                title="Utalization in the different rooms in %",
                 label_markings="utalization"
             ),
             available_plots=[generate_map]
@@ -198,7 +191,7 @@ def mean_utilization(
                 data={"Utilization": data_return},
                 title=column_name,
                 xaxis_title=column_name,
-                yaxis_title="mean utilization"
+                yaxis_title="mean utilization in %"
             ),
             available_plots=[generate_barchart]
         )
@@ -206,7 +199,7 @@ def mean_utilization(
         plot = PlotForFunction(
             default_plot=generate_map(
                 desk_ids= desk_ids,
-                title="Utalization of the different desks",
+                title="Utalization of the different desks in %",
                 label_markings="utalization"
             ),
             available_plots=[generate_map]

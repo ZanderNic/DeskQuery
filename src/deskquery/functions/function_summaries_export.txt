@@ -166,7 +166,7 @@ def forecast_employees(
     weeks_ahead: Optional[int] = 52,
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
-Forecasts the number of employees with different models such as linear or sarima. 
+Forecasts the number of employees with different models such as linear or sarimax. 
 Furthermore, this function can handle fixed weekly growth rates and fixed weekly absolute growth. 
 It gets the worker time series and then forecasts future employee numbers.
 

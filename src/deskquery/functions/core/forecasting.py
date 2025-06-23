@@ -28,7 +28,7 @@ def forecast_employees(
     plotable: bool = True
 ) -> FunctionRegistryExpectedFormat:
     """
-    Forecasts the number of employees with different models such as linear or sarima. 
+    Forecasts the number of employees with different models such as linear or sarimax. 
     Furthermore, this function can handle fixed weekly growth rates and fixed weekly absolute growth. 
     It gets the worker time series and then forecasts future employee numbers.
 
@@ -49,7 +49,7 @@ def forecast_employees(
         forecast_model (str, optional): 
             Model used to forecast time series if weekly_growth_rate and 
             weekly_absolute_growth are not given. This can be either "linear" for 
-            linear regression or "sarima" for seasonal moving average regression.
+            linear regression or "sarimax" for seasonal moving average regression.
             Defaults to "linear".
         weeks_ahead (int, optional): 
             Number of weeks into the future to simulate. Defaults to 52 weeks.
@@ -65,7 +65,7 @@ def forecast_employees(
             - If `plotable` is False, it returns a tuple with the current worker count
               and the forecasted worker count series.
     """
-    # set default values if applicable
+    # Set default values safely
     if not lag or lag <= 0:
         lag = 90
     if not booking_type or booking_type not in ["all", "fixed", "variable"]:
@@ -74,10 +74,9 @@ def forecast_employees(
         forecast_model = "linear"
     if not weeks_ahead or weeks_ahead <= 0:
         weeks_ahead = 52
-    if not plotable:
-        plotable = True
 
     worker_history_series = load_active_worker_timeseries(data, lag)[booking_type]
+    worker_history_series.index = pd.to_datetime(worker_history_series.index)
     current_worker_count = worker_history_series.iloc[-1]
 
     start_week = worker_history_series.index[-1] + pd.Timedelta(weeks=1)
@@ -101,27 +100,29 @@ def forecast_employees(
         results = model.fit(disp=False)
         forecast = results.forecast(steps=weeks_ahead)
         worker_forecast = forecast.values
-
     else:
         ts = worker_history_series.copy()
         ts.index = pd.to_datetime(ts.index)
         ts = ts.asfreq(pd.infer_freq(ts.index))
-
         x = np.arange(len(ts)).reshape(-1, 1)
         y = ts.values
         model = LinearRegression()
         model.fit(x, y)
-
         future_x = np.arange(len(ts), len(ts) + weeks_ahead).reshape(-1, 1)
         forecast = model.predict(future_x).squeeze()
         worker_forecast = forecast
 
-    worker_forecast_series = pd.Series(worker_forecast, index=forecast_index, name="Worker forecast")
+    worker_forecast_series = pd.Series(worker_forecast, index=pd.to_datetime(forecast_index), name="Worker forecast")
 
     if plotable:
         num_desks = data["deskId"].nunique()
         combined_index = worker_history_series.index.union(worker_forecast_series.index)
+        combined_index = pd.to_datetime(combined_index)
         num_desks_series = pd.Series(num_desks, index=combined_index, name="number_of_desks")
+
+        worker_history_series.index = worker_history_series.index.strftime("%Y-%m-%d")
+        worker_forecast_series.index = worker_forecast_series.index.strftime("%Y-%m-%d")
+        num_desks_series.index = num_desks_series.index.strftime("%Y-%m-%d")
 
         final_data = FunctionData({
             "worker_history": worker_history_series.to_dict(),
@@ -140,7 +141,7 @@ def forecast_employees(
         )
 
         return FunctionRegistryExpectedFormat(data=final_data, plot=plot)
-    
+
     return current_worker_count, worker_forecast_series
 
 
@@ -199,7 +200,7 @@ def estimate_necessary_desks(
         forecast_model (str): 
             Model used to forecast time series if weekly_growth_rate and 
             weekly_absolute_growth are not given. This can be either "linear" for 
-            linear regression or "sarima" for seasonal moving average regression.
+            linear regression or "sarimax" for seasonal moving average regression.
             Defaults to "linear".
         weeks_ahead (int, optional): 
             Number of weeks into the future to simulate. Defaults to 52 weeks.
@@ -216,7 +217,7 @@ def estimate_necessary_desks(
         lag = 90
     if not booking_type or booking_type not in ["all", "fixed", "variable"]:
         booking_type = 'all'
-    if not forecast_model or forecast_model not in ["linear", "sarima"]:
+    if not forecast_model or forecast_model not in ["linear", "sarimax"]:
         forecast_model = "linear"
     if not weeks_ahead or weeks_ahead <= 0:
         weeks_ahead = 52
@@ -249,6 +250,9 @@ def estimate_necessary_desks(
 
     num_desks = data["deskId"].nunique()
     num_desks_series = pd.Series(num_desks, index=worker_forecast_series.index, name="number_of_desks")
+
+    desk_forecast_series.index = desk_forecast_series.index.strftime("%Y-%m-%d")
+    num_desks_series.index = num_desks_series.index.strftime("%Y-%m-%d")
 
     final_data = FunctionData({
         "desk_forecast": desk_forecast_series.to_dict(),
@@ -325,25 +329,6 @@ def load_active_worker_timeseries(
         "fixed": compute_timeseries(data[data["variableBooking"] == 0]),
         "variable": compute_timeseries(data[data["variableBooking"] == 1])
     }
-
-
-# Just for testing now. Can be removed later
-def plot_timeseries_with_forecast(
-        historical: pd.Series, 
-        forecast: pd.Series = None, 
-        title: str = "Time Series with Prediction"
-        ):
-    plt.figure(figsize=(12, 6))
-    plt.plot(historical.index, historical.values, label="Historical", color="blue")
-    if forecast is not None:
-        plt.plot(forecast.index, forecast.values, label="Prediction", color="red")
-    plt.title(title)
-    plt.xlabel("Date")
-    plt.ylabel("Value")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
 
 
 if __name__ == "__main__":

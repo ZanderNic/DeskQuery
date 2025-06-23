@@ -67,7 +67,31 @@ def simulate_policy(
         weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday"]
     if isinstance(weekdays, str):
         weekdays = [weekdays]
+
     weekdays = [day.lower() for day in weekdays]
+
+    def normalize_days(day_list):
+        return [day.lower() for day in day_list if day.lower() in weekdays]
+
+    if "fixed_days" in policy and policy["fixed_days"]:
+        policy["fixed_days"] = normalize_days(policy["fixed_days"])
+
+    if "choseable_days" in policy and policy["choseable_days"]:
+        policy["choseable_days"] = normalize_days(policy["choseable_days"])
+
+    if exceptions:
+        for eid, custom_policy in exceptions.items():
+            if "fixed_days" in custom_policy and custom_policy["fixed_days"]:
+                custom_policy["fixed_days"] = normalize_days(custom_policy["fixed_days"])
+            if "choseable_days" in custom_policy and custom_policy["choseable_days"]:
+                custom_policy["choseable_days"] = normalize_days(custom_policy["choseable_days"])
+
+    if random_assignments:
+        for _, assigned_policy in random_assignments:
+            if "fixed_days" in assigned_policy and assigned_policy["fixed_days"]:
+                assigned_policy["fixed_days"] = normalize_days(assigned_policy["fixed_days"])
+            if "choseable_days" in assigned_policy and assigned_policy["choseable_days"]:
+                assigned_policy["choseable_days"] = normalize_days(assigned_policy["choseable_days"])
 
     attendances = load_attendance_profiles(data=data, weekdays=weekdays)
     worker_ids = list(attendances.keys())
