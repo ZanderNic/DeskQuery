@@ -46,7 +46,6 @@ def mean_utilization(
         include_fixed (bool, optional): 
             If True, expands recurring (fixed) bookings across valid weekdays. Defaults to False.
         
-        # one of the grouping parameters must be set to True
         by_desks (bool):
             If True, groups statistics by individual desk (e.g., 'Room_3'). Defaults to False.
         by_room (bool): 
