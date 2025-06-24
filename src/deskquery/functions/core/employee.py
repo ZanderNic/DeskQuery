@@ -280,16 +280,9 @@ def get_booking_clusters(
 
     result = get_user_workmates(df_paris, user_ids)
 
-    # Heatmap (Data)
-    # z = result["weight"]
-    # x = result["userId_1"]
-    # y = result["userId_2"]
-    # title="Co-Booking Heatmap",
-    # xaxis_title="User ID 2",
-    # yaxis_title="User ID 1",
-
-    # Todo: None is not currently being treated
-    return FunctionRegistryExpectedFormat(data=result, plot=PlotForFunction())
+    empty_plot = PlotForFunction()
+    empty_plot.available_plots = []
+    return FunctionRegistryExpectedFormat(data=result, plot=empty_plot)
 
 def get_co_booking_frequencies(
     data: Dataset,
@@ -389,14 +382,6 @@ def get_co_booking_frequencies(
         "share_2"
     )
 
-    # Heatmap (Data)
-    # heatmap_df = merged.pivot(index="userId_1", columns="userId_2", values="count").fillna(0)
-    # z = heatmap_df.values,
-    # x = heatmap_df.columns.astype(str),
-    # y = heatmap_df.index.astype(str)
-    # title = "Co-Booking Counts Heatmap"
-    # xaxis_title="UserId 2",
-    # yaxis_title="UserId 1"
 
 
     # Barchart (Data)
