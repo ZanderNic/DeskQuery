@@ -234,7 +234,7 @@ def main(
         client = get_model_client(model['provider'])  # default provider if not specified
         current_client = client(
             model=model['model'],  # default model if not specified
-            chat_history=False,  # FIXME: according to the current prompt implementation
+            chat_history=False,
             sys_msg=None,
             output_schema=None
         )
@@ -272,7 +272,6 @@ The available tasks (names) and their meanings are:
 - "explain_former_result": Explain the result of a previously executed function.
 - "execute_function_on_former_result": Execute a function on the result of a previously executed function.
 - "plot_former_result": Generate a plot for the result of a previously executed function.
-- "execute_function_plan": Execute a sequence of functions to answer the user query.
 - "chat": If the user query is a general question or a request for information that does not require function execution or any other of the given tasks.
 
 Answer in a strict PYTHON DICT format as shown below.
@@ -296,6 +295,9 @@ Answer in a strict PYTHON DICT format as shown below.
 
 ### Your Response:
 """
+    # currently not implemented
+    # - "execute_function_plan": Execute a sequence of functions to answer the user query.
+
     global function_data
     global current_client
 
@@ -1457,8 +1459,8 @@ def handleMessage(
                 elif function_data['task'] == "plot_former_result":
                     STEP = 10
                 elif function_data['task'] == "execute_function_plan":
-                    pass
-                else:
+                    pass  # currently not implemented
+                else:  # also chat behavior
                     STEP = 5
 
         if STEP == 5:

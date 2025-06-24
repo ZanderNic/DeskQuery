@@ -227,7 +227,27 @@ The frontend uses this data to reconstruct the conversation history and render v
 
 ---
 
-### 7. Notes
+### 7. LLM Anser Generation
+
+The ``/chat`` endpoint calls the backend's [``src/deskquery/main.py``](../main.py) function (e.g. `desk_query` in `app.py`) to generate
+responses. The main function is structured as a finite state machine implementing the paths to
+
+1) execute a function on given user input and the underlying data,
+2) explain a formerly created result,
+3) execute a function on the data of such a formerly created result,
+4) plot a formerly created result,
+5) create a simple chat response without any function calling.
+
+A diagram of the state machine can be seen below:
+
+![State Machine Diagram](./docs/fsm.png)
+
+> ``NOTE:`` Any state of the FSM can lead to a failure and may end the current response generation. A Chat history with 
+> relevant information is saved anyway, allowing to reference past messages if needed.
+
+---
+
+### 8. Notes
 
 - Plots are rendered using Plotly.js and must be passed as a standard Plotly object.
 - Tables must be passed as a dict with "columns" and "rows" keys.
