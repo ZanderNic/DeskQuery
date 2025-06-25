@@ -28,7 +28,7 @@ utilizations and with from_bottom = True the bottom N utilizations.
 
 def utilization_stats(
     data: Dataset,
-    include_fixed: bool = False,
+    include_fixed: Optional[bool] = False,
     by_desks: bool = False,
     by_room: bool = False,
     by_day: bool = False,
@@ -38,18 +38,24 @@ def utilization_stats(
     start_date: Optional[datetime.datetime] = None,
     end_date: Optional[datetime.datetime] = None,
 ) -> FunctionRegistryExpectedFormat:
-Identifies utilization outliers based on deviation from the global mean.
+Computes utilization statistics (mean, min, max, variance) for desks, rooms, or weekdays
+over a specified date range.
 
-This function detects keys (desks, rooms, or weekdays) whose average utilization deviates significantly 
-from the global mean (by at least the given threshold). It uses the same aggregation logic as 
-`analyze_utilization` and returns only the outlier entries.
+Utilization is defined as the number of actual bookings divided by the number of possible
+bookings for each group. The number of possible bookings is based on:
+- the total number of weekdays in the range,
+- the number of desks per room (if by_room),
+- the total number of desks (if by_day),
+- or one desk per day (if by_desks).
+
+The results are grouped by one of: desk, room, or weekday — exactly one must be specified.
 
 ---
 
 def detect_utilization_anomalies(
     data: Dataset,
-    include_fixed: bool = False,
-    threshold: float = 0.2,
+    include_fixed: Optional[bool] = False,
+    threshold: Optional[float] = 0.2,
     by_desks: bool = False,
     by_room: bool = False,
     by_day: bool = False,
@@ -59,7 +65,13 @@ def detect_utilization_anomalies(
     start_date: Optional[datetime.datetime] = None,
     end_date: Optional[datetime.datetime] = None,
 ) -> FunctionRegistryExpectedFormat:
-Detects desks, rooms or weekdays with abnormally high or low mean utilization values.
+Detects utilization anomalies by identifying desks, rooms, or weekdays whose mean 
+utilization deviates significantly from the global average.
+
+An anomaly is defined as any key (desk, room, or weekday) whose mean utilization differs
+from the overall mean utilization by more than the specified threshold.
+
+Exactly one of `by_desks`, `by_room`, or `by_day` must be set to True to define the grouping logic.
 
 ---
 
@@ -114,11 +126,11 @@ def get_booking_repeat_pattern(
     data: Dataset,
     user_names: Optional[str | Sequence[str]] = None,
     user_ids: Optional[int | Sequence[int]] = None,
-    most_used_desk: int = 1,
+    most_used_desk: Optional[int] = 1,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime.datetime] = None, 
     end_date: Optional[datetime.datetime] = None,
-    include_fixed: bool = True,
+    include_fixed: Optional[bool] = True,
 ) -> FunctionRegistryExpectedFormat:
 Identifies users who book the same desks or same days repeatedly.
 
@@ -126,9 +138,9 @@ Identifies users who book the same desks or same days repeatedly.
 
 def get_booking_clusters(
     data: Dataset,
-    co_booking_count_min: int = 3, 
-    user_ids: Optional[list[int]] = None,
-    include_fixed: bool = False,
+    co_booking_count_min: Optional[int] = 3, 
+    user_ids: Optional[List[int]] = None,
+    include_fixed: Optional[bool] = False,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime.datetime] = None, 
     end_date: Optional[datetime.datetime] = None,
@@ -141,9 +153,9 @@ on a minimum number of shared bookings.
 
 def get_co_booking_frequencies(
     data: Dataset,
-    min_shared_days: int = 5, 
+    min_shared_days: Optional[int] = 5, 
     same_room_only: Optional[bool] = None, 
-    include_fixed: bool = True,
+    include_fixed: Optional[bool] = True,
     weekdays: List[str] = ["monday", "tuesday", "wednesday", "thursday", "friday"], 
     start_date: Optional[datetime.datetime] = None, 
     end_date: Optional[datetime.datetime] = None,

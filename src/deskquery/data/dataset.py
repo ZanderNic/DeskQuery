@@ -163,7 +163,7 @@ class Dataset(pd.DataFrame):
             is_fixed = self["variableBooking"] == 0
             blocked_from[is_fixed] = blocked_from[is_fixed].combine(start_date, func=lambda ts_cur, ts_new: ts_cur if ts_cur > pd.Timestamp(ts_new) else pd.Timestamp(ts_new))
             blocked_until[is_fixed] = blocked_until[is_fixed].combine(end_date, func=lambda ts_cur, ts_new: ts_cur if ts_cur < pd.Timestamp(ts_new) else pd.Timestamp(ts_new))
-            self.loc[:, 'blockedFrom'] = blocked_from  # FIXME: CHANGED
+            self.loc[:, 'blockedFrom'] = blocked_from
             self.loc[:, 'blockedUntil'] = blocked_until.copy().replace(datetime.date(pd.Timestamp.max), 'unlimited')
         
         if start_date or end_date or only_active:

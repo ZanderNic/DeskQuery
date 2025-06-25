@@ -234,14 +234,14 @@ def main(
         client = get_model_client(model['provider'])  # default provider if not specified
         current_client = client(
             model=model['model'],  # default model if not specified
-            chat_history=False,  # FIXME: according to the current prompt implementation
+            chat_history=False,
             sys_msg=None,
             output_schema=None
         )
         # paste previous chat history if applicable
         current_client.chat_history = current_chat_history
 
-    print("Using model:", current_client.model)  # FIXME: DEBUG
+    # print("Using model:", current_client.model) # DEBUG
 
     result = handleMessage(user_input, chat_data, data, model, START_STEP)
 
@@ -272,7 +272,6 @@ The available tasks (names) and their meanings are:
 - "explain_former_result": Explain the result of a previously executed function.
 - "execute_function_on_former_result": Execute a function on the result of a previously executed function.
 - "plot_former_result": Generate a plot for the result of a previously executed function.
-- "execute_function_plan": Execute a sequence of functions to answer the user query.
 - "chat": If the user query is a general question or a request for information that does not require function execution or any other of the given tasks.
 
 Answer in a strict PYTHON DICT format as shown below.
@@ -296,6 +295,9 @@ Answer in a strict PYTHON DICT format as shown below.
 
 ### Your Response:
 """
+    # currently not implemented
+    # - "execute_function_plan": Execute a sequence of functions to answer the user query.
+
     global function_data
     global current_client
 
@@ -315,7 +317,8 @@ Answer in a strict PYTHON DICT format as shown below.
 
     resp_data = clean_llm_output(response)
     
-    print("1) Decide next task:", resp_data, sep="\n")  # FIXME: DEBUG
+    # print("1) Decide next task:", resp_data, sep="\n")  # DEBUG
+    print("1) Decide on next task")
 
     return resp_data
 
@@ -435,7 +438,8 @@ Answer in a strict PYTHON DICT format as shown below.
 
     resp_data = clean_llm_output(response)
 
-    print("5) LLM Chat Answer:", resp_data, sep="\n")  # FIXME: DEBUG
+    # print("5) LLM Chat Answer:", resp_data, sep="\n")  # DEBUG
+    print("5) Create LLM Chat Answer")
 
     return resp_data
 
@@ -530,7 +534,8 @@ Answer in a strict PYTHON DICT format as shown below.
 
     resp_data = clean_llm_output(response)
     
-    print("10) LLM Referenced Message Selection:", resp_data, sep="\n")  # FIXME: DEBUG
+    # print("10) LLM Referenced Message Selection:", resp_data, sep="\n")  # DEBUG
+    print("10) LLM Referenced Message Selection")
 
     return resp_data
 
@@ -631,7 +636,8 @@ Answer in a strict PYTHON DICT format as shown below.
 
     resp_data = clean_llm_output(response)
 
-    print("30) LLM Referenced Message Explanation:", resp_data, sep="\n")  # FIXME: DEBUG
+    # print("30) LLM Referenced Message Explanation:", resp_data, sep="\n")  # DEBUG
+    print("30) LLM Referenced Message Explanation")
 
     return resp_data
 
@@ -723,7 +729,7 @@ Answer in a strict PYTHON DICT format as shown below.
         query=query
     )
 
-    print("50) LLM Plot Function Selection Prompt:", prompt, sep="\n")  # FIXME: DEBUG
+    # print("50) LLM Plot Function Selection Prompt:", prompt, sep="\n")  # DEBUG
 
     response = current_client.chat_completion(
         input_str=prompt,
@@ -733,7 +739,8 @@ Answer in a strict PYTHON DICT format as shown below.
 
     resp_data = clean_llm_output(response)
     
-    print("50) LLM plot function selection:", resp_data, sep="\n")  # FIXME: DEBUG
+    # print("50) LLM plot function selection:", resp_data, sep="\n")  # DEBUG
+    print("50) LLM plot function selection")
 
     return resp_data
 
@@ -767,7 +774,7 @@ def validate_plot_function_selection(
     
     # Mask the plot_function_registry with only the available plots
     masked_plot_function_registry = {k: v for k, v in plot_function_registry.items() if v in available_plots}
-    print("50) Available plot functions:", masked_plot_function_registry, sep="\n")  # FIXME: DEBUG
+    # print("50) Available plot functions:", masked_plot_function_registry, sep="\n")  # DEBUG
 
 
     # try to generate a valid json response
@@ -835,23 +842,24 @@ def validate_plot_function_execution():
     else:
         last_FREF = FREF_from_dict(last_data_message["data"])
 
-    # FIXME: DEBUG
-    print("80) Executing function:", function_data["selected_function"], "with params:", function_data["function_parameters"], sep="\n")
-    print("80) last_data_message:", last_data_message, sep="\n")
-    print("80) Last data message available plots:", last_FREF.plot.available_plots, sep="\n")
+    # DEBUG
+    # print("80) Executing function:", function_data["selected_function"], "with params:", function_data["function_parameters"], sep="\n")
+    # print("80) last_data_message:", last_data_message, sep="\n")
+    # print("80) Last data message available plots:", last_FREF.plot.available_plots, sep="\n")
 
     while error and generate_counter < 5:
         response = "<Error inside executed function>"
         try:
             # generate the response from the selected function
-            # print("80) Last FREF:", last_FREF, sep="\n")  # FIXME: DEBUG
             response = generate_plot_for_function(
                 function_result=last_FREF,
                 additional_plot_args=function_data["function_parameters"],
                 plot_to_generate=plot_func,
                 use_default_plot=False
             )
-            print("80) Function Execution Result:", response, sep="\n")  # FIXME: DEBUG
+            # print("80) Function Execution Result:", response, sep="\n")  # DEBUG
+            print("80) Determined Function Execution Result")
+
             error = False
         except Exception as e:
             print(f"Error while executing function {function_data['selected_function']}:", e)
@@ -926,7 +934,8 @@ Answer in a strict PYTHON DICT format as shown below.
 
     resp_data = clean_llm_output(response)
     
-    print("100) LLM function selection:", resp_data, sep="\n")  # FIXME: DEBUG
+    # print("100) LLM function selection:", resp_data, sep="\n")  # DEBUG
+    print("100) LLM function selection")
 
     return resp_data
 
@@ -1030,7 +1039,8 @@ Note: Avoid any conversational language!
 
     resp_data = clean_llm_output(response)
 
-    print("200) LLM Function Assessment:", resp_data, sep="\n")  # FIXME: DEBUG
+    # print("200) LLM Function Assessment:", resp_data, sep="\n")  # DEBUG
+    print("200) LLM Function Assessment")
 
     return resp_data
     
@@ -1145,7 +1155,7 @@ Answer in a strict PYTHON DICT format as shown below.
         conv_hist=conv_hist
     )
 
-    print("LLM prompt:", prompt, sep="\n")  # FIXME: DEBUG
+    # print("300) LLM prompt:", prompt, sep="\n")  # DEBUG
 
     response = current_client.chat_completion(
         input_str=prompt,
@@ -1155,7 +1165,8 @@ Answer in a strict PYTHON DICT format as shown below.
 
     resp_data = clean_llm_output(response)    
     
-    print("300) LLM Parameter Inferation:", resp_data, sep="\n")  # FIXME: DEBUG
+    # print("300) LLM Parameter Inferation:", resp_data, sep="\n")  # DEBUG
+    print("300) LLM Parameter Inferation")
 
     return resp_data
 
@@ -1222,8 +1233,8 @@ def validate_function_execution(
 
     func = function_registry[function_data["selected_function"]]
 
-    # FIXME: DEBUG
-    print("400) Executing function:", function_data["selected_function"], "with params:", function_data["function_parameters"], sep="\n")
+    # DEBUG
+    # print("400) Executing function:", function_data["selected_function"], "with params:", function_data["function_parameters"], sep="\n")
 
     while error and generate_counter < 5:
         response = "<Error inside executed function>"
@@ -1233,7 +1244,8 @@ def validate_function_execution(
                 data=data,
                 **function_data["function_parameters"]
             )
-            print("400) Function Execution Result:", response, sep="\n")  # FIXME: DEBUG
+            # print("400) Function Execution Result:", response, sep="\n")  # DEBUG
+            print("400) Determined Function Execution Result")
             error = False
         except Exception as e:
             print(f"Error while executing function {function_data['selected_function']}:", e)
@@ -1331,7 +1343,8 @@ Answer in a strict PYTHON DICT format as shown below.
 
     resp_data = clean_llm_output(response)
     
-    print("500) LLM Function Result Description:", resp_data, sep="\n")  # FIXME: DEBUG
+    # print("500) LLM Function Result Description:", resp_data, sep="\n")  # DEBUG
+    print("500) LLM Function Result Description")
 
     return resp_data
 
@@ -1408,7 +1421,7 @@ def handleMessage(
         # paste previous chat history if applicable
         current_client.chat_history = current_chat_history
 
-    print("Using model:", current_client.model)  # FIXME: DEBUG
+    # print("Using model:", current_client.model)  # DEBUG
 
     STEP = START_STEP
     FUNCTIONS_DISCARDED = 0
@@ -1457,8 +1470,8 @@ def handleMessage(
                 elif function_data['task'] == "plot_former_result":
                     STEP = 10
                 elif function_data['task'] == "execute_function_plan":
-                    pass
-                else:
+                    pass  # currently not implemented
+                else:  # also chat behavior
                     STEP = 5
 
         if STEP == 5:
@@ -1595,7 +1608,7 @@ def handleMessage(
                 function_data["selected_function"], plot_function_registry
             )
             
-            print("60) Selected function docstring:", function_docstring, sep="\n")  # FIXME: DEBUG
+            # print("60) Selected function docstring:", function_docstring, sep="\n")  # DEBUG
             function_data['function_docstring'] = function_docstring
             
             # assess the usability of the selected plot function
@@ -1616,7 +1629,7 @@ def handleMessage(
 
             # if the response could not be parsed
             if response.get("status", "") == "error":
-                # FIXME: DEBUG
+                # DEBUG
                 print("Function usability assessment failed. Aborting.")
                 FUNCTIONS_DISCARDED += 1
                 STEP = 50
@@ -1812,7 +1825,7 @@ def handleMessage(
 
             # if the response could not be parsed
             if response.get("status", "") == "error":
-                # FIXME: DEBUG
+                # DEBUG
                 print("Function usability assessment failed. Aborting.")
                 del function_data["function_registry"][function_data["selected_function"]]
                 FUNCTIONS_DISCARDED += 1

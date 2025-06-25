@@ -46,12 +46,12 @@ def chat():
 
         # check if a new chat was selected
         print("current chat id:", current_chat_id)
-        print("got chat id:", chat_id)
+        # print("got chat id:", chat_id)  # DEBUG
         if chat_id != current_chat_id:
             current_chat_id = chat_id
             NEXT_STEP = 1
 
-        print("backend: chat: current_model:", current_model)
+        print("backend: current_model:", current_model)
 
         chat_data = ChatData.load(chat_id)
 
@@ -80,7 +80,7 @@ def chat():
             model=current_model, 
             START_STEP=NEXT_STEP if NEXT_STEP else 1
         )
-        print("main.py response:\n", response)
+        # print("main.py response:\n", response)  # DEBUG
 
         if isinstance(response, dict) and response.get("message", False):
             message_data = {
@@ -111,7 +111,7 @@ def chat():
             else:
                 NEXT_STEP = 1
 
-            print("message_data:", message_data, sep="\n")
+            # print("message_data:", message_data, sep="\n")  # DEBUG
             chat_data.add_message(**message_data)
                 
             return jsonify({
@@ -160,7 +160,7 @@ def set_model():
         print(f"backend: current_model set to '{current_model}'")
         return jsonify({"status": "success", "model": model})
     else:
-        print("backend: Model not provided")
+        print("backend: model not provided")
         return jsonify({"status": "error", "message": "Model not provided"}), 400
 
 
