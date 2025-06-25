@@ -330,7 +330,11 @@ def utilization_stats(
 
     for key, values in stats.iterrows():
         # scale the sum with the max_possible to get the mean
-        max_possible = total_possible.get(key, 1)
+        if isinstance(total_possible, pd.Series) or isinstance(total_possible, dict):     
+            max_possible = total_possible.get(key, 1)
+        else:
+            max_possible = total_possible
+        
         mean = float(round(values["sum"] / max_possible, 3))
         result_data_dict[key] = {                                               
             "mean": mean,
